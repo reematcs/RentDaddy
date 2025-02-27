@@ -2,7 +2,11 @@
 
 # RentDaddy
 
-RentDaddy is a modern apartment management platform written in Go. It streamlines property management by offering a robust solution for tenant management, maintenance tracking, lease management, and comprehensive reporting. Designed for scalability and security, RentDaddy is ideal for property managers looking to simplify their workflow.
+RentDaddy is a modern apartment management platform written in Go. It
+streamlines property management by offering a robust solution for tenant
+management, maintenance tracking, lease management, and comprehensive reporting.
+Designed for scalability and security, RentDaddy is ideal for property managers
+looking to simplify their workflow.
 
 ## Table of Contents
 
@@ -15,8 +19,6 @@ RentDaddy is a modern apartment management platform written in Go. It streamline
   - [Project Structure](#project-structure)
   - [Testing](#testing)
   - [Linting & Formatting](#linting--formatting)
-- [Contributing](#contributing)
-- [Contact](#contact)
 
 ## Features
 
@@ -29,7 +31,8 @@ RentDaddy is a modern apartment management platform written in Go. It streamline
 
 ## Getting Started
 
-Follow these steps to set up the project on your local machine for development or testing.
+Follow these steps to set up the project on your local machine for development
+or testing.
 
 ### Prerequisites
 
@@ -67,7 +70,8 @@ Follow these steps to set up the project on your local machine for development o
 
 ## Configuration
 
-Create a `.env` file in the project root to manage environment-specific variables. Example:
+Create a `.env` file in the project root to manage environment-specific
+variables. Example:
 
 ```env
 # Server Configuration
@@ -109,17 +113,11 @@ Access the application by navigating to `http://localhost:8080`.
 
 Subject to change as needed
 
-```
+```bash
 RentDaddy/
-├── frontend/       # Not sure what this looks like
+├── frontend/       # Vite/Tanstack/react frontend
+├── backend/        # Go/SQL Backend
 ├── assets/         # Images, Icons, Logos, Etc
-├── cmd/            # Application entry points
-├── internal/       # Business logic and core functionality
-├── pkg/            # Utility libraries and helpers
-├── migrations/     # Database migration files
-├── tests/          # Integration and unit tests
-├── .env            # Environment variables configuration
-├── main.go         # Main application file
 └── README.md       # Project documentation
 ```
 
@@ -128,29 +126,13 @@ RentDaddy/
 Run all tests with:
 
 ```bash
-go test ./...
+go test -v
 ```
 
 ### Linting & Formatting
-
-- **Linting:** We use `golangci-lint` to maintain code quality.
-
-  ```bash
-  golangci-lint run
-  ```
 
 - **Formatting:** Format your code with:
 
   ```bash
   gofmt -s -w .
   ```
-
-## Contributing
-
-Outside Contributions are not accepted!
-
-## Contact
-
-For questions or feedback, please contact:
-
-???
