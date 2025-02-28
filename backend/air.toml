@@ -1,3 +1,5 @@
+# Install air : go install github.com/air-verse/air@latest
+
 # Root directory of the project
 root = "."
 
@@ -7,7 +9,7 @@ cmd = "go run server.go"
 # Watching for file changes
 [watcher]
 include = ["**/*.go"]
-exclude = ["./tmp/*", "vendor/*"]
+exclude = ["./tmp/*", "_test.go","vendor/*"]
 
 # Build settings
 [build]
