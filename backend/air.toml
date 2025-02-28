@@ -1,7 +1,7 @@
 # Root directory of the project
 root = "."
 
-# Command to run your Go server
+# Command runs when you call air
 cmd = "go run server.go"
 
 # Watching for file changes
