@@ -1,0 +1,20 @@
+
+# Ignore binaries and executables
+*.exe
+*.out
+*.so
+*.dll
+
+# Ignore envs
+.env*
+.env.local*
+
+# Ignore all sqlite files
+*.sqlite
+
+# Ignore builds
+/bin/
+/tmp/
+
+# Ignore logs
+*.log
