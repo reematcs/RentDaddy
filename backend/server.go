@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -44,90 +50,111 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Server Starting")
+	// OS signal channel
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
 	r.Use(cors.Handler(cors.Options{
-    AllowedOrigins:   []string{"*"},
-    // AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-    AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-    AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-    ExposedHeaders:   []string{"Link"},
-    AllowCredentials: false,
-    MaxAge:           300, // Maximum value not ignored by any of major browsers
-  }))
+		AllowedOrigins: []string{"*"},
+		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
-		 defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Success"))
-		fmt.Printf("get success")
+		w.Write([]byte("Success in get"))
 	})
+
 	// Sample data
 	items["1"] = Item{ID: "1", Value: "initial value"}
 
-	r.Post("/test/post", func(w http.ResponseWriter, r *http.Request){
+	r.Post("/test/post", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)
 		body, err := io.ReadAll(r.Body)
-        if err != nil {
-            http.Error(w, "Failed to read body", http.StatusInternalServerError)
-            return
-        }
-		fmt.Printf("%s",body)
+		if err != nil {
+			http.Error(w, "Failed to read body", http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		fmt.Printf("%s", body)
 		fmt.Printf("post success")
-        defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
-        w.Write(body)
-		w.Write([]byte("Success"))
+		w.Write(body)
+		w.Write([]byte("Success in post"))
 	})
 
-	r.Put("/test/put", func(w http.ResponseWriter, r *http.Request){
+	r.Put("/test/put", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)
 		body, err := io.ReadAll(r.Body)
-        if err != nil {
-            http.Error(w, "Failed to read body", http.StatusInternalServerError)
-            return
-        }
-		fmt.Printf("%s",body)
+		if err != nil {
+			http.Error(w, "Failed to read body", http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		fmt.Printf("%s", body)
 		fmt.Printf("put success")
-        defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
-        w.Write(body)
+		w.Write(body)
 		w.Write([]byte("Success in put"))
 	})
 
-	r.Delete("/test/delete", func(w http.ResponseWriter, r *http.Request){
+	r.Delete("/test/delete", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)
 		body, err := io.ReadAll(r.Body)
-        if err != nil {
-            http.Error(w, "Failed to read body", http.StatusInternalServerError)
-            return
-        }
-		fmt.Printf("%s",body)
-		fmt.Printf("put success")
-        defer r.Body.Close()
+		if err != nil {
+			http.Error(w, "Failed to read body", http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		fmt.Printf("%s", body)
+		fmt.Printf("delete success")
 		w.WriteHeader(http.StatusOK)
-        w.Write(body)
-		w.Write([]byte("Success in put"))
+		w.Write(body)
 	})
 
-	r.Patch("/test/patch", func(w http.ResponseWriter, r *http.Request){
+	r.Patch("/test/patch", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)
 		body, err := io.ReadAll(r.Body)
-        if err != nil {
-            http.Error(w, "Failed to read body", http.StatusInternalServerError)
-            return
-        }
-		fmt.Printf("%s",body)
-		fmt.Printf("put success")
-        defer r.Body.Close()
+		if err != nil {
+			http.Error(w, "Failed to read body", http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		fmt.Printf("%s", body)
+		fmt.Printf("patch success")
 		w.WriteHeader(http.StatusOK)
-        w.Write(body)
-		w.Write([]byte("Success in put"))
+		w.Write(body)
 	})
 
+	// Server config
+	server := &http.Server{
+		Addr:    ":3069",
+		Handler: r,
+	}
 
-	fmt.Println("Server Running on port 3069")
-	http.ListenAndServe(":3069", r)
+	// Start server
+	go func() {
+		log.Println("Server is running on port 3069....")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	// Block until we reveive an interrupt signal
+	<-sigChan
+	log.Println("shutting down server...")
+
+	// Gracefully shutdown the server
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("server shutdown failed: %v", err)
+	}
 }

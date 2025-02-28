@@ -1,0 +1,31 @@
+# Root directory of the project
+root = "."
+
+# Command to run your Go server
+cmd = "go run server.go"
+
+# Watching for file changes
+[watcher]
+include = ["**/*.go"]
+exclude = ["./tmp/*", "vendor/*"]
+
+# Build settings
+[build]
+bin = "./tmp/server"  # Binary file
+cmd = "go build -o ./tmp/server server.go"
+delay = 1000        # Delay in milliseconds before restarting
+kill_signal = "SIGTERM"
+
+# Logging settings
+[log]
+level = "debug"
+
+# Misc settings
+[color]
+error = "red"
+warning = "yellow"
+info = "blue"
+
+# [screen]
+# clear_on_rebuild = false
+
