@@ -4,6 +4,7 @@ import { SettingOutlined, UserOutlined } from '@ant-design/icons';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import UniversalSidebar from './UniversalSidebar';
+import { Link } from 'react-router';
 
 const ReusableComponents = () => {
     const [value, setValue] = useState('');
@@ -14,6 +15,13 @@ const ReusableComponents = () => {
             <h4 className='text-center mt-3 fst-italic fw-bold'>
                 ***There is not much styling on this yet, kinda stock, <br /> just so we can get the components up and running.***
             </h4>
+
+            {/* Back to Home Button */}
+            <Link to="/" className='d-flex justify-content-center'>
+                <Button type='primary' className='mt-3'>
+                    Back to Home
+                </Button>
+            </Link>
 
             <Divider />
 
