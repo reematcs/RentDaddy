@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Route, Routes } from "react-router";
 import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
 import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
-import Settings from "./components/Settings.tsx"
+import Settings from "./pages/Settings.tsx"
 
 
 const queryClient = new QueryClient()
