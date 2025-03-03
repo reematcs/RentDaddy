@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Route, Routes } from "react-router";
 
 // Protected Routes to be used for all routes that require authentication
-import ProtectedRoutes from "./components/system-tools/ProtectedRoutes.tsx";
+import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
 
 
 const queryClient = new QueryClient()
