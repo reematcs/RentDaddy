@@ -1,12 +1,46 @@
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
+import { Link } from "react-router"
+import { Button } from "antd"
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
     <>
-      <h4>RentDaddy</h4>
+      <Link to="/">
+        <h4>RentDaddy</h4>
+      </Link>
+
+      <div className="d-flex flex-column">
+        <Link to="/reusable-components">
+          <Button className="my-2">
+            Checkout the Reusable Components
+          </Button>
+        </Link>
+
+        {/* Login Button */}
+        <Link to="/authentication/login">
+          <Button className="my-2">
+            Login
+          </Button>
+        </Link>
+
+        {/* Admin Button */}
+        <Link to="/admin">
+          <Button className="my-2">
+            Admin
+          </Button>
+        </Link>
+
+        {/* Tenant Button */}
+        <Link to="/tenant">
+          <Button className="my-2">
+            Tenant
+          </Button>
+        </Link>
+
+      </div>
 
       <Items />
     </>
