@@ -4,6 +4,7 @@ import "./styles/styles.scss"
 import App from "./App.tsx"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Route, Routes } from "react-router";
+import ReusableComponents from "./components/ReusableComponents.tsx"
 
 
 const queryClient = new QueryClient()
@@ -30,6 +31,9 @@ createRoot(document.getElementById("root")!).render(
 
           {/* Main Route (Landing Page) */}
           <Route path="/" element={<App />} />
+
+          {/* Reusable Components Route */}
+          <Route path="/reusable-components" element={<ReusableComponents />} />
 
           {/* Authentication Route Group */}
           <Route path="authentication">
