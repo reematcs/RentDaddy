@@ -5,7 +5,7 @@ import App from "./App.tsx"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Route, Routes } from "react-router";
 <<<<<<< HEAD
-import ReusableComponents from "./components/ReusableComponents.tsx"
+import ReusableComponents from "./pages/ReusableComponents.tsx"
 
 // Protected Routes to be used for all routes that require authentication
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
@@ -14,6 +14,9 @@ import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
 import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
 import Settings from "./pages/Settings.tsx"
 >>>>>>> 759a029 (init layout for pre and post authed layout)
+import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
+import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
+import Settings from "./pages/Settings.tsx"
 
 
 const queryClient = new QueryClient()
@@ -41,21 +44,26 @@ createRoot(document.getElementById("root")!).render(
           {/* Main Route (Landing Page) */}
           {/* Unauthenticated Layout */}
           <Route path="/" element={<PreAuthedLayout />} >
-            <Route path="/" element={<App />} />
+            {/* Unauthenticated Layout */}
+            <Route path="/" element={<PreAuthedLayout />} >
+              <Route path="/" element={<App />} />
+            </Route>
+
+
+            {/* Reusable Components Route */}
+            <Route path="/reusable-components" element={<ReusableComponents />} />
           </Route>
 
-
-          {/* Reusable Components Route */}
-          <Route path="/reusable-components" element={<ReusableComponents />} />
 
           {/* Authentication Route Group */}
           <Route path="auth" element={<PreAuthedLayout />}>
-            <Route path="login" element={<h1>Login</h1>} />
+            <Route path="auth" element={<PreAuthedLayout />}>
+              <Route path="login" element={<h1>Login</h1>} />
 
-            {/* Not sure we need this one since we are having the admins create a tenant */}
-            {/* But maybe to register the init admin? */}
-            <Route path="register" element={<h1>Register</h1>} />
-          </Route>
+              {/* Not sure we need this one since we are having the admins create a tenant */}
+              {/* But maybe to register the init admin? */}
+              <Route path="register" element={<h1>Register</h1>} />
+            </Route>
 
 <<<<<<< HEAD
   {/* Admin Route Group */ }
@@ -63,15 +71,16 @@ createRoot(document.getElementById("root")!).render(
 <Route path="admin">
 =======
           <Route element={<AuthenticatedLayout />}>
-    {/* Admin Route Group */}
-    <Route path="admin" >
+    <Route element={<AuthenticatedLayout />}>
+      {/* Admin Route Group */}
+      <Route path="admin"  >
 >>>>>>> 759a029 (init layout for pre and post authed layout)
-      <Route index element={<h1>Admin Dashboard</h1>} />
-      <Route path="init-apartment-complex" element={<h1>Initial Admin Apartment Complex Setup</h1>} />
-      <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
-      <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
+        <Route index element={<h1>Admin Dashboard</h1>} />
+        <Route path="init-apartment-complex" element={<h1>Initial Admin Apartment Complex Setup</h1>} />
+        <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
+        <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
 <<<<<<< HEAD
-  <Route path="admin-view-and-edit-work-orders" element={<h1>Admin View & Edit Work Orders</h1>} />
+  <Route path="admin-view-and-edit-work-orders-and-complaints" element={<h1>Admin View & Edit Work Orders & Complaints</h1>} />
             </Route >
 
   {/* Tenant Route Group */ }
@@ -83,7 +92,7 @@ createRoot(document.getElementById("root")!).render(
             </Route >
 =======
               <Route path="admin-view-and-edit-work-orders-and-complaints" element={<h1>Admin View & Edit Work Orders & Complaints</h1>} />
-            </Route>
+              </Route>
 
             {/* Tenant Route Group */}
             <Route path="tenant">
@@ -93,17 +102,17 @@ createRoot(document.getElementById("root")!).render(
               <Route path="tenant-work-orders-and-complaints" element={<h1>Work Orders & Complaints</h1>} />
             </Route>
 
-            {/* Settings Route */}
-            {/* TODO: Make sure to move this to the AuthenticatedLayout and use specific settings for each user role */}
-            <Route path="components/settings" element={<Settings />} />
+          {/* Settings Route */}
+          {/* TODO: Make sure to move this to the AuthenticatedLayout and use specific settings for each user role */}
+          <Route path="components/settings" element={<Settings />} />
 
 >>>>>>> 759a029 (init layout for pre and post authed layout)
-          </Route >
+        </Route >
 
   {/* 404 Route - Always place at the end to catch unmatched routes */ }
   < Route path = "*" element = {< h1 > Page Not Found</h1 >} />
-        </Routes >
-      </BrowserRouter >
-    </QueryClientProvider >
+      </Routes >
+    </BrowserRouter >
+  </QueryClientProvider >
   </StrictMode >
 )
