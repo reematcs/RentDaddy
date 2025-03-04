@@ -1,0 +1,28 @@
+version: '3'
+
+dotenv: ['.env']
+
+tasks:
+  build:
+    cmds:
+      - go build -v -i main.go
+
+  run:
+    desc: "Run Go app with Air reloading"
+    cmds:
+      - air -c .air.toml
+
+  migrate-up:
+    desc: "Pull schema changes into local database"
+    cmds:
+      - migrate -path internal/db/migrations/ -database $PG_URL -verbose up
+      - echo "Migrating up!"
+
+  migrate-down:
+    cmds:
+      - migrate -path internal/db/migrations/ -database $PG_URL -verbose down
+
+  make-migration:
+    cmds:
+      - migrate create -ext sql -dir internal/db/migrations -seq {{.CLI_ARGS}}
+      - echo 'New migration generated! Make sure to verify new files in internal/db/migrations'
