@@ -128,9 +128,9 @@ const AuthenticatedLayout: React.FC = () => {
                     <Link to="/" className="text-decoration-none">
                         <h1 className="logo-title text-white mb-3 text-center">Rent Daddy</h1>
                         <img
-                            src="https://placehold.co/64x64?text=Logo"
+                            src="/logo.png"
                             alt="Rent Daddy Logo"
-                            className="logo-image mx-auto d-block"
+                            className="logo-image mx-auto d-block bg-white"
                             width={64}
                             height={64}
                         />
