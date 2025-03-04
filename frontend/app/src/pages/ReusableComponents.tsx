@@ -1,9 +1,9 @@
 import { Avatar, Button, Card, Col, Divider, Input, Row } from 'antd'
-import AntDesignTableComponent from './AntDesignTableComponent'
+import AntDesignTableComponent from '../components/AntDesignTableComponent'
 import { SettingOutlined, UserOutlined } from '@ant-design/icons';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
-import UniversalSidebar from './UniversalSidebar';
+import UniversalSidebar from '../components/UniversalSidebar';
 import { Link } from 'react-router';
 
 const ReusableComponents = () => {
