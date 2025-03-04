@@ -1,22 +1,25 @@
+// React and ReactDOM imports
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
-import "./styles/styles.scss"
-import App from "./App.tsx"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { BrowserRouter, Route, Routes } from "react-router";
-<<<<<<< HEAD
-import ReusableComponents from "./pages/ReusableComponents.tsx"
 
-// Protected Routes to be used for all routes that require authentication
+// Styles
+import "./styles/styles.scss"
+
+// Pages &Components
+import App from "./App.tsx"
+import ReusableComponents from "./pages/ReusableComponents.tsx"
+import Settings from "./pages/Settings.tsx"
+
+// Routing
+import { BrowserRouter, Route, Routes } from "react-router";
+
+// Authentication and Layout
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
-=======
 import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
 import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
-import Settings from "./pages/Settings.tsx"
->>>>>>> 759a029 (init layout for pre and post authed layout)
-import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
-import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
-import Settings from "./pages/Settings.tsx"
+
+// Tanstack Query Client
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 
 const queryClient = new QueryClient()
@@ -42,77 +45,55 @@ createRoot(document.getElementById("root")!).render(
           */}
 
           {/* Main Route (Landing Page) */}
-          {/* Unauthenticated Layout */}
-          <Route path="/" element={<PreAuthedLayout />} >
-            {/* Unauthenticated Layout */}
-            <Route path="/" element={<PreAuthedLayout />} >
-              <Route path="/" element={<App />} />
-            </Route>
-
+          {/* Pre-authentication Layout Group */}
+          <Route element={<PreAuthedLayout />}>
+            {/* Landing Page */}
+            <Route index element={<App />} />
 
             {/* Reusable Components Route */}
-            <Route path="/reusable-components" element={<ReusableComponents />} />
-          </Route>
+            <Route path="reusable-components" element={<ReusableComponents />} />
 
-
-          {/* Authentication Route Group */}
-          <Route path="auth" element={<PreAuthedLayout />}>
-            <Route path="auth" element={<PreAuthedLayout />}>
+            {/* Authentication Routes */}
+            <Route path="auth">
               <Route path="login" element={<h1>Login</h1>} />
-
-              {/* Not sure we need this one since we are having the admins create a tenant */}
-              {/* But maybe to register the init admin? */}
               <Route path="register" element={<h1>Register</h1>} />
             </Route>
+          </Route>
+          {/* End of Pre-authentication Layout Group */}
 
-<<<<<<< HEAD
-  {/* Admin Route Group */ }
-  < Route element = {< ProtectedRoutes />}>
-<Route path="admin">
-=======
-          <Route element={<AuthenticatedLayout />}>
-    <Route element={<AuthenticatedLayout />}>
-      {/* Admin Route Group */}
-      <Route path="admin"  >
->>>>>>> 759a029 (init layout for pre and post authed layout)
-        <Route index element={<h1>Admin Dashboard</h1>} />
-        <Route path="init-apartment-complex" element={<h1>Initial Admin Apartment Complex Setup</h1>} />
-        <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
-        <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
-<<<<<<< HEAD
-  <Route path="admin-view-and-edit-work-orders-and-complaints" element={<h1>Admin View & Edit Work Orders & Complaints</h1>} />
-            </Route >
+          {/* Protected Routes (Admin & Tenant) */}
+          <Route element={<ProtectedRoutes />}>
+            {/* Authenticated Layout Group */}
+            <Route element={<AuthenticatedLayout />}>
+              {/* Admin Route Group */}
+              <Route path="admin"  >
+                <Route index element={<h1>Admin Dashboard</h1>} />
+                <Route path="init-apartment-complex" element={<h1>Initial Admin Apartment Complex Setup</h1>} />
+                <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
+                <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
+                <Route path="admin-view-and-edit-work-orders-and-complaints" element={<h1>Admin View & Edit Work Orders & Complaints</h1>} />
+              </Route >
 
-  {/* Tenant Route Group */ }
-  < Route path = "tenant" >
-              <Route index element={<h1>Tenant Dashboard</h1>} />
-              <Route path="guest-parking" element={<h1>Guest Parking</h1>} />
-              <Route path="digital-documents" element={<h1>Digital Documents</h1>} />
-              <Route path="work-orders-and-complaints" element={<h1>Work Orders & Complaints</h1>} />
-            </Route >
-=======
-              <Route path="admin-view-and-edit-work-orders-and-complaints" element={<h1>Admin View & Edit Work Orders & Complaints</h1>} />
+              {/* Tenant Route Group */}
+              <Route path="tenant">
+                <Route index element={<h1>Tenant Dashboard</h1>} />
+                <Route path="guest-parking" element={<h1>Guest Parking</h1>} />
+                <Route path="tenant-view-and-edit-leases" element={<h1>Digital Documents</h1>} />
+                <Route path="tenant-work-orders-and-complaints" element={<h1>Work Orders & Complaints</h1>} />
               </Route>
 
-            {/* Tenant Route Group */}
-            <Route path="tenant">
-              <Route index element={<h1>Tenant Dashboard</h1>} />
-              <Route path="guest-parking" element={<h1>Guest Parking</h1>} />
-              <Route path="tenant-view-and-edit-leases" element={<h1>Digital Documents</h1>} />
-              <Route path="tenant-work-orders-and-complaints" element={<h1>Work Orders & Complaints</h1>} />
+              {/* Settings Route */}
+              {/* TODO: Make sure to move this to the AuthenticatedLayout and use specific settings for each user role */}
+              <Route path="components/settings" element={<Settings />} />
             </Route>
+          </Route >
+          {/* End of Protected Routes (Admin & Tenant) */}
 
-          {/* Settings Route */}
-          {/* TODO: Make sure to move this to the AuthenticatedLayout and use specific settings for each user role */}
-          <Route path="components/settings" element={<Settings />} />
+          {/* 404 Route - Always place at the end to catch unmatched routes */}
+          <Route path="*" element={< h1 > Page Not Found</h1 >} />
 
->>>>>>> 759a029 (init layout for pre and post authed layout)
-        </Route >
-
-  {/* 404 Route - Always place at the end to catch unmatched routes */ }
-  < Route path = "*" element = {< h1 > Page Not Found</h1 >} />
-      </Routes >
-    </BrowserRouter >
-  </QueryClientProvider >
+        </Routes >
+      </BrowserRouter >
+    </QueryClientProvider >
   </StrictMode >
 )
