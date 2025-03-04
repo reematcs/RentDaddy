@@ -44,7 +44,7 @@ const PreAuthedLayout: React.FC = () => {
                 <Link to="/">
                     <div className="demo-logo">
                         {/* Use a placeholder image */}
-                        <img src="https://placehold.co/64x64?text=Logo" alt="logo" />
+                        <img src="/logo.png" alt="logo" style={{ width: '64px', height: '64px' }} className='bg-white' />
                     </div>
                 </Link>
                 <Link to="/" style={{ flex: 1, textAlign: 'center', color: 'white', fontSize: '24px', textDecoration: 'none' }}>
@@ -74,14 +74,37 @@ const PreAuthedLayout: React.FC = () => {
                     <Outlet />
                 </div>
             </Content>
+
             {/* Footer Container */}
-            <Footer style={{ textAlign: 'center' }}>
-                <Divider className='divider-text border-black' />
-                <p>
-                    Rent Daddy © {new Date().getFullYear()} Created by Rent Daddy
+            <Footer style={{ textAlign: 'center', padding: '24px 50px', backgroundColor: '#f5f5f5' }}>
+                {/* Rent Daddy */}
+                <h3 className="footer-title" style={{ marginBottom: '16px', color: '#1a1a1a' }}>
+                    Rent Daddy
+                </h3>
+                {/* Logo */}
+                <img
+                    // src="https://placehold.co/64x64?text=Logo"
+                    src="/logo.png"
+                    alt="logo"
+                    className='footer-logo'
+                    style={{
+                        display: 'block',
+                        margin: '0 auto',
+                        marginBottom: '24px',
+                        borderRadius: '8px'
+                    }}
+                />
+                <div className="footer-links" style={{ marginBottom: '24px' }}>
+                    <Link to="/about" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>About</Link>
+                    <Link to="/contact" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Contact</Link>
+                    <Link to="/privacy" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Privacy Policy</Link>
+                    <Link to="/terms" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Terms of Service</Link>
+                </div>
+                <p className='footer-text' style={{ margin: 0, color: '#8c8c8c', fontSize: '14px' }}>
+                    Rent Daddy © {new Date().getFullYear()} | All Rights Reserved
                 </p>
             </Footer>
-        </Layout>
+        </Layout >
     );
 };
 
