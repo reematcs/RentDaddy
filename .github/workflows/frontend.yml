@@ -1,0 +1,40 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './frontend/app/package.json'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build
+        run: |
+          if grep -q 'build' package.json; then
+            npm run build
+          else
+            echo "No build script found. Skipping build step."
+          fi
+      
+      - name: Docker build test
+        run: |
+          docker build -t frontend-test .
+          docker image inspect frontend-test
