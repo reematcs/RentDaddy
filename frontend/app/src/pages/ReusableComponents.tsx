@@ -5,8 +5,9 @@ import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import UniversalSidebar from '../components/UniversalSidebar';
 import { Link } from 'react-router';
-import RegistrationFormExample from './FormExample';
-import TimeRelatedFormExample from './TimeRelatedFormExamples';
+import RegistrationFormExample from '../components/FormExample';
+import TimeRelatedFormExample from '../components/TimeRelatedFormExamples';
+
 
 const ReusableComponents = () => {
     const [value, setValue] = useState('');
