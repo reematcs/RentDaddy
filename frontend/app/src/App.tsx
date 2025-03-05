@@ -21,8 +21,10 @@ function App() {
         </Link>
 
         {/* Login Button */}
-        <Link to="/authentication/login">
-          <Button className="my-2">Login</Button>
+        <Link to="/auth/login">
+          <Button className="my-2">
+            Login
+          </Button>
         </Link>
 
         {/* Admin Button */}
