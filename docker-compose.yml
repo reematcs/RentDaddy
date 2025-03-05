@@ -35,8 +35,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    # volumes:
+    #   - ./backend:/app
     networks:
       - app-network
 
