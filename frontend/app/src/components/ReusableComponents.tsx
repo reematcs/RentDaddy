@@ -1,12 +1,22 @@
-import { Avatar, Button, Card, Col, Divider, Input, Row } from 'antd'
-import AntDesignTableComponent from './AntDesignTableComponent'
-import { SettingOutlined, UserOutlined } from '@ant-design/icons';
-import TextArea from 'antd/es/input/TextArea';
-import { useState } from 'react';
-import UniversalSidebar from './UniversalSidebar';
-import { Link } from 'react-router';
-import RegistrationFormExample from './FormExample';
-import TimeRelatedFormExample from './TimeRelatedFormExamples';
+import {
+  Avatar,
+  Button,
+  Card,
+  Col,
+  ConfigProvider,
+  Divider,
+  Input,
+  Row,
+} from "antd"
+import AntDesignTableComponent from "./AntDesignTableComponent"
+import { SettingOutlined, UserOutlined } from "@ant-design/icons"
+import TextArea from "antd/es/input/TextArea"
+import { useState } from "react"
+import UniversalSidebar from "./UniversalSidebar"
+import { Link } from "react-router"
+import RegistrationFormExample from "./FormExample"
+import TimeRelatedFormExample from "./TimeRelatedFormExamples"
+import AlertComponent from "./AlertComponent"
 
 const ReusableComponents = () => {
   const [value, setValue] = useState("")
@@ -49,6 +59,22 @@ const ReusableComponents = () => {
           </div>
 
           <Divider />
+
+          <AlertComponent
+            title={"Success Example"}
+            description={"Success Description"}
+            type={"success"}
+          />
+          <AlertComponent
+            title={"Error Example"}
+            description={"Error Description"}
+            type={"error"}
+          />
+          <AlertComponent
+            title={"Warning Example"}
+            description={"Warning Description"}
+            type={"warning"}
+          />
 
           {/* Sider (Sidebar) */}
           <div className="sider m-5">
@@ -205,58 +231,69 @@ const ReusableComponents = () => {
             <Divider />
 
             {/* Text Area Examples*/}
-            <div className='text-area-examples m-5'>
+            <div className="text-area-examples m-5">
+              <h2 className="fs-2 text-center">Text Area Examples</h2>
 
-                <h2 className='fs-2 text-center'>Text Area Examples</h2>
+              {/* Basic Input */}
+              <div className="my-2">
+                <h2>Basic Input</h2>
+                <Input className="my-2" placeholder="Basic usage" />
+              </div>
 
-                {/* Basic Input */}
-                <div className='my-2'>
-                    <h2>Basic Input</h2>
-                    <Input className='my-2' placeholder="Basic usage" />
+              {/* Search Input */}
+              <div className="my-2">
+                <h2>Search Input</h2>
+                <Input
+                  className="my-2"
+                  addonAfter={<SettingOutlined />}
+                  defaultValue="mysite"
+                />
+                <Input
+                  className="my-2"
+                  addonBefore="http://"
+                  suffix=".com"
+                  defaultValue="mysite"
+                />
+              </div>
+
+              {/* Controlled Expanding Text Area */}
+              <div className="my-2">
+                <h2>Controlled Expanding Text Area</h2>
+                <TextArea
+                  className="my-2"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="Controlled autosize"
+                  autoSize={{ minRows: 3, maxRows: 5 }}
+                />
+              </div>
+
+              <Divider />
+
+              <div className="form-examples m-5 p-4 border rounded shadow-sm bg-light">
+                <h2 className="fs-2 text-center mb-4 text-primary">
+                  Form Examples
+                </h2>
+                <div className="bg-white p-3 rounded">
+                  <h2 className="fs-3 text-center mb-4 text-primary">
+                    Registration Form
+                  </h2>
+                  <RegistrationFormExample />
                 </div>
-
-                {/* Search Input */}
-                <div className='my-2'>
-                    <h2>Search Input</h2>
-                    <Input className='my-2' addonAfter={<SettingOutlined />} defaultValue="mysite" />
-                    <Input className='my-2' addonBefore="http://" suffix=".com" defaultValue="mysite" />
-                </div>
-
-                {/* Controlled Expanding Text Area */}
-                <div className='my-2'>
-                    <h2>Controlled Expanding Text Area</h2>
-                    <TextArea
-                        className='my-2'
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        placeholder="Controlled autosize"
-                        autoSize={{ minRows: 3, maxRows: 5 }}
-                    />
-                </div>
-
                 <Divider />
-
-                <div className='form-examples m-5 p-4 border rounded shadow-sm bg-light'>
-                    <h2 className='fs-2 text-center mb-4 text-primary'>Form Examples</h2>
-                    <div className='bg-white p-3 rounded'>
-                        <h2 className='fs-3 text-center mb-4 text-primary'>
-                            Registration Form
-                        </h2>
-                        <RegistrationFormExample />
-                    </div>
-                    <Divider />
-                    <div className='bg-white p-3 rounded'>
-                        <h2 className='fs-3 text-center mb-4 text-primary'>
-                            Time Related Form Examples
-                        </h2>
-                        <TimeRelatedFormExample />
-                    </div>
+                <div className="bg-white p-3 rounded">
+                  <h2 className="fs-3 text-center mb-4 text-primary">
+                    Time Related Form Examples
+                  </h2>
+                  <TimeRelatedFormExample />
                 </div>
+              </div>
 
-            {/* Any other text area examples? */}
+              {/* Any other text area examples? */}
+            </div>
+
+            <Divider />
           </div>
-
-          <Divider />
         </div>
       </ConfigProvider>
     </>
