@@ -22,6 +22,7 @@ frontend/app/.env.development.local
 frontend/app/.env.test.local
 frontend/app/.env.production.local
 
+# Wildcard ignore for any .env files
 **/*.env
 
 # Backend
