@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { Button } from "antd"
+import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent"
 
 function App() {
   const [count, setCount] = useState(0)
@@ -11,6 +12,8 @@ function App() {
       <Link to="/">
         <h4>RentDaddy</h4>
       </Link>
+
+      <HomePageFeaturesComponent />
 
       <div className="d-flex flex-column">
         <Link to="/reusable-components">
