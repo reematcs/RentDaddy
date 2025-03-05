@@ -58,11 +58,15 @@ const PreAuthedLayout: React.FC = () => {
                 />
             </Header>
             <Content style={{ padding: '0 48px' }}>
-                <Breadcrumb style={{ margin: '16px 0' }}>
-                    <Breadcrumb.Item><Link to="/">Home</Link></Breadcrumb.Item>
-                    <Breadcrumb.Item>Test</Breadcrumb.Item>
-                    <Breadcrumb.Item>Breadcrumb</Breadcrumb.Item>
-                </Breadcrumb>
+
+                {/* TODO: Decide if we are using this */}
+                {/* <Breadcrumb style={{ margin: '16px 0' }}>
+                        <Breadcrumb.Item><Link to="/">Home</Link></Breadcrumb.Item>
+                        <Breadcrumb.Item>Test</Breadcrumb.Item>
+                        <Breadcrumb.Item>Breadcrumb</Breadcrumb.Item>
+                    </Breadcrumb> 
+                */}
+
                 <div
                     style={{
                         padding: 24,
