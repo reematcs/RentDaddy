@@ -5,12 +5,12 @@
 package generated
 
 import (
-	"database/sql"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Tenant struct {
-	ID        int64
-	Name      string
-	Email     string
-	CreatedAt sql.NullTime
+	ID        int32              `json:"id"`
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }

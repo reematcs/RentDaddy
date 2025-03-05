@@ -3,11 +3,15 @@
 # See docs: https://docs.sqlc.dev/en/stable/reference/config.html
 version: "2"
 sql:
-  - engine: "sqlite"
+  - engine: "postgresql"
     queries: "internal/db/queries"
-    schema: "internal/db/queries/schema.sql"
+    schema: "internal/db/schema"
     gen:
       go:
         package: "generated"
         out: "internal/db/generated"
-        sql_package: "database/sql"  # This is default, but wanted to make it clear
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_interface: false
+        emit_exact_table_names: false
