@@ -41,21 +41,27 @@ const PreAuthedLayout: React.FC = () => {
                     alignItems: 'center',
                 }}
             >
-                <Link to="/">
-                    <div className="demo-logo">
-                        {/* Use a placeholder image */}
-                        <img src="/logo.png" alt="logo" style={{ width: '64px', height: '64px' }} className='bg-white' />
-                    </div>
-                </Link>
-                <Link to="/" style={{ flex: 1, textAlign: 'center', color: 'white', fontSize: '24px', textDecoration: 'none' }}>
-                    RentDaddy
-                </Link>
-                <Menu
-                    theme="dark"
-                    mode="horizontal"
-                    defaultSelectedKeys={['1']}
-                    items={items}
-                />
+                <div style={{ width: '200px' }}>  {/* Fixed width container for logo */}
+                    <Link to="/">
+                        <div className="demo-logo">
+                            <img src="/logo.png" alt="logo" style={{ width: '64px', height: '64px' }} className='bg-white' />
+                        </div>
+                    </Link>
+                </div>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                    <Link to="/" style={{ color: 'white', fontSize: '24px', textDecoration: 'none' }}>
+                        RentDaddy
+                    </Link>
+                </div>
+                <div style={{ width: '200px' }}>  {/* Fixed width container for menu */}
+                    <Menu
+                        theme="dark"
+                        mode="horizontal"
+                        inlineCollapsed={false}
+                        defaultSelectedKeys={['1']}
+                        items={items}
+                    />
+                </div>
             </Header>
             <Content style={{ padding: '0 48px' }}>
 
@@ -75,6 +81,7 @@ const PreAuthedLayout: React.FC = () => {
                         borderRadius: borderRadiusLG,
                     }}
                 >
+                    {/* Outlet is a React Router component to help present what shows up from the main.tsx children routes */}
                     <Outlet />
                 </div>
             </Content>
