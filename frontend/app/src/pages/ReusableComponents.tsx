@@ -5,6 +5,8 @@ import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import UniversalSidebar from '../components/UniversalSidebar';
 import { Link } from 'react-router';
+import RegistrationFormExample from './FormExample';
+import TimeRelatedFormExample from './TimeRelatedFormExamples';
 
 const ReusableComponents = () => {
     const [value, setValue] = useState('');
@@ -146,6 +148,26 @@ const ReusableComponents = () => {
                         autoSize={{ minRows: 3, maxRows: 5 }}
                     />
                 </div>
+
+                <Divider />
+
+                <div className='form-examples m-5 p-4 border rounded shadow-sm bg-light'>
+                    <h2 className='fs-2 text-center mb-4 text-primary'>Form Examples</h2>
+                    <div className='bg-white p-3 rounded'>
+                        <h2 className='fs-3 text-center mb-4 text-primary'>
+                            Registration Form
+                        </h2>
+                        <RegistrationFormExample />
+                    </div>
+                    <Divider />
+                    <div className='bg-white p-3 rounded'>
+                        <h2 className='fs-3 text-center mb-4 text-primary'>
+                            Time Related Form Examples
+                        </h2>
+                        <TimeRelatedFormExample />
+                    </div>
+                </div>
+
 
                 {/* Any other text area examples? */}
             </div>
