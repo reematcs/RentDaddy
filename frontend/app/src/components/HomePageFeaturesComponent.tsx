@@ -35,7 +35,7 @@ const HomePageFeaturesComponent = () => {
     ];
 
     return (
-        <div className="py-5 bg-light">
+        <div className="py-5 bg-light" style={{ margin: "50px 0px" }}>
             <div className="container">
                 {/* Title */}
                 <h2 className="text-center mb-5 fw-bold">Smart Living</h2>
