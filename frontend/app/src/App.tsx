@@ -11,12 +11,11 @@ function App() {
   return (
     <>
       <HeroBanner />
+      <HomePageFeaturesComponent />
 
       <Link to="/">
         <h4>RentDaddy</h4>
       </Link>
-
-      <HomePageFeaturesComponent />
 
       <div className="d-flex flex-column">
         <Link to="/reusable-components">
