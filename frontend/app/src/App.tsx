@@ -1,50 +1,44 @@
-import { useState } from "react"
-import { useMutation } from "@tanstack/react-query"
-import { Link } from "react-router"
-import { Button } from "antd"
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Link } from "react-router";
+import { Button } from "antd";
+import HeroBanner from "./components/HeroBanner";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   return (
     <>
+      <HeroBanner />
+
       <Link to="/">
         <h4>RentDaddy</h4>
       </Link>
 
       <div className="d-flex flex-column">
         <Link to="/reusable-components">
-          <Button className="my-2">
-            Checkout the Reusable Components
-          </Button>
+          <Button className="my-2">Checkout the Reusable Components</Button>
         </Link>
 
         {/* Login Button */}
         <Link to="/authentication/login">
-          <Button className="my-2">
-            Login
-          </Button>
+          <Button className="my-2">Login</Button>
         </Link>
 
         {/* Admin Button */}
         <Link to="/admin">
-          <Button className="my-2">
-            Admin
-          </Button>
+          <Button className="my-2">Admin</Button>
         </Link>
 
         {/* Tenant Button */}
         <Link to="/tenant">
-          <Button className="my-2">
-            Tenant
-          </Button>
+          <Button className="my-2">Tenant</Button>
         </Link>
-
       </div>
 
       <Items />
     </>
-  )
+  );
 }
 
 function Items() {
@@ -55,17 +49,17 @@ function Items() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: "1" }),
-      })
-      return res
+      });
+      return res;
     },
     onSuccess: () => {
       // Invalidate and refetch
-      console.log("succes")
+      console.log("succes");
     },
     onError: (e: any) => {
-      console.log("error ", e)
+      console.log("error ", e);
     },
-  })
+  });
 
   const { mutate: createPut } = useMutation({
     mutationFn: async () => {
@@ -73,17 +67,17 @@ function Items() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: "1" }),
-      })
-      return res
+      });
+      return res;
     },
     onSuccess: () => {
       // Invalidate and refetch
-      console.log("success")
+      console.log("success");
     },
     onError: (e: any) => {
-      console.log("error ", e)
+      console.log("error ", e);
     },
-  })
+  });
 
   const { mutate: createDelete } = useMutation({
     mutationFn: async () => {
@@ -91,34 +85,34 @@ function Items() {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: "1" }),
-      })
-      return res
+      });
+      return res;
     },
     onSuccess: () => {
       // Invalidate and refetch
-      console.log("success")
+      console.log("success");
     },
     onError: (e: any) => {
-      console.log("error ", e)
+      console.log("error ", e);
     },
-  })
+  });
 
   const { mutate: createGet } = useMutation({
     mutationFn: async () => {
       const res = await fetch("http://localhost:3069/test/get", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-      })
-      return res
+      });
+      return res;
     },
     onSuccess: () => {
       // Invalidate and refetch
-      console.log("success")
+      console.log("success");
     },
     onError: (e: any) => {
-      console.log("error ", e)
+      console.log("error ", e);
     },
-  })
+  });
 
   const { mutate: createPatch } = useMutation({
     mutationFn: async () => {
@@ -126,24 +120,24 @@ function Items() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: "1" }),
-      })
-      return res
+      });
+      return res;
     },
     onSuccess: () => {
       // Invalidate and refetch
-      console.log("success")
+      console.log("success");
     },
     onError: (e: any) => {
-      console.log("error ", e)
+      console.log("error ", e);
     },
-  })
+  });
 
   return (
     <div className="flex g-2">
       <button
         className="btn btn-primary m-2"
         onClick={() => {
-          createGet()
+          createGet();
         }}
       >
         GET
@@ -151,7 +145,7 @@ function Items() {
       <button
         className="btn btn-secondary  m-2"
         onClick={() => {
-          createPost()
+          createPost();
         }}
       >
         Post
@@ -159,7 +153,7 @@ function Items() {
       <button
         className="btn btn-warning  m-2"
         onClick={() => {
-          createPut()
+          createPut();
         }}
       >
         Put
@@ -167,7 +161,7 @@ function Items() {
       <button
         className="btn btn-light  m-2"
         onClick={() => {
-          createDelete()
+          createDelete();
         }}
       >
         Delete
@@ -175,13 +169,13 @@ function Items() {
       <button
         className="btn btn-dark  m-2"
         onClick={() => {
-          createPatch()
+          createPatch();
         }}
       >
         Patch
       </button>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
