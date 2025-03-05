@@ -41,19 +41,24 @@ const PreAuthedLayout: React.FC = () => {
                     alignItems: 'center',
                 }}
             >
-                <div style={{ width: '200px' }}>  {/* Fixed width container for logo */}
+                {/* Left Side Nav */}
+                <div style={{ width: '200px' }}>
                     <Link to="/">
                         <div className="demo-logo">
-                            <img src="/logo.png" alt="logo" style={{ width: '64px', height: '64px' }} className='bg-white' />
+                            <img src="/logo.png" alt="logo" style={{ width: '56px', height: '56px' }} className='bg-white rounded' />
                         </div>
                     </Link>
                 </div>
+
+                {/* Center Nav */}
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                     <Link to="/" style={{ color: 'white', fontSize: '24px', textDecoration: 'none' }}>
                         RentDaddy
                     </Link>
                 </div>
-                <div style={{ width: '200px' }}>  {/* Fixed width container for menu */}
+
+                {/* Right Side Nav */}
+                <div style={{ width: '200px' }}>
                     <Menu
                         theme="dark"
                         mode="horizontal"
