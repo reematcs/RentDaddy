@@ -5,7 +5,7 @@ dotenv: ['.env']
 tasks:
   build:
     cmds:
-      - go build -v -i main.go
+      - go build -v -i server.go
 
   run:
     desc: "Run Go app with Air reloading"
@@ -23,7 +23,7 @@ tasks:
       - migrate -path internal/db/migrations/ -database $PG_URL -verbose down
 
   make-migration:
-    desc: "Create a new migration set with a user provided name"
+    desc: "Create a new migration set with a user provided name. ie: task make-migration -- <name-input>"
     cmds:
       - migrate create -ext sql -dir internal/db/migrations -seq {{.CLI_ARGS}}
       - echo 'New migration generated! Make sure to verify new files in internal/db/migrations'
