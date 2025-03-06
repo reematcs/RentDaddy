@@ -7,14 +7,17 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -49,7 +52,50 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedItem)
 }
 
+func QuickDump(r *http.Request) {
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Request dump: %s\n", dump)
+}
+
 func main() {
+
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: No .env file found")
+	}
+
+	// Get the secret key from the environment variable
+	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
+	if clerkSecretKey == "" {
+		log.Fatal("CLERK_SECRET_KEY environment variable is required")
+	}
+
+	// Initialize Clerk with your secret key
+	clerk.SetKey(clerkSecretKey)
+
+	// Each operation requires a context.Context as the first argument.
+	ctx := context.Background()
+
+	// Example Clerk usage:
+	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
+	// // Get
+	// resource, err := user.Get(ctx, id)
+
+	// // Update
+	// resource, err := user.Update(ctx, id, &user.UpdateParams{})
+
+	// // Delete
+	// resource, err := user.Delete(ctx, id)
+
+	// getUser, err := user.Get(ctx, resource.ID)
+	// if err != nil {
+	// 	log.Fatalf("failed to get user: %v", err)
+	// }
+
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
