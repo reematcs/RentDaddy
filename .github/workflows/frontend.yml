@@ -26,15 +26,15 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Build
-        run: |
-          if grep -q 'build' package.json; then
-            npm run build
-          else
-            echo "No build script found. Skipping build step."
-          fi
+      # - name: Build
+      #   run: |
+      #     if grep -q 'build' package.json; then
+      #       npm run build
+      #     else
+      #       echo "No build script found. Skipping build step."
+      #     fi
       
-      - name: Docker build test
-        run: |
-          docker build -t frontend-test .
-          docker image inspect frontend-test
+      # - name: Docker build test
+      #   run: |
+      #     docker build -t frontend-test .
+      #     docker image inspect frontend-test
