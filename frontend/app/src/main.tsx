@@ -1,27 +1,28 @@
 // React and ReactDOM imports
-import { StrictMode } from "react"
-import { createRoot } from "react-dom/client"
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
 import "./styles/styles.scss";
 
 // Styles
-import "./styles/styles.scss"
+import "./styles/styles.scss";
 
 // Pages &Components
-import App from "./App.tsx"
-import ReusableComponents from "./pages/ReusableComponents.tsx"
+import App from "./App.tsx";
+import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 // Routing
 import { BrowserRouter, Route, Routes } from "react-router";
 
 // Authentication and Layout
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
-import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
-import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
+import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx";
+import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx";
 
 // Tanstack Query Client
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ErrorNotFound from "./pages/Error404.tsx";
+import LoginForm from "./pages/LoginForm.tsx";
 
 const queryClient = new QueryClient();
 
@@ -51,11 +52,14 @@ createRoot(document.getElementById("root")!).render(
             <Route index element={<App />} />
 
             {/* Reusable Components Route */}
-            <Route path="reusable-components" element={<ReusableComponents />} />
+            <Route
+              path="reusable-components"
+              element={<ReusableComponents />}
+            />
 
             {/* Authentication Routes */}
             <Route path="auth">
-              <Route path="login" element={<h1>Login</h1>} />
+              <Route path="login" element={<LoginForm />} />
               <Route path="register" element={<h1>Register</h1>} />
             </Route>
           </Route>
@@ -66,7 +70,7 @@ createRoot(document.getElementById("root")!).render(
             {/* Authenticated Layout Group */}
             <Route element={<AuthenticatedLayout />}>
               {/* Admin Route Group */}
-              <Route path="admin"  >
+              <Route path="admin">
                 <Route index element={<h1>Admin Dashboard</h1>} />
                 <Route
                   path="init-apartment-complex"
@@ -81,7 +85,7 @@ createRoot(document.getElementById("root")!).render(
                   path="admin-view-and-edit-work-orders-and-complaints"
                   element={<h1>Admin View & Edit Work Orders & Complaints</h1>}
                 />
-              </Route >
+              </Route>
 
               {/* Tenant Route Group */}
               <Route path="tenant">
@@ -97,7 +101,7 @@ createRoot(document.getElementById("root")!).render(
                 />
               </Route>
             </Route>
-          </Route >
+          </Route>
           {/* End of Protected Routes (Admin & Tenant) */}
 
           {/* 404 Route - Always place at the end to catch unmatched routes */}
