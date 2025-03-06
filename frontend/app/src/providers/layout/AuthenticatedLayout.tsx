@@ -14,6 +14,7 @@ import {
 import type { MenuProps } from 'antd';
 import { Avatar, Divider, Layout, Menu, theme } from 'antd';
 import { Link, Outlet, useLocation } from 'react-router';
+import { SignOutButton, useUser } from '@clerk/react-router';
 
 const { Header, Content, Footer, Sider } = Layout;
 
@@ -28,7 +29,6 @@ const siderStyle: React.CSSProperties = {
     scrollbarGutter: 'stable',
 };
 
-// TODO: Set Admin or Tenant to open on default based on user role
 const items: MenuProps['items'] = [
     {
         key: 'home',
@@ -103,6 +103,8 @@ const items: MenuProps['items'] = [
 ];
 
 const AuthenticatedLayout: React.FC = () => {
+    const { isSignedIn, user } = useUser();
+
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
@@ -144,12 +146,21 @@ const AuthenticatedLayout: React.FC = () => {
                 {/* Avatar and Login Container */}
                 <div className="avatar-container d-flex flex-column position-absolute bottom-0 w-100">
                     <Divider className="divider-text border-white" />
-                    <Link to="/auth/login" className="text-decoration-none">
-                        <div className="d-flex align-items-center justify-content-center gap-2 mb-4">
-                            <p className="login-text text-white m-0">Login</p>
-                            <Avatar className="avatar-icon" size={48} icon={<UserOutlined />} />
-                        </div>
-                    </Link>
+                    {isSignedIn ? (
+                        <SignOutButton>
+                            <div className="d-flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
+                                <p className="login-text text-white m-0">Sign Out</p>
+                                <Avatar className="avatar-icon" size={48} src={user?.imageUrl} />
+                            </div>
+                        </SignOutButton>
+                    ) : (
+                        <Link to="/auth/login" className="text-decoration-none">
+                            <div className="d-flex align-items-center justify-content-center gap-2 mb-4">
+                                <p className="login-text text-white m-0">Login</p>
+                                <Avatar className="avatar-icon" size={48} icon={<UserOutlined />} />
+                            </div>
+                        </Link>
+                    )}
                 </div>
 
             </Sider>

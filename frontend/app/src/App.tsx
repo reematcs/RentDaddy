@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { Button } from "antd";
 import HeroBanner from "./components/HeroBanner";
 import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent"
+import ClerkAuthDemo from "./components/ClerkAuthDemo";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -41,6 +42,8 @@ function App() {
       </div>
 
       <Items />
+
+      <ClerkAuthDemo />
     </>
   );
 }

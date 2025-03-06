@@ -7,13 +7,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/clerk/clerk-sdk-go/v2"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -52,14 +52,15 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedItem)
 }
 
-func QuickDump(r *http.Request) {
-	dump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
-		return
-	}
-	fmt.Printf("Request dump: %s\n", dump)
-}
+// QuickDump is a function that dumps the request to the console for debugging purposes
+// func QuickDump(r *http.Request) {
+// 	dump, err := httputil.DumpRequest(r, true)
+// 	if err != nil {
+// 		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+// 		return
+// 	}
+// 	fmt.Printf("Request dump: %s\n", dump)
+// }
 
 func main() {
 
@@ -178,6 +179,56 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
 	})
+
+	r.Put("/test/clerk/update-username", func(w http.ResponseWriter, r *http.Request) {
+		// QuickDump(r) // Uncomment to see the request dump
+
+		// Define a struct to parse the incoming JSON
+		type UpdateUsernameRequest struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		}
+
+		// Set the request body to the struct so that we can parse the request body
+		var updateReq UpdateUsernameRequest
+
+		// Parse the request body
+		if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
+			log.Printf("Error decoding request body: %v", err)
+			http.Error(w, "Failed to parse request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Log the parsed request
+		log.Printf("Received update request - ID: %s, Username: %s", updateReq.ID, updateReq.Username)
+
+		// Check if ID is provided
+		if updateReq.ID == "" {
+			http.Error(w, "User ID is required", http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("Updating user with ID: %s", updateReq.ID)
+
+		// Update the user with the provided ID and username
+		resource, err := user.Update(ctx, updateReq.ID, &user.UpdateParams{
+			Username: clerk.String(updateReq.Username),
+		})
+
+		if err != nil {
+			log.Printf("Error updating user: %v", err)
+			http.Error(w, "Failed to update user: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("User updated successfully: %v", resource.ID)
+
+		// Return the updated user as JSON using the response writer and the resource
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(resource)
+	})	
+	// End of Clerk Routes	
 
 	// Server config
 	server := &http.Server{
