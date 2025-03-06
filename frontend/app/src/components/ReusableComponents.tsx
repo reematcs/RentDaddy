@@ -59,7 +59,7 @@ const ReusableComponents = () => {
           </div>
 
           <Divider />
-
+          {/* alerts */}
           <AlertComponent
             title={"Success Example"}
             description={"Success Description"}
