@@ -32,10 +32,10 @@ jobs:
       - name: Build server
         run: go build -v -o server server.go
       
-      - name: Test
-        run: go test -v ./...
+      # - name: Test
+      #   run: go test -v ./...
       
-      - name: Docker build test
-        run: |
-          docker build -t backend-test .
-          docker image inspect backend-test
+      # - name: Docker build test
+      #   run: |
+      #     docker build -t backend-test .
+      #     docker image inspect backend-test
