@@ -32,9 +32,10 @@ services:
       - ENV=${ENV:-development}
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # UNCOMMENT THIS LATER
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
     # volumes:
     #   - ./backend:/app
     networks:
