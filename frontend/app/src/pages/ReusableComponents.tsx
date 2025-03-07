@@ -16,6 +16,7 @@ import UniversalSidebar from "../components/UniversalSidebar"
 import { Link } from "react-router"
 import RegistrationFormExample from "../components/FormExample"
 import TimeRelatedFormExample from "../components/TimeRelatedFormExamples"
+import AlertComponent from "../components/AlertComponent"
 
 const ReusableComponents = () => {
   const [value, setValue] = useState("")
@@ -45,6 +46,23 @@ const ReusableComponents = () => {
         </div>
 
         <Divider />
+        
+        {/* alerts */}
+        <AlertComponent
+          title={"Success Example"}
+          description={"Success Description"}
+          type={"success"}
+        />
+        <AlertComponent
+          title={"Error Example"}
+          description={"Error Description"}
+          type={"error"}
+        />
+        <AlertComponent
+          title={"Warning Example"}
+          description={"Warning Description"}
+          type={"warning"}
+        />
 
         {/* Sider (Sidebar) */}
         <div className="sider m-5">
@@ -232,6 +250,7 @@ const ReusableComponents = () => {
 
         <Divider />
       </div>
+
     </>
   )
 }
