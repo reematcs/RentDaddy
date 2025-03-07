@@ -91,7 +91,7 @@ const onChange: TableProps<DataType>["onChange"] = (
 ) => {
   console.log("params", pagination, filters, sorter, extra)
 }
-
+//TODO: Make this in our own component where we pass in the props to it.
 const AntDesignTableComponent: React.FC = () => (
   <Table<DataType>
     columns={columns}
