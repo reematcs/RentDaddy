@@ -10,15 +10,15 @@ function App() {
     <>
       <HeroBanner />
       <HomePageFeaturesComponent />
-      
-      
+
+
       {/* Let's completely remove this component once we are done testing */}
       {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
       <DemoTestingComponent />
-      
+
       {/* Let's completely remove this component once we are done testing */}
       {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
-      <DemoTestingComponent />
+      <ClerkAuthDemo />
     </>
   );
 }
