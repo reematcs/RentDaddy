@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules
 npm-debug.log
@@ -41,3 +42,12 @@ CHANGELOG.md
 docker-compose.yml
 Dockerfile
 .dockerignore
+=======
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.env
+>>>>>>> 9d93dd2d350537c5a4a52cc2896b6e9614ea14c7
