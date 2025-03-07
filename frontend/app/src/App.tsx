@@ -1,9 +1,7 @@
-import { useState } from "react"
-import { useMutation } from "@tanstack/react-query"
-import { Link } from "react-router"
-import { Button, ConfigProvider, theme } from "antd"
-import HeroBanner from "./components/HeroBanner"
-import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent"
+import HeroBanner from "./components/HeroBanner";
+import HomePageFAQs from "./components/HomePageFAQs";
+import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent";
+import ClerkAuthDemo from "./components/ClerkAuthDemo";
 import DemoTestingComponent from "./components/DemoTestingComponent";
 
 function App() {
@@ -11,39 +9,19 @@ function App() {
     <>
       <HeroBanner />
       <HomePageFeaturesComponent />
-      <Link className="" to="/">
-        <h4>RentDaddy</h4>
-      </Link>
 
-      <div className="d-flex flex-column">
-        <Link to="/reusable-components">
-          <Button type="primary" className="my-2">
-            Checkout the Reusable Components
-          </Button>
-        </Link>
+      <HomePageFAQs />
 
-        {/* Login Button */}
-        <Link to="/auth/login">
-          <Button type="primary" className="my-2">
-            Login
-          </Button>
-        </Link>
+      {/* Let's completely remove this component once we are done testing */}
+      {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
+      <DemoTestingComponent />
 
-        {/* Admin Button */}
-        <Link to="/admin">
-          <Button className="my-2">Admin</Button>
-        </Link>
-
-        {/* Tenant Button */}
-        <Link to="/tenant">
-          <Button className="my-2">Tenant</Button>
-        </Link>
-      </div>
-
-      <Items />
+      {/* Let's completely remove this component once we are done testing */}
+      {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
+      <ClerkAuthDemo />
     </>
   )
 }
 
 
-export default App
+export default App;
