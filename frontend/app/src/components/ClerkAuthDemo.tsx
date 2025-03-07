@@ -6,12 +6,12 @@ const ClerkAuthDemo = () => {
     const { user } = useUser();
 
     return (
-        <div className="d-flex flex-column">
+        <div className="d-flex flex-column gap-2 w-50 mx-auto my-5 border border-1 border-dark p-5 rounded-3 bg-light">
 
             {/* Clerk Auth Demo */}
-            <div className="d-flex flex-column justify-content-center align-items-center my-5 bg-light p-5 rounded-3">
+            <h4 className="text-center">Clerk Auth Demo</h4>
+            <div className="d-flex flex-column justify-content-center align-items-center bg-light p-5 rounded-3">
                 {/* Title */}
-                <h4>Clerk Auth Demo</h4>
                 <SignedIn>
                     <div className="d-flex flex-column justify-content-center align-items-center my-5">
                         <p className="fs-2 text-center text-danger">NOTICE!</p>
