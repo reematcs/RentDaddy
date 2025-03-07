@@ -7,7 +7,7 @@ $enable-shadows: true;
 $offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
 
 // Include functions first
-@import 'bootstrap/scss/functions';
+@import "bootstrap/scss/functions";
 
 // Customize some defaults
 $text: #00050a;
@@ -40,23 +40,23 @@ $radialPrimaryAccent: radial-gradient(#00674f, #d86364);
 $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 
 // Required
-@import 'bootstrap/scss/variables';
-@import 'bootstrap/scss/variables-dark';
-@import 'bootstrap/scss/maps';
-@import 'bootstrap/scss/mixins';
-@import 'bootstrap/scss/utilities';
-@import 'bootstrap/scss/root';
-@import 'bootstrap/scss/reboot';
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
 
-@import 'bootstrap/scss/type';
+@import "bootstrap/scss/type";
 // @import "bootstrap/scss/images";
-@import 'bootstrap/scss/containers';
-@import 'bootstrap/scss/grid';
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
 // @import "bootstrap/scss/tables";
 // @import "bootstrap/scss/forms";
-@import 'bootstrap/scss/buttons';
-@import 'bootstrap/scss/transitions';
-@import 'bootstrap/scss/dropdown';
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/dropdown";
 // @import "bootstrap/scss/button-group";
 // @import "bootstrap/scss/nav";
 // @import "bootstrap/scss/navbar"; // Requires nav
@@ -68,21 +68,21 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 // @import "bootstrap/scss/alert";
 // @import "bootstrap/scss/progress";
 // @import "bootstrap/scss/list-group";
-@import 'bootstrap/scss/close';
+@import "bootstrap/scss/close";
 // @import "bootstrap/scss/toasts";
-@import 'bootstrap/scss/modal'; // Requires transitions
+@import "bootstrap/scss/modal"; // Requires transitions
 // @import "bootstrap/scss/tooltip";
-@import 'bootstrap/scss/popover';
+@import "bootstrap/scss/popover";
 // @import "bootstrap/scss/carousel";
 // @import "bootstrap/scss/spinners";
-@import 'bootstrap/scss/offcanvas'; // Requires transitions
+@import "bootstrap/scss/offcanvas"; // Requires transitions
 // @import "bootstrap/scss/placeholders";
 
 // Helpers
 // @import "bootstrap/scss/helpers";
 
 // Utilities
-@import 'bootstrap/scss/utilities/api';
+@import "bootstrap/scss/utilities/api";
 
 //
 // Custom styles
@@ -101,10 +101,6 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 
 body {
   margin: 0;
-  // display: flex;
-  // place-items: center;
-  // min-width: 320px;
-  // min-height: 100vh;
 }
 
 //add more commonly used classes here to be able to write them quicker
@@ -113,7 +109,6 @@ body {
 }
 
 .card-primary {
-  // background-color: $primary-5;
   background: $primary5;
 }
 
