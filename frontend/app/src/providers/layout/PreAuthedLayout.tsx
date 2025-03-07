@@ -1,33 +1,35 @@
 import React from 'react';
-import { Breadcrumb, Divider, Layout, Menu, theme } from 'antd';
+import { Breadcrumb, Button, Divider, Layout, Menu, theme } from 'antd';
 import { Link, Outlet } from 'react-router';
+import { SignOutButton, useUser } from '@clerk/react-router';
 
 const { Header, Content, Footer } = Layout;
 
-// TODO: Make sure to use the real user object from the auth provider
-// Make sure to use the real user object from the auth provider
-// const user = {
-//     role: 'admin'
-// };
 
-const user = null;
 
-const items = [
-    // Todo: Make the home link go to the landing page if the user is not logged in and the appropriate dashboard if the user is logged in
-    {
-        key: '1',
-        label: user ? <Link to={user.role === 'admin' ? '/admin' : '/tenant'}>Your Home</Link> : <Link to="/">Home</Link>,
-    },
-    {
-        key: '2',
-        label: user ? <Link to="/auth/logout">Logout</Link> : <Link to="/auth/login">Login</Link>,
-    }
-];
 
 const PreAuthedLayout: React.FC = () => {
+    // Get Clerk User to get the user's role
+    const { user } = useUser();
+
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
+
+    console.log(user, "user")
+
+    // Right Hand Sidebar Items
+    const items = [
+        {
+            key: '1',
+            label: user ? <Link to={user.publicMetadata.role === 'admin' ? '/admin' : '/tenant'}>Your Home</Link> : <Link to="/">Home</Link>,
+        },
+        {
+            key: '2',
+            label: user ? <SignOutButton><div className='text-white'>Logout</div></SignOutButton> : <Link to="/auth/login">Login</Link>,
+        }
+    ];
+
 
     return (
         <Layout>
