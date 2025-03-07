@@ -3,7 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Button } from "antd";
 import HeroBanner from "./components/HeroBanner";
-import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent"
+import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent";
+import HomePageFAQs from "./components/HomePageFAQs";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -12,6 +13,7 @@ function App() {
     <>
       <HeroBanner />
       <HomePageFeaturesComponent />
+      <HomePageFAQs />
 
       <Link to="/">
         <h4>RentDaddy</h4>
@@ -24,9 +26,7 @@ function App() {
 
         {/* Login Button */}
         <Link to="/auth/login">
-          <Button className="my-2">
-            Login
-          </Button>
+          <Button className="my-2">Login</Button>
         </Link>
 
         {/* Admin Button */}
