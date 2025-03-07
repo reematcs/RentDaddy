@@ -129,7 +129,7 @@ createRoot(document.getElementById("root")!).render(
             {/* End of Protected Routes (Admin & Tenant) */}
 
             {/* 404 Route - Always place at the end to catch unmatched routes */}
-            <Route path="*" element={<ErrorNotFound />}></Route>
+            <Route path="*" element={<ErrorNotFound />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
