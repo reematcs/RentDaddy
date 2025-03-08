@@ -4,7 +4,7 @@ import type { MenuProps } from "antd";
 import { Avatar, Divider, Layout, Menu, theme } from "antd";
 import { Link, Outlet, useLocation } from "react-router";
 import { SignOutButton, useUser } from "@clerk/react-router";
-import SidebarLinks from "../../components/SideBarLinks";
+import SidebarLinks from "../../components/SidebarLinks";
 
 const { Header, Content, Footer, Sider } = Layout;
 
