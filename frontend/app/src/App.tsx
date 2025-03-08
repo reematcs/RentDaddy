@@ -3,7 +3,7 @@ import HomePageFAQs from "./components/HomePageFAQs";
 import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent";
 import ClerkAuthDemo from "./components/ClerkAuthDemo";
 import DemoTestingComponent from "./components/DemoTestingComponent";
-import ButtonComponent from "./components/ButtonComponent";
+import ButtonComponent from "./components/reusableComponents/ButtonComponent";
 import { InfoCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 
 function App() {

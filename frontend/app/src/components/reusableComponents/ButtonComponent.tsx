@@ -2,16 +2,16 @@ import { Button, ConfigProvider } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 
 // Props
-interface ButtonProps {
-    title: string; // Displays the text on the button
-    type: string; // default, primary, secondary, tertiary (if needed), cancel, info, loading, disabled
-    disabled?: boolean; // Optional, if true, the button will be disabled
-    icon?: React.ReactNode; // Optional icon to display on the button
+export interface ButtonComponentProps {
+    title: string;
+    type: string;
+    disabled?: boolean;
+    icon?: React.ReactNode;
     size?: string; // default, small, large
-    onClick?: () => void;
+    onClick?: () => void; //should just be able to post the referce to the function so for example onClick={myFunc} NOT onClick={myFunc()}
 }
 
-const ButtonComponent = (props: ButtonProps) => {
+const ButtonComponent = (props: ButtonComponentProps) => {
     return (
         <ConfigProvider
             theme={{
