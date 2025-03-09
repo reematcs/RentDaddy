@@ -14,10 +14,10 @@ ALTER TABLE "lockers" DROP CONSTRAINT IF EXISTS "user_id_foreign";
 -- Tables
 DROP TABLE IF EXISTS "leases";
 DROP TABLE IF EXISTS "apartments";
+DROP TABLE IF EXISTS "parking_permits";
 DROP TABLE IF EXISTS "users";
 DROP TABLE IF EXISTS "work_orders";
 DROP TABLE IF EXISTS "complaints";
-DROP TABLE IF EXISTS "parking_permits";
 DROP TABLE IF EXISTS "lockers";
 -- ENUMS
 DROP TYPE IF EXISTS "Compliance_Status";
