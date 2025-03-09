@@ -1,9 +1,8 @@
 version: '3'
 
-dotenv: ['.env']
+dotenv: ['../.env']
 
 vars:
-      PG_URL: "{{.PG_URL | default \"postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:5432/{{.POSTGRES_DBB}}?sslmode=disable\"}}"
       MPATH: "internal/db/migrations/"
 
 tasks:
@@ -31,6 +30,7 @@ tasks:
   migrate:down:
     cmds:
       - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
+      - echo "Migrating down 1 version.."
 
   migrate:version:
     cmds:
@@ -46,7 +46,7 @@ tasks:
     cmds:
       - echo "Checking migration status..."
       - migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
-      - echo "Database migration state fixed!"
+      - echo "Database migration state reset!"
 
   migrate:reset:
     desc: "Reset database (wipe all data and re-run migrations)"
