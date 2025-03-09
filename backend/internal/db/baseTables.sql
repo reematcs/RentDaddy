@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS "work_orders" (
 ALTER TABLE "work_orders"
 ADD PRIMARY KEY ("id");
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE "Role" AS ENUM ('tenant', 'admin', 'landlord');
+CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users" (
     "id" BIGINT GENERATED ALWAYS AS IDENTITY,
     "clerk_id" UUID NOT NULL,
@@ -158,6 +158,16 @@ ADD PRIMARY KEY ("id");
 COMMENT ON COLUMN "leases"."document_type" IS 'amendment?';
 COMMENT ON COLUMN "leases"."file_size" IS 'size in Bytes';
 COMMENT ON COLUMN "leases"."tags" IS 'Type: string Array';
+CREATE TABLE IF NOT EXISTS "lockers" (
+    "id" BIGINT GENERATED ALWAYS AS IDENTITY,
+    "access_code" varchar,
+    "in_use" BOOLEAN NOT NULL DEFAULT false,
+    "user_id" BIGINT
+);
+ALTER TABLE "lockers"
+ADD PRIMARY KEY ("id");
+ALTER TABLE "lockers"
+ADD CONSTRAINT "user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 CREATE TABLE IF NOT EXISTS "apartment_tenants" (
     "apartment_id" BIGINT NOT NULL,
     "tenant_id" BIGINT NOT NULL,
