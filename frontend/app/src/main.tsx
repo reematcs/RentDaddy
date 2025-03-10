@@ -55,6 +55,9 @@ createRoot(document.getElementById("root")!).render(
           Card: {
             colorBgBase: "hsl(166, 100%, 20%, 5%)",
           },
+          Modal: {
+            colorBgElevated: "white",
+          },
         },
       }}
     >
