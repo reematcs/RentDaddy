@@ -1,104 +1,27 @@
-import React from "react"
-import { Table } from "antd"
-import type { TableColumnsType, TableProps } from "antd"
+import React from "react";
+import { Table } from "antd";
+import type { TableColumnsType, TableProps } from "antd";
 
-interface DataType {
-  key: React.Key
-  name: string
-  age: number
-  address: string
+// This is more dynamic/can be used in multiple pages as a component with dynamic source data in other pages.
+interface TableComponentProps<T> {
+  columns: TableColumnsType<T>;
+  dataSource?: T[];
 }
 
-const columns: TableColumnsType<DataType> = [
-  {
-    title: "Name",
-    dataIndex: "name",
-    filters: [
-      {
-        text: "Joe",
-        value: "Joe",
-      },
-      {
-        text: "Category 1",
-        value: "Category 1",
-      },
-      {
-        text: "Category 2",
-        value: "Category 2",
-      },
-    ],
-    filterMode: "tree",
-    filterSearch: true,
-    onFilter: (value, record) => record.name.startsWith(value as string),
-    width: "30%",
-  },
-  {
-    title: "Age",
-    dataIndex: "age",
-    sorter: (a, b) => a.age - b.age,
-  },
-  {
-    title: "Address",
-    dataIndex: "address",
-    filters: [
-      {
-        text: "London",
-        value: "London",
-      },
-      {
-        text: "New York",
-        value: "New York",
-      },
-    ],
-    onFilter: (value, record) => record.address.startsWith(value as string),
-    filterSearch: true,
-    width: "40%",
-  },
-]
+const AntDesignTableComponent = <T,>({ columns, dataSource = [] }: TableComponentProps<T>) => {
+  const onChange: TableProps<T>["onChange"] = (pagination, filters, sorter, extra) => {
+    console.log("Table params:", pagination, filters, sorter, extra);
+  };
 
-const data: DataType[] = [
-  {
-    key: "1",
-    name: "John Brown",
-    age: 32,
-    address: "New York No. 1 Lake Park",
-  },
-  {
-    key: "2",
-    name: "Jim Green",
-    age: 42,
-    address: "London No. 1 Lake Park",
-  },
-  {
-    key: "3",
-    name: "Joe Black",
-    age: 32,
-    address: "Sydney No. 1 Lake Park",
-  },
-  {
-    key: "4",
-    name: "Jim Red",
-    age: 32,
-    address: "London No. 2 Lake Park",
-  },
-]
+  return (
+    <Table<T>
+      columns={columns}
+      dataSource={dataSource}
+      onChange={onChange}
+      className="table"
+      rowKey={(record) => (record as any).key || JSON.stringify(record)}
+    />
+  );
+};
 
-const onChange: TableProps<DataType>["onChange"] = (
-  pagination,
-  filters,
-  sorter,
-  extra
-) => {
-  console.log("params", pagination, filters, sorter, extra)
-}
-
-const AntDesignTableComponent: React.FC = () => (
-  <Table<DataType>
-    columns={columns}
-    dataSource={data}
-    onChange={onChange}
-    className="table"
-  />
-)
-
-export default AntDesignTableComponent
+export default AntDesignTableComponent;
