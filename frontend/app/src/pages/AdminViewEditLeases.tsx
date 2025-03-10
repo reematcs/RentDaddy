@@ -204,6 +204,8 @@ export default function AdminViewEditLeases() {
             render: (_, record) => {
                 const isSigned = record.isSigned;
                 const daysUntilExpiration = dayjs(record.leaseEndDate).diff(dayjs(), "days");
+                // A lease can only be renewed if a lease is within 60 days of expiring. 
+                // If the lease is already signed and the date is before 60 days, the renew button is disabled.
                 const isRenewable = isSigned && daysUntilExpiration <= 60 && daysUntilExpiration >= 0;
 
                 return (

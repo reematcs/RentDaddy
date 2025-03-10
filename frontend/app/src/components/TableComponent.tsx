@@ -8,7 +8,7 @@ interface TableComponentProps<T> {
   dataSource?: T[];
 }
 
-const AntDesignTableComponent = <T,>({ columns, dataSource = [] }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [] }: TableComponentProps<T>) => {
   const onChange: TableProps<T>["onChange"] = (pagination, filters, sorter, extra) => {
     console.log("Table params:", pagination, filters, sorter, extra);
   };
@@ -24,4 +24,4 @@ const AntDesignTableComponent = <T,>({ columns, dataSource = [] }: TableComponen
   );
 };
 
-export default AntDesignTableComponent;
+export default TableComponent;
