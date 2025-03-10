@@ -250,8 +250,8 @@ export default function AdminViewEditLeases() {
                 </div>
                 <div style={{ flex: 1 }}>
                     <TableComponent columns={leaseColumns} dataSource={filteredData} />
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 }
