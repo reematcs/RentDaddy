@@ -14,7 +14,7 @@ const AdminDashboard = () => {
         // Add your logic for adding a package here
     };
 
-    const columns = [
+    const columnsLeases = [
         {
             title: "Name",
             dataIndex: "name",
@@ -32,7 +32,50 @@ const AdminDashboard = () => {
         },
     ]
 
-    const data = [
+    const dataLeases = [
+        {
+            name: "John Doe",
+            roomNumber: "101",
+            leaseStatus: "Active",
+        },
+        {
+            name: "Jane Doe",
+            roomNumber: "102",
+            leaseStatus: "Inactive",
+        },
+        {
+            name: "Jim Doe",
+            roomNumber: "103",
+            leaseStatus: "Active",
+        },
+    ]
+
+    const columnsWorkOrdersAndComplaints = [
+        {
+            title: "Name",
+            dataIndex: "name",
+        },
+        {
+            title: "Room Number",
+            dataIndex: "roomNumber",
+        },
+        {
+            title: "Type",
+            dataIndex: "type",
+            render: (type: string) => {
+                return type === "Work Order" ? <Tag color="blue">Work Order</Tag> : <Tag color="red">Complaint</Tag>
+            }
+        },
+        {
+            title: "Status",
+            dataIndex: "status",
+            render: (leaseStatus: string) => {
+                return leaseStatus === "Active" ? <Tag color="green">Solved</Tag> : <Tag color="red">Active</Tag>
+            }
+        },
+    ]
+
+    const dataWorkOrdersAndComplaints = [
         {
             name: "John Doe",
             roomNumber: "101",
@@ -100,15 +143,15 @@ const AdminDashboard = () => {
                 <div className="d-flex flex-column w-50">
                     <h2 className="mb-3">Leases</h2>
                     <TableComponent
-                        columns={columns}
-                        dataSource={data}
+                        columns={columnsLeases}
+                        dataSource={dataLeases}
                     />
                 </div>
                 <div className="d-flex flex-column w-50">
                     <h2 className="mb-3">Work Order / Complaint</h2>
                     <TableComponent
-                        columns={columns}
-                        dataSource={data}
+                        columns={columnsWorkOrdersAndComplaints}
+                        dataSource={dataWorkOrdersAndComplaints}
                         icon={<UserOutlined />}
                     />
                 </div>
