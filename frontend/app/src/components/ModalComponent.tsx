@@ -68,7 +68,6 @@ const ModalComponent = (props: ModalComponentProps) => {
                             onCancel={handleCancel}
                             okButtonProps={{ hidden: true, disabled: true }}
                             cancelButtonProps={{ hidden: true, disabled: true }}
-                        // style={{ backgroundColor: "white" }}
                         >
                             <Form>
                                 <Form.Item name="search">

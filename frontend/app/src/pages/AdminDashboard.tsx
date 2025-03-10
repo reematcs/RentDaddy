@@ -5,7 +5,7 @@ import { TableComponent } from "../components/reusableComponents/TableComponent"
 import { Tag } from "antd"
 import ModalComponent from "../components/ModalComponent"
 import ButtonComponent from "../components/reusableComponents/ButtonComponent"
-import { redirect } from "react-router"
+import { Link, redirect } from "react-router"
 
 const AdminDashboard = () => {
 
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
                     description="Active maintenance requests"
                     hoverable={true}
                     icon={<ToolOutlined style={{ fontSize: '24px', color: '#1890ff', marginBottom: '16px' }} />}
-                    button={<ButtonComponent title="View All" type="primary" onClick={() => { }} />}
+                    button={<Link to="/admin/admin-view-and-edit-work-orders-and-complaints"><ButtonComponent title="View All" type="primary" onClick={() => { }} /></Link>}
                 />
                 <CardComponent
                     title="Complaints"
@@ -118,7 +118,7 @@ const AdminDashboard = () => {
                     description="Pending tenant issues"
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: '24px', color: '#faad14', marginBottom: '16px' }} />}
-                    button={<ButtonComponent title="View All" type="primary" onClick={() => { }} />}
+                    button={<Link to="/admin/admin-view-and-edit-work-orders-and-complaints"><ButtonComponent title="View All" type="primary" onClick={() => { }} /></Link>}
                 />
                 <CardComponent
                     title="Packages"
