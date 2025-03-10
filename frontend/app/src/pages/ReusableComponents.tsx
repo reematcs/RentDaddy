@@ -8,7 +8,7 @@ import {
   Input,
   Row,
 } from "antd"
-import AntDesignTableComponent from "../components/AntDesignTableComponent"
+import AntDesignTableComponent from "../components/TableComponent"
 import { SettingOutlined, UserOutlined } from "@ant-design/icons"
 import TextArea from "antd/es/input/TextArea"
 import { useState } from "react"
