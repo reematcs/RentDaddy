@@ -5,7 +5,7 @@ export interface LeaseData {
     leaseStartDate: string;
     leaseEndDate: string;
     rentAmount: number;
-    isSigned: boolean;
+    status: string;
 }
 
 
