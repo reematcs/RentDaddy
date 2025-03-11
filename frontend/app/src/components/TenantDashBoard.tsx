@@ -5,7 +5,6 @@ import { Link } from "react-router";
 import ModalComponent from "./ModalComponent";
 import AlertComponent from "./reusableComponents/AlertComponent";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { TableComponent } from "./reusableComponents/TableComponent";
 import { CardComponent } from "./reusableComponents/cardComponent";
 
 export const TenantDashBoard = () => {
@@ -83,6 +82,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title={"Lease"}
                     description={"View or Resign your lease"}
+                    hoverable={true}
                     button={
                         <ButtonComponent
                             title="Renew"
@@ -96,6 +96,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title={"Work Order"}
                     description={<Tag color="orange">In Progress</Tag>}
+                    hoverable={true}
                     button={
                         <ButtonComponent
                             title="View Details"
@@ -109,6 +110,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title={"Complaint Received"}
                     description={`Our office received your complaint and will investiage immediately. "From: onegreatuser@hotmail.com: there are loud techo raves every night, even m..."`}
+                    hoverable={true}
                     button={
                         <ButtonComponent
                             title="View Details"
@@ -122,6 +124,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title={"Work Order"}
                     description={<Tag color="green">Done</Tag>}
+                    hoverable={true}
                     button={
                         <ButtonComponent
                             title="View Details"
@@ -135,6 +138,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title={"Work Order"}
                     description={<Tag color="green">Done</Tag>}
+                    hoverable={true}
                     button={
                         <ButtonComponent
                             title="View Details"
