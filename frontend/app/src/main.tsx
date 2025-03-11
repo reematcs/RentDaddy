@@ -28,8 +28,13 @@ import { ConfigProvider } from "antd"
 // Clerk
 import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
+
 import AdminDashboard from "./pages/AdminDashboard.tsx"
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
+
+import ComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx"
+import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx"
+
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -152,7 +157,7 @@ createRoot(document.getElementById("root")!).render(
                     />
                     <Route
                       path="tenant-work-orders-and-complaints"
-                      element={<h1>Work Orders & Complaints</h1>}
+                      element={<TenantComplaintsAndWorkOrders />}
                     />
                   </Route>
                 </Route>
