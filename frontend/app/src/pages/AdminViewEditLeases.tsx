@@ -22,7 +22,7 @@ const leaseDataRaw = [
     { key: 8, tenantName: "Malik Johnson", apartment: "C299", leaseStartDate: "2024-07-01", leaseEndDate: "2024-10-01", rentAmount: 1400, isSigned: true },
     { key: 9, tenantName: "Carree Brown", apartment: "B155", leaseStartDate: "2024-05-01", leaseEndDate: "2024-07-01", rentAmount: 1750, isSigned: false },
     { key: 10, tenantName: "John Doe", apartment: "A101", leaseStartDate: "2024-04-20", leaseEndDate: "2024-10-20", rentAmount: 2000, isSigned: false },
-    { key: 11, tenantName: "Jane Smith", apartment: "B222", leaseStartDate: "2024-06-25", leaseEndDate: "2024-07-25", rentAmount: 2100, isSigned: true },
+    { key: 11, tenantName: "Jane Smith", apartment: "B221", leaseStartDate: "2024-06-25", leaseEndDate: "2024-07-25", rentAmount: 2100, isSigned: true },
     { key: 12, tenantName: "Jill Hall", apartment: "D450", leaseStartDate: "2024-01-10", leaseEndDate: "2024-01-10", rentAmount: 1300, isSigned: false },
     { key: 13, tenantName: "Emily Wildaughter", apartment: "C310", leaseStartDate: "2024-09-10", leaseEndDate: "2025-09-10", rentAmount: 1900, isSigned: true },
     { key: 14, tenantName: "Charlie Chill", apartment: "A450", leaseStartDate: "2024-03-01", leaseEndDate: "2024-03-01", rentAmount: 1600, isSigned: false },
@@ -34,6 +34,16 @@ const leaseDataRaw = [
     { key: 20, tenantName: "Yoon Soon", apartment: "B305", leaseStartDate: "2024-09-15", leaseEndDate: "2025-09-15", rentAmount: 2000, isSigned: true },
 ];
 
+const getLeaseStatus = (record: LeaseData): "Valid" | "Expires Soon" | "Unsigned" | "Expired" => {
+    const today = dayjs();
+    const leaseEnd = dayjs(record.leaseEndDate);
+    const daysUntilExpiration = leaseEnd.diff(today, "days");
+
+    if (!record.isSigned) return "Unsigned";
+    if (daysUntilExpiration < 0) return "Expired";
+    if (daysUntilExpiration <= 60) return "Expires Soon";
+    return "Valid";
+};
 
 const generateTreeData = (leaseData: LeaseData[]) => {
     const apartments = leaseData.map((lease) => lease.apartment);
@@ -93,12 +103,19 @@ const generateTreeData = (leaseData: LeaseData[]) => {
             })),
         },
         {
-            title: "Lease Status",
-            key: "status",
-            children: [
-                { title: "Signed", key: "signed" },
-                { title: "Unsigned", key: "unsigned" },
-            ],
+            title: "Status",
+            dataIndex: "status",
+            render: (_: unknown, record: LeaseData) => {
+                const status = getLeaseStatus(record);
+                const statusColors: Record<string, string> = {
+                    "Valid": "green",
+                    "Expires Soon": "orange",
+                    "Unsigned": "red",
+                    "Expired": "gray",
+                };
+
+                return <Tag color={statusColors[status]}>{status}</Tag>;
+            }
         },
         {
             title: "Lease Start Dates",
@@ -131,13 +148,15 @@ export default function AdminViewEditLeases() {
     };
 
     const matchesTreeSelection = (record: LeaseData, selectedKeys: string[]): boolean => {
-        if (selectedKeys.length === 0) return true;
+        if (selectedKeys.length === 0) return true; // No filters applied
 
         return selectedKeys.some((key) => {
             if (key.startsWith("apartment-")) return record.apartment === key.replace("apartment-", "");
             if (key.startsWith("tenant-")) return record.tenantName === key.replace("tenant-", "");
-            if (key === "signed") return record.isSigned === true;
-            if (key === "unsigned") return record.isSigned === false;
+
+            if (key === "Valid" || key === "Expires Soon" || key === "Unsigned" || key === "Expired") {
+                return getLeaseStatus(record) === key;
+            }
 
             const [type, year, month, day] = key.split("-");
 
@@ -162,6 +181,7 @@ export default function AdminViewEditLeases() {
             return false;
         });
     };
+
 
 
     const filteredData = leaseDataRaw.filter(
