@@ -1,5 +1,5 @@
 //TODO: Connect Backend whenever that is ready (Get Recent Complaints or Work Orders, and Submit the Form)
-import { Button, Form, Input, Radio, Space } from "antd"
+import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd"
 import { useState } from "react"
 
 const TenantComplaintsAndWorkOrders = () => {
@@ -29,14 +29,24 @@ const TenantComplaintsAndWorkOrders = () => {
             type: "Work Order",
             title: "Work Order 1 Title",
             description: "Work Order 1 Description",
-            votes: 10
+            votes: 10,
+            importance: <Badge status="error" text="High" />
         },
         {
             id: 2,
             type: "Work Order",
             title: "Work Order 2 Title",
             description: "Work Order 2 Description",
-            votes: 5
+            votes: 5,
+            importance: <Badge status="warning" text="Medium" />
+        },
+        {
+            id: 3,
+            type: "Work Order",
+            title: "Work Order 3 Title",
+            description: "Work Order 3 Description",
+            votes: 3,
+            importance: <Badge status="default" text="Low" />
         },
     ]
 
@@ -61,14 +71,12 @@ const TenantComplaintsAndWorkOrders = () => {
                     label="Type of Request"
                     rules={[{ required: true, message: 'Please select a request type' }]}
                 >
-                    <Radio.Group
-                        buttonStyle="solid"
-                        className="w-full flex gap-4"
-                        onChange={(e) => setRequestType(e.target.value)}
-                    >
-                        <Radio.Button value="complaint" className="w-1/2 text-center">Complaints</Radio.Button>
-                        <Radio.Button value="workOrder" className="w-1/2 text-center">Work Orders</Radio.Button>
-                    </Radio.Group>
+                    <Switch
+                        checkedChildren="Work Orders"
+                        unCheckedChildren="Complaints"
+                        onChange={(checked) => setRequestType(checked ? 'workOrder' : 'complaint')}
+                        className="flex"
+                    />
                 </Form.Item>
 
                 {/* Recent Complaints & Work Orders */}
@@ -106,6 +114,7 @@ const TenantComplaintsAndWorkOrders = () => {
                                         <p>{workOrder.description}</p>
                                         <p>Type: {workOrder.type}</p>
                                         <p>{workOrder.votes}</p>
+                                        <p>{workOrder.importance}</p>
                                     </div>
                                 ))}
                                 {workOrders.length === 0 &&
@@ -116,20 +125,23 @@ const TenantComplaintsAndWorkOrders = () => {
                     )}
                 </div>
 
+                {/* Only show if it's a work order */}
                 {/* Importance (High, Medium, Low) with radio buttons */}
-                <Form.Item
-                    name="importance"
-                    label="Importance"
-                    rules={[{ required: true, message: 'Please select importance level' }]}
-                >
-                    <Radio.Group className="w-full flex gap-4">
-                        <Space direction="horizontal" className="w-full justify-between">
-                            <Radio.Button value="high" className="w-1/3 text-center" style={{ color: '#d86364' }}>High Priority</Radio.Button>
-                            <Radio.Button value="medium" className="w-1/3 text-center" style={{ color: '#f0a500' }}>Medium Priority</Radio.Button>
-                            <Radio.Button value="low" className="w-1/3 text-center" style={{ color: '#00674f' }}>Low Priority</Radio.Button>
-                        </Space>
-                    </Radio.Group>
-                </Form.Item>
+                {requestType === 'workOrder' && (
+                    <Form.Item
+                        name="importance"
+                        label="Importance"
+                        rules={[{ required: true, message: 'Please select importance level' }]}
+                    >
+                        <Radio.Group className="w-full flex gap-4">
+                            <Space direction="horizontal" className="w-full justify-between">
+                                <Radio.Button value="high" className="w-1/3 text-center" style={{ color: '#d86364' }}>High Priority</Radio.Button>
+                                <Radio.Button value="medium" className="w-1/3 text-center" style={{ color: '#f0a500' }}>Medium Priority</Radio.Button>
+                                <Radio.Button value="low" className="w-1/3 text-center" style={{ color: '#00674f' }}>Low Priority</Radio.Button>
+                            </Space>
+                        </Radio.Group>
+                    </Form.Item>
+                )}
 
                 {/* Image Upload */}
                 <Form.Item
