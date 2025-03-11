@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, Divider, Form, Input, Modal } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import ButtonComponent from './reusableComponents/ButtonComponent';
+import FormItemLabel from 'antd/es/form/FormItemLabel';
 
 interface ModalComponentProps {
     buttonTitle: string;
@@ -37,14 +38,16 @@ const ModalComponent = (props: ModalComponentProps) => {
                 <>
                     <ButtonComponent title={props.buttonTitle} type={props.buttonType} onClick={showModal} />
                     <Modal
-                        title={props.modalTitle}
+                        title={<h3>{props.modalTitle}</h3>}
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}
                     >
+                        <Divider />
                         <p>{props.content}</p>
+                        <Divider />
                         <div className="flex justify-content-end gap-2">
                             <Button type="default" onClick={handleCancel}>
                                 Cancel
@@ -66,13 +69,14 @@ const ModalComponent = (props: ModalComponentProps) => {
                         </Button>
                         <Modal
                             className='p-3 flex-wrap-row'
-                            title={titles[props.type]}
+                            title={<h3>{titles[props.type]}</h3>}
                             open={isModalOpen}
                             onOk={props.handleOkay}
                             onCancel={handleCancel}
                             okButtonProps={{ hidden: true, disabled: true }}
                             cancelButtonProps={{ hidden: true, disabled: true }}
                         >
+                            <Divider />
                             <Form>
                                 <Form.Item name="search">
                                     <Input placeholder='Search for a Tenant' />
@@ -109,13 +113,14 @@ const ModalComponent = (props: ModalComponentProps) => {
                         </Button>
                         <Modal
                             className='p-3 flex-wrap-row'
-                            title={titles[props.type]}
+                            title={<h3>{titles[props.type]}</h3>}
                             open={isModalOpen}
                             onOk={props.handleOkay}
                             onCancel={handleCancel}
                             okButtonProps={{ hidden: true, disabled: true }}
                             cancelButtonProps={{ hidden: true, disabled: true }}
                         >
+                            <Divider />
                             <Form>
                                 <Form.Item name="tenant-name">
                                     <Input placeholder='Tenant Name' />
@@ -161,13 +166,14 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Button>
                     <Modal
                         className='p-3 flex-wrap-row'
-                        title={titles[props.type]}
+                        title={<h3>{titles[props.type]}</h3>}
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}
                     >
+                        <Divider />
                         <Form>
                             <Form.Item name="tenant-name">
                                 <Input placeholder='Tenant Name' />
@@ -176,16 +182,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Input placeholder='Tenant Email' />
                             </Form.Item>
                             <Form.Item name="tenant-phone">
-                                <Input placeholder='Tenant Phone' />
+                                <Input placeholder='Tenant Phone' type='number' />
                             </Form.Item>
                             <Form.Item name="unit-number">
-                                <Input placeholder='Unit Number' />
-                            </Form.Item>
-                            <Form.Item name="lease-start">
-                                <Input placeholder='Lease Start' type='date' />
-                            </Form.Item>
-                            <Form.Item name="lease-end">
-                                <Input placeholder='Lease End' type='date' />
+                                <Input placeholder='Unit Number' type='number' />
                             </Form.Item>
                             <Divider />
                             <div className="flex justify-content-end gap-2">
@@ -214,13 +214,15 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Button>
                     <Modal
                         className='p-3 flex-wrap-row'
-                        title={props.modalTitle}
+                        title={<h3>{props.modalTitle}</h3>}
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}
+
                     >
+                        <Divider />
                         <Form>
                             <Form.Item name="tenant-name">
                                 <Input placeholder='Tenant Name' />
@@ -237,10 +239,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                             <Form.Item name="lease-status">
                                 <Input placeholder='Lease Status' />
                             </Form.Item>
-                            <Form.Item name="lease-start">
+                            {/* <Form.Item name="lease-start" label="Lease Start">
                                 <Input placeholder='Lease Start' type='date' />
-                            </Form.Item>
-                            <Form.Item name="lease-end">
+                            </Form.Item> */}
+                            <Form.Item name="lease-end" label="Lease End">
                                 <Input placeholder='Lease End' type='date' />
                             </Form.Item>
                             <Divider />
@@ -262,7 +264,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         </Form>
                     </Modal>
                 </>
-            )}
+            )
+            }
         </>
     );
 };
