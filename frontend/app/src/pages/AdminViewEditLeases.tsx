@@ -1,13 +1,14 @@
 import "../styles/styles.scss"
 import React, { useState } from "react";
 import { SearchOutlined } from "@ant-design/icons";
-import { Input, Table, Button, Tag, Space, Tree } from "antd";
+import { Input, Table, Tag, Space, Tree } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 const { Search } = Input
 import dayjs from "dayjs";
 import { LeaseData } from "../types/types";
 import TableComponent from "../components/TableComponent";
+import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 
 // Dummy lease data
 const leaseDataRaw = [
@@ -35,8 +36,9 @@ const leaseDataRaw = [
 
 
 const generateTreeData = (leaseData: LeaseData[]) => {
-    const apartments = [...new Set(leaseData.map((lease) => lease.apartment))];
-    const tenants = [...new Set(leaseData.map((lease) => lease.tenantName))];
+    const apartments = leaseData.map((lease) => lease.apartment);
+
+    const tenants = leaseData.map((lease) => lease.tenantName);
 
     // Function to group dates by Year -> Month -> Day
     const groupByDateHierarchy = (dates: string[], type: "startDate" | "endDate") => {
@@ -118,44 +120,54 @@ export default function AdminViewEditLeases() {
 
     const treeData = generateTreeData(leaseDataRaw);
 
-    const filteredData = leaseDataRaw.filter((record) => {
-        const searchTerm = searchText.toLowerCase();
-        const matchesSearch = record.tenantName.toLowerCase().includes(searchTerm) ||
-            record.apartment.toLowerCase().includes(searchTerm) ||
+    const matchesSearchTerm = (record: LeaseData, searchTerm: string): boolean => {
+        const lowerCaseSearch = searchTerm.toLowerCase();
+        return (
+            record.tenantName.toLowerCase().includes(lowerCaseSearch) ||
+            record.apartment.toLowerCase().includes(lowerCaseSearch) ||
             record.leaseEndDate.includes(searchTerm) ||
-            record.leaseStartDate.includes(searchTerm);
+            record.leaseStartDate.includes(searchTerm)
+        );
+    };
 
-        const matchesTreeSelection =
-            selectedKeys.length === 0 ||
-            selectedKeys.some((key) => {
-                if (key.startsWith("apartment-")) return record.apartment === key.replace("apartment-", "");
-                if (key.startsWith("tenant-")) return record.tenantName === key.replace("tenant-", "");
-                if (key === "signed") return record.isSigned === true;
-                if (key === "unsigned") return record.isSigned === false;
-                const [type, year, month, day] = key.split("-");
+    const matchesTreeSelection = (record: LeaseData, selectedKeys: string[]): boolean => {
+        if (selectedKeys.length === 0) return true;
 
-                if (type === "startDate") {
-                    const leaseDate = dayjs(record.leaseStartDate);
-                    return (
-                        (year && leaseDate.format("YYYY") === year) ||
-                        (month && leaseDate.format("MMMM") === month) ||
-                        (day && leaseDate.format("DD") === day)
-                    );
-                }
+        return selectedKeys.some((key) => {
+            if (key.startsWith("apartment-")) return record.apartment === key.replace("apartment-", "");
+            if (key.startsWith("tenant-")) return record.tenantName === key.replace("tenant-", "");
+            if (key === "signed") return record.isSigned === true;
+            if (key === "unsigned") return record.isSigned === false;
 
-                if (type === "endDate") {
-                    const leaseDate = dayjs(record.leaseEndDate);
-                    return (
-                        (year && leaseDate.format("YYYY") === year) ||
-                        (month && leaseDate.format("MMMM") === month) ||
-                        (day && leaseDate.format("DD") === day)
-                    );
-                }
-                return false;
-            });
+            const [type, year, month, day] = key.split("-");
 
-        return matchesSearch && matchesTreeSelection;
-    });
+            if (type === "startDate") {
+                const leaseDate = dayjs(record.leaseStartDate);
+                return (
+                    (year && leaseDate.format("YYYY") === year) ||
+                    (month && leaseDate.format("MMMM") === month) ||
+                    (day && leaseDate.format("DD") === day)
+                );
+            }
+
+            if (type === "endDate") {
+                const leaseDate = dayjs(record.leaseEndDate);
+                return (
+                    (year && leaseDate.format("YYYY") === year) ||
+                    (month && leaseDate.format("MMMM") === month) ||
+                    (day && leaseDate.format("DD") === day)
+                );
+            }
+
+            return false;
+        });
+    };
+
+
+    const filteredData = leaseDataRaw.filter(
+        (record) => matchesSearchTerm(record, searchText) && matchesTreeSelection(record, selectedKeys)
+    );
+
 
     const leaseColumns: ColumnsType<LeaseData> = [
         {
@@ -210,19 +222,13 @@ export default function AdminViewEditLeases() {
 
                 return (
                     <Space size="middle">
-                        {!isSigned && (
-                            <Button type="primary" className="btn btn-primary" onClick={() => console.log("Initiate Lease", record)}>
-                                Initiate Lease
-                            </Button>
-                        )}
-                        {isSigned && (
-                            <Button type="primary" className="btn btn-primary" disabled={!isRenewable} onClick={() => console.log("Renew Lease", record)}>
-                                Renew Lease
-                            </Button>
-                        )}
-                        <Button type="primary" className="btn btn-secondary" danger onClick={() => console.log("Archive", record)}>
-                            Archive
-                        </Button>
+                        {isSigned ?
+                            <ButtonComponent type="primary" title="Renew Lease" disabled={!isRenewable} onClick={() => console.log("Renew Lease", record)} />
+                            :
+                            <ButtonComponent type="primary" title="Initiate Lease" onClick={() => console.log("Initiate Lease", record)} />
+                        }
+                        <ButtonComponent type="secondary" title="Archive" onClick={() => console.log("Archive", record)} />
+
                     </Space>
                 );
             },
@@ -233,7 +239,7 @@ export default function AdminViewEditLeases() {
         <div className="container">
             <h1 className="mb-4 text-primary">Admin View & Edit Leases</h1>
 
-            <div style={{ display: "flex", gap: "20px" }}>
+            <div className="flex" style={{ gap: "20px" }}>
 
                 <div style={{ width: "250px" }}>
                     <Search
