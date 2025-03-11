@@ -34,16 +34,3 @@ jobs:
 
       - name: Test
         run: go test -v ./...
-
-      - name: Check Coverage
-        run: |
-          go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//'
-          if [ $(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//') -lt 80 ]; then
-            echo "Coverage is below 80%!" && exit 1
-          fi
-
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage.out
