@@ -1,5 +1,6 @@
+
 export interface LeaseData {
-    key: React.Key;
+    key: number;
     tenantName: string;
     apartment: string;
     leaseStartDate: string;
