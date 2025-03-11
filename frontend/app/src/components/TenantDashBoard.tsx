@@ -15,7 +15,7 @@ export const TenantDashBoard = () => {
 
     return (
         <div className="container">
-            <h1 className="my-4">Admin Dashboard</h1>
+            <h1 className="my-4">Tenant Dashboard</h1>
             <div className="row">
                 <div className="col-sm-12">
                     <AlertComponent
