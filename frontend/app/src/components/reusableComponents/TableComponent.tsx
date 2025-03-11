@@ -1,22 +1,26 @@
-import React from "react";
 import { Table } from "antd";
-import type { TableColumnsType, TableProps } from "antd";
+import type { ColumnsType } from "antd/es/table/interface";
+import type { TableProps } from "antd";
 
 interface TableComponentProps<T> {
-    columns: TableColumnsType<T>;
+    columns: ColumnsType<T>;
     dataSource?: T[];
-    onChange?: TableProps<T>["onChange"]; // Add onChange support
+    onChange?: TableProps<T>["onChange"];
+    icon?: React.ReactNode;
 }
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon }: TableComponentProps<T>) => {
     return (
-        <Table<T>
-            columns={columns}
-            dataSource={dataSource}
-            onChange={onChange} // Ensure the prop is properly passed
-            className="table"
-            rowKey={(record) => (record as any).key || JSON.stringify(record)}
-        />
+        <div className="table-container">
+            {icon && <div className="table-icon">{icon}</div>}
+            <Table<T>
+                columns={columns}
+                dataSource={dataSource}
+                onChange={onChange}
+                className="table"
+                rowKey={(record) => (record as any).key || JSON.stringify(record)}
+            />
+        </div>
     );
 };
 

@@ -4,7 +4,8 @@ import { createRoot } from "react-dom/client"
 
 // Styles
 import "./styles/styles.scss"
-import "@fontsource/poppins"
+import "@fontsource/poppins/400.css";
+
 
 // Pages &Components
 import App from "./App.tsx"
@@ -28,7 +29,7 @@ import { ConfigProvider } from "antd"
 import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
 import AdminDashboard from "./pages/AdminDashboard.tsx"
-
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!CLERK_PUBLISHABLE_KEY) {
