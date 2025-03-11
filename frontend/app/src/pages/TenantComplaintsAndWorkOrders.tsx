@@ -2,7 +2,7 @@
 import { Button, Form, Input, Radio, Space } from "antd"
 import { useState } from "react"
 
-const ComplaintsAndWorkOrders = () => {
+const TenantComplaintsAndWorkOrders = () => {
     const [requestType, setRequestType] = useState('complaint')
     const [form] = Form.useForm()
 
@@ -159,4 +159,4 @@ const ComplaintsAndWorkOrders = () => {
     )
 }
 
-export default ComplaintsAndWorkOrders
+export default TenantComplaintsAndWorkOrders
