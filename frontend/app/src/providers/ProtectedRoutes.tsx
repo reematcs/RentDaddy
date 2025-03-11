@@ -29,7 +29,7 @@ const ProtectedRoutes = () => {
     const userRole = user?.publicMetadata?.role as string;
 
     // More strict role-based access control
-    if (userRole === "tenant" || userRole === undefined) {
+    if (userRole === "tenant") {
         // Tenants can ONLY access tenant routes
         if (!currentPath.startsWith("/tenant")) {
             return <Navigate to="/tenant" />;
