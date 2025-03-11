@@ -1,5 +1,5 @@
 import { Avatar, Button, Card, Col, ConfigProvider, Divider, Input, Row, TableColumnsType, TableProps } from "antd";
-import { TableComponent } from "../components/reusableComponents/TableComponent";
+import TableComponent from "../components/reusableComponents/TableComponent";
 import { LockOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import TextArea from "antd/es/input/TextArea";
 import { useState } from "react";
@@ -14,13 +14,6 @@ import ModalComponent from "../components/ModalComponent"
 
 const ReusableComponents = () => {
     const [value, setValue] = useState("");
-
-    interface DataType {
-        key: React.Key;
-        name: string;
-        age: number;
-        address: string;
-    }
 
     const columns: TableColumnsType = [
         {
@@ -186,7 +179,7 @@ const ReusableComponents = () => {
                     <h2>Table</h2>
                     <TableComponent
                         columns={columns}
-                        data={data}
+                        dataSource={data}
                         onChange={onChange}
                     />
                 </div>
