@@ -228,6 +228,7 @@ export default function AdminViewEditLeases() {
             <TableComponent<LeaseData>
                 columns={leaseColumns}
                 dataSource={filteredData}
+                style=".lease-table-container"
                 onChange={(
                     pagination: TablePaginationConfig,
                     filters: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[1],
