@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -63,11 +62,6 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 // }
 
 func main() {
-
-	// // Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found")
-	}
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
