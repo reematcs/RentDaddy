@@ -17,3 +17,10 @@ export interface UserData {
     email: string;
     role: "admin" | "user";
 }
+// The below is from the examples of Ant Design.
+export interface DataType {
+    key: string;
+    name: string;
+    age: number;
+    address: string;
+}
