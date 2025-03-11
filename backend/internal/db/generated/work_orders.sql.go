@@ -144,3 +144,47 @@ func (q *Queries) ListWorkOrders(ctx context.Context, arg ListWorkOrdersParams) 
 	}
 	return items, nil
 }
+
+const updateWorkOrder = `-- name: UpdateWorkOrder :exec
+UPDATE work_orders
+SET
+    created_by = $2,
+    order_number = $3,
+    category = $4,
+    title = $5,
+    description = $6,
+    unit_number = $7,
+    status = $8,
+    updated_at = $9,
+    created_at = $10
+WHERE id = $1
+`
+
+type UpdateWorkOrderParams struct {
+	ID          int64            `json:"id"`
+	CreatedBy   int64            `json:"created_by"`
+	OrderNumber int64            `json:"order_number"`
+	Category    WorkCategory     `json:"category"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	UnitNumber  int16            `json:"unit_number"`
+	Status      Status           `json:"status"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) UpdateWorkOrder(ctx context.Context, arg UpdateWorkOrderParams) error {
+	_, err := q.db.Exec(ctx, updateWorkOrder,
+		arg.ID,
+		arg.CreatedBy,
+		arg.OrderNumber,
+		arg.Category,
+		arg.Title,
+		arg.Description,
+		arg.UnitNumber,
+		arg.Status,
+		arg.UpdatedAt,
+		arg.CreatedAt,
+	)
+	return err
+}
