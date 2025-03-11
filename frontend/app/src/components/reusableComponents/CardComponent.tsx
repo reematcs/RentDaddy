@@ -4,10 +4,11 @@ import Card from "antd/es/card/Card";
 
 interface CardComponentProps {
     title: string;
-    description: string;
+    description: any;
     icon?: any;
     button?: any;
-    hoverable: boolean;
+    hoverable?: boolean;
+    value?: number;
 }
 
 //pass in button like this
