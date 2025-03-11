@@ -4,7 +4,8 @@ import { createRoot } from "react-dom/client"
 
 // Styles
 import "./styles/styles.scss"
-import "@fontsource/poppins"
+import "@fontsource/poppins/400.css";
+
 
 // Pages &Components
 import App from "./App.tsx"
@@ -29,7 +30,7 @@ import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
 import AdminDashboard from "./pages/AdminDashboard.tsx"
 import AddTenant from "./pages/AddTenant.tsx"
-
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -106,17 +107,13 @@ createRoot(document.getElementById("root")!).render(
                 {/* Authentication Routes */}
                 <Route path="auth">
                   <Route path="login" element={<LoginForm />} />
-
                   {/* We probably don't need a register route, but I'll leave it here for now */}
                   <Route path="register" element={<h1>Register</h1>} />
                 </Route>
 
                 {/* Testing Routes */}
                 <Route path="test">
-                  <Route
-                    path="test-clerk-go-backend"
-                    element={<TestGoBackend />}
-                  />
+                  <Route path="test-clerk-go-backend" element={<TestGoBackend />} />
                 </Route>
               </Route>
               {/* End of Pre-authentication Layout Group */}
@@ -137,13 +134,11 @@ createRoot(document.getElementById("root")!).render(
                     } />
                     <Route
                       path="admin-view-and-edit-leases"
-                      element={<h1>Admin View & Edit Leases</h1>}
+                      element={<AdminViewEditLeases />}
                     />
                     <Route
                       path="admin-view-and-edit-work-orders-and-complaints"
-                      element={
-                        <h1>Admin View & Edit Work Orders & Complaints</h1>
-                      }
+                      element={<h1>Admin View & Edit Work Orders & Complaints</h1>}
                     />
                   </Route>
 
