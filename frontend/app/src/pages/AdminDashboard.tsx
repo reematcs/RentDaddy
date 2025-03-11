@@ -145,6 +145,7 @@ const AdminDashboard = () => {
                     <TableComponent
                         columns={columnsLeases}
                         dataSource={dataLeases}
+                        onChange={() => { }}
                     />
                 </div>
                 <div className="d-flex flex-column w-50">
@@ -153,6 +154,7 @@ const AdminDashboard = () => {
                         columns={columnsWorkOrdersAndComplaints}
                         dataSource={dataWorkOrdersAndComplaints}
                         icon={<UserOutlined />}
+                        onChange={() => { }}
                     />
                 </div>
             </div>
