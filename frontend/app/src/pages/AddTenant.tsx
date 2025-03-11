@@ -1,7 +1,6 @@
-import { PlusOutlined } from "@ant-design/icons";
-import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import { TableComponent } from "../components/reusableComponents/TableComponent"
+
 import ModalComponent from "../components/ModalComponent";
+import TableComponent from "../components/reusableComponents/TableComponent";
 
 // Mock data for tenant table
 const columns = [
