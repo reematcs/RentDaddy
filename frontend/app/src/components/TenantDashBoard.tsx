@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import ModalComponent from "./ModalComponent";
 import AlertComponent from "./reusableComponents/AlertComponent";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { CardComponent } from "./reusableComponents/cardComponent";
+import { CardComponent } from "./reusableComponents/CardComponent";
 
 export const TenantDashBoard = () => {
     const handleOpenLocker = () => {
