@@ -78,7 +78,12 @@ func main() {
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
 
 	if clerkSecretKey == "" {
-		log.Fatal("[ENV] CLERK_SECRETS environment vars are required")
+		log.Fatal("[ENV] CLERK_SECRET_KEY environment vars are required")
+	}
+	webhookSecret := os.Getenv("CLERK_WEBHOOK")
+
+	if webhookSecret == "" {
+		log.Fatal("[ENV] CLERK_WEBHOOK environment vars are required")
 	}
 
 	ctx := context.Background()
