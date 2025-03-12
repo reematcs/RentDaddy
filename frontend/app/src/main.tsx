@@ -30,6 +30,7 @@ import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
 
 import AdminDashboard from "./pages/AdminDashboard.tsx"
+import AddTenant from "./pages/AddTenant.tsx"
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 
 import ComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx"
@@ -133,7 +134,9 @@ createRoot(document.getElementById("root")!).render(
                       path="init-apartment-complex"
                       element={<h1>Initial Admin Apartment Complex Setup</h1>}
                     />
-                    <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
+                    <Route path="add-tenant" element={
+                      <AddTenant />
+                    } />
                     <Route
                       path="admin-view-and-edit-leases"
                       element={<AdminViewEditLeases />}
