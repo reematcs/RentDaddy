@@ -65,6 +65,7 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 //	}
 
 func main() {
+
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -75,8 +76,8 @@ func main() {
 	}
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
-	webhookSecret := os.Getenv("CLERK_WEBHOOK")
-	if clerkSecretKey == "" || webhookSecret == "" {
+
+	if clerkSecretKey == "" {
 		log.Fatal("[ENV] CLERK_SECRETS environment vars are required")
 	}
 
