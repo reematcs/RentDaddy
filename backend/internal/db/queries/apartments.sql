@@ -50,8 +50,8 @@ SET price = $2,
   lease_id = $5,
   lease_start_date = $6,
   lease_end_date = $7,
-  updated_at = $8,
-  WHERE id = $1;
+  updated_at = $8
+WHERE id = $1;
 
 -- name: DeleteApartment :exec
 DELETE FROM apartments
