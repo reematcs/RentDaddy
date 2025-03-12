@@ -1,3 +1,6 @@
+-- PLEASE SHRINK THE LEASES TABLE AND MAKE SURE THESE QUERIES ACTUALLY WORK VIA
+-- sqlc vet at the backend folder
+-- ALSO MAKE SURE baseTables.sql match init.up.sql
 -- name: CreateLease :one
 INSERT INTO leases (external_doc_id, tenant_id, landlord_id, lease_start_date, lease_end_date, rent_amount, lease_status)
 VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT')
