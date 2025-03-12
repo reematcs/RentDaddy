@@ -32,7 +32,6 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AddTenant from "./pages/AddTenant.tsx";
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 
-import ComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import { TenantDashBoard } from "./components/TenantDashBoard.tsx";
 
