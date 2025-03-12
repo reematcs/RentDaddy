@@ -1,3 +1,6 @@
+-- PLEASE SHRINK THE LEASES TABLE AND MAKE SURE THESE QUERIES ACTUALLY WORK VIA
+-- sqlc vet at the backend folder
+-- ALSO MAKE SURE baseTables.sql match init.up.sql
 -- name: CreateLease :one
 INSERT INTO lease (document_id, user_id, status, start_time, end_time)
 VALUES ($1, $2, 'active', $3, $4)
