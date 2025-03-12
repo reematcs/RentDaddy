@@ -1,6 +1,6 @@
 import { CalendarOutlined, InboxOutlined, ToolOutlined, UserOutlined, WarningOutlined } from "@ant-design/icons";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
-import { CardComponent } from "../components/reusableComponents/cardComponent";
+import { CardComponent } from "../components/reusableComponents/CardComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { Tag } from "antd";
 import type { ColumnsType } from "antd/es/table/interface";
