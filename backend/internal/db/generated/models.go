@@ -463,7 +463,7 @@ type ParkingPermit struct {
 type User struct {
 	ID int64 `json:"id"`
 	// provided by Clerk
-	ClerkID    pgtype.UUID      `json:"clerk_id"`
+	ClerkID    string           `json:"clerk_id"`
 	FirstName  string           `json:"first_name"`
 	LastName   string           `json:"last_name"`
 	Email      string           `json:"email"`
