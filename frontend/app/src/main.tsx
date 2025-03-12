@@ -28,8 +28,10 @@ import { ConfigProvider } from "antd";
 import { ClerkProvider } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
 
+
+import AddTenant from "./pages/AddTenant.tsx"
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 import AdminDashboard from "./pages/AdminDashboard.tsx";
-import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 
 import ComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
@@ -120,15 +122,29 @@ createRoot(document.getElementById("root")!).render(
                                     />
                                 </Route>
 
-                                {/* Testing Routes */}
-                                <Route path="test">
-                                    <Route
-                                        path="test-clerk-go-backend"
-                                        element={<TestGoBackend />}
-                                    />
-                                </Route>
-                            </Route>
-                            {/* End of Pre-authentication Layout Group */}
+              {/* Protected Routes (Admin & Tenant) */}
+              <Route element={<ProtectedRoutes />}>
+                {/* Authenticated Layout Group */}
+                <Route element={<AuthenticatedLayout />}>
+                  {/* Admin Route Group */}
+                  <Route path="admin">
+                    <Route index element={<AdminDashboard />} />
+                    <Route
+                      path="init-apartment-complex"
+                      element={<h1>Initial Admin Apartment Complex Setup</h1>}
+                    />
+                    <Route path="add-tenant" element={
+                      <AddTenant />
+                    } />
+                    <Route
+                      path="admin-view-and-edit-leases"
+                      element={<AdminViewEditLeases />}
+                    />
+                    <Route
+                      path="admin-view-and-edit-work-orders-and-complaints"
+                      element={<h1>Admin View & Edit Work Orders & Complaints</h1>}
+                    />
+                  </Route>
 
                             {/* Protected Routes (Admin & Tenant) */}
                             <Route element={<ProtectedRoutes />}>
@@ -186,6 +202,8 @@ createRoot(document.getElementById("root")!).render(
                                 path="*"
                                 element={<ErrorNotFound />}
                             />
+                            </Route>
+                        </Route>
                         </Routes>
                     </ClerkProvider>
                 </BrowserRouter>
