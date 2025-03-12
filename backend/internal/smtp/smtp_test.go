@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
+	"os"
 	"testing"
 )
 
@@ -61,3 +62,14 @@ func TestSMTPConnection(t *testing.T) {
 	}
 }
 
+func TestSendEmail(t *testing.T) {
+	recipient := os.Getenv("TEST_SMTP_EMAL")
+	if recipient == "" {
+		t.Fatal("TEST_SMTP_EMAL environment variable is not set")
+	}
+	subject := "Test Email"
+	body := "Hello there test user. Get out your wallet, daddy wants his lease money."
+	if err := SendEmail(recipient, subject, body); err != nil {
+		t.Fatalf("Email sending failed: %v", err)
+	}
+}
