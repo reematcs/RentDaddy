@@ -1,8 +1,7 @@
 -- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
-    id,
-    user_id,
-    created_at, 
+    permit_number,
+    created_by,
     updated_at, 
     expires_at
 )
@@ -10,21 +9,21 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
-    $5
+    $4
 )
 RETURNING *;
 
+
 -- name: GetParkingPermit :one
-SELECT id, user_id, created_at, updated_at, expires_at
+SELECT permit_number, created_by, updated_at, expires_at
 FROM parking_permits
-WHERE id = $1
+WHERE permit_number = $1
 LIMIT 1;
 
 -- name: GetParkingPermits :many
 SELECT *
 FROM parking_permits
-ORDER BY created_at DESC
+ORDER BY created_by DESC
 LIMIT $1 OFFSET $2;
 
 -- name: DeleteParkingPermit :exec
