@@ -44,8 +44,49 @@ const columns = [
         key: "actions",
         render: (text: any, record: any) => (
             <div className="flex gap-2">
-                <ModalComponent type="Edit Tenant" modalTitle="Edit Tenant" buttonTitle="Edit" content="Edit Tenant" handleOkay={() => { }} buttonType="primary" />
-                <ModalComponent type="default" modalTitle="Delete Tenant" buttonTitle="Delete" content="Warning! Are you sure that you would like to delete the tenant?" handleOkay={() => { }} buttonType="danger" />
+                {/* View Tenant Complaints */}
+                <ModalComponent type="View Tenant Complaints" modalTitle="View Tenant Complaints" buttonTitle="View Complaints" content={
+                    <div>
+                        <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                            {/* Title */}
+                            <p>Complaint 1</p>
+                            {/* Status */}
+                            <p>Status: <span style={{ color: 'green' }}>Resolved</span></p>
+                        </div>
+                        <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                            {/* Title */}
+                            <p>Complaint 2</p>
+                            {/* Status */}
+                            <p>Status: <span style={{ color: 'red' }}>Pending</span></p>
+                        </div>
+                    </div>
+                } handleOkay={() => { }} buttonType="default" />
+                {/* View Tenant Work Orders */}
+                <ModalComponent type="View Tenant Work Orders" modalTitle="View Tenant Work Orders" buttonTitle="View Work Orders" content={
+                    <div>
+                        <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                            {/* Title */}
+                            <p>Work Order 1</p>
+                            {/* Status */}
+                            <p>Status: <span style={{ color: 'green' }}>Completed</span></p>
+                            {/* Importance */}
+                            <p>Importance: <span style={{ color: 'green' }}>Low</span></p>
+                        </div>
+                        <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                            {/* Title */}
+                            <p>Work Order 2</p>
+                            {/* Status */}
+                            <p>Status: <span style={{ color: 'red' }}>Pending</span></p>
+                            {/* Importance */}
+                            <p>Importance: <span style={{ color: 'red' }}>High</span></p>
+                        </div>
+                    </div>
+                } handleOkay={() => { }} buttonType="default" />
+                {/* Leaving these here because I think we might need them. */}
+                {/* Edit Tenant */}
+                {/* <ModalComponent type="Edit Tenant" modalTitle="Edit Tenant" buttonTitle="Edit" content="Edit Tenant" handleOkay={() => { }} buttonType="primary" /> */}
+                {/* Delete Tenant */}
+                {/* <ModalComponent type="default" modalTitle="Delete Tenant" buttonTitle="Delete" content="Warning! Are you sure that you would like to delete the tenant?" handleOkay={() => { }} buttonType="danger" /> */}
             </div>
         ),
     }
