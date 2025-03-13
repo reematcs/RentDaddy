@@ -8,7 +8,7 @@ import { Link } from "react-router";
 import RegistrationFormExample from "../components/reusableComponents/FormExample";
 import TimeRelatedFormExample from "../components/reusableComponents/TimeRelatedFormExamples";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
-import { CardComponent } from "../components/reusableComponents/cardComponent";
+import { CardComponent } from "../components/reusableComponents/CardComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import ModalComponent from "../components/ModalComponent"
 import type { ColumnsType, TableProps } from "antd/es/table";
