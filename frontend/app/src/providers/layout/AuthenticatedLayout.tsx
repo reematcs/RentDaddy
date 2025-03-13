@@ -14,7 +14,7 @@ const siderStyle: React.CSSProperties = {
     position: "sticky",
     insetInlineStart: 0,
     top: 0,
-    bottom: 0,
+    // bottom: 0,
     scrollbarWidth: "thin",
     scrollbarGutter: "stable",
     backgroundColor: "#00674f",
@@ -109,7 +109,9 @@ const AuthenticatedLayout: React.FC = () => {
     console.log(isAdmin, isTenant, "isAdmin, isTenant");
 
     return (
-        <Layout hasSider>
+        <Layout
+            hasSider
+            className="vh-100">
             {/* Sidebar Container */}
             <Sider style={siderStyle}>
                 {/* Logo and Title Container */}
@@ -168,18 +170,8 @@ const AuthenticatedLayout: React.FC = () => {
 
             {/* Content Container */}
             <Layout>
-                {/* <Header style={{ padding: 0, background: colorBgContainer }} /> */}
-                <Content style={{ margin: "24px 16px 0", overflow: "initial" }}>
-                    <div
-                        style={{
-                            padding: 24,
-                            textAlign: "center",
-                            // Consider removing this background color to make it look cleaner
-                            background: colorBgContainer,
-                            borderRadius: borderRadiusLG,
-                        }}>
-                        <Outlet />
-                    </div>
+                <Content>
+                    <Outlet />
                 </Content>
                 {/* Footer Container */}
                 <Footer style={{ textAlign: "center" }}>
