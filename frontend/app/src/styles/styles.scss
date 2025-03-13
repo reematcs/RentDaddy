@@ -135,10 +135,36 @@ body {
     flex-grow: 1;
 }
 
+.flex-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    align-items: stretch;
+}
+
 // Ant Design Covers the Styling for Tables Well Enough
 // If we want / need more, we can add it here
 .table {
     background: $secondary5;
+}
+
+.card {
+    width: 300px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 50%;
+    max-height: 90%;
+    text-align: center;
 }
 
 // Buttons
