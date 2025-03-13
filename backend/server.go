@@ -65,7 +65,6 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 //	}
 
 func main() {
-
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -245,6 +244,18 @@ func main() {
 		json.NewEncoder(w).Encode(resource)
 	})
 	// End of Clerk Routes
+
+	r.Route("/work_orders", func(r chi.Router) {
+		r.Post("/", nil)
+
+		r.Route("/{order_number}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				handlers.GetWorkOrderHandler(w, r, queries)
+			})
+			r.Patch("/", nil)
+			r.Delete("/", nil)
+		})
+	})
 
 	// Server config
 	port := os.Getenv("PORT")
