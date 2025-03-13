@@ -1,26 +1,24 @@
 // React and ReactDOM imports
-import { StrictMode } from "react"
-import { createRoot } from "react-dom/client"
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
 // Styles
-import "./styles/styles.scss"
+import "./styles/styles.scss";
 import "@fontsource/poppins/400.css";
 
-
-
 // Routing
-import { BrowserRouter, Route, Routes } from "react-router"
+import { BrowserRouter, Route, Routes } from "react-router";
 
 // Authentication and Layout
-import ProtectedRoutes from "./providers/ProtectedRoutes.tsx"
-import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx"
-import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx"
+import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
+import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx";
+import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx";
 
 // Tanstack Query Client
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import ErrorNotFound from "./pages/Error404.tsx"
-import LoginForm from "./pages/LoginForm.tsx"
-import { ConfigProvider } from "antd"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import ErrorNotFound from "./pages/Error404.tsx";
+import LoginForm from "./pages/LoginForm.tsx";
+import { ConfigProvider } from "antd";
 
 // Clerk
 import { ClerkProvider } from "@clerk/react-router"
@@ -30,20 +28,20 @@ import TestGoBackend from "./components/TestGoBackend.tsx"
 import App from "./App.tsx"
 import AdminDashboard from "./pages/AdminDashboard.tsx"
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
-import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
-
-// Pages &Components
-import ReusableComponents from "./pages/ReusableComponents.tsx"
 import AddTenant from "./pages/AddTenant.tsx";
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
+import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
+import ReusableComponents from "./pages/ReusableComponents.tsx"
 
+import { TenantDashBoard } from "./components/TenantDashBoard.tsx";
 
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!CLERK_PUBLISHABLE_KEY) {
-    throw new Error("Missing Publishable Clerk Key (ENV VARIABLE)")
+    throw new Error("Missing Publishable Clerk Key (ENV VARIABLE)");
 }
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
@@ -67,8 +65,7 @@ createRoot(document.getElementById("root")!).render(
                         colorBgElevated: "white",
                     },
                 },
-            }}
-        >
+            }}>
             <QueryClientProvider client={queryClient}>
                 <BrowserRouter>
                     {/* TODO: Set up fallback redirect urls based on user role, or use a redirect url that is set in the Clerk Dashboard */}
@@ -82,7 +79,7 @@ createRoot(document.getElementById("root")!).render(
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
                         signInFallbackRedirectUrl="/"
-                    >
+                      >
                         {/* Routes: Container for all Route definitions */}
                         <Routes>
                             {/* Example and Explanation of Routes */}
@@ -102,7 +99,10 @@ createRoot(document.getElementById("root")!).render(
                             {/* Pre-authentication Layout Group */}
                             <Route element={<PreAuthedLayout />}>
                                 {/* Landing Page */}
-                                <Route index element={<App />} />
+                                <Route
+                                    index
+                                    element={<App />}
+                                />
 
                                 {/* Reusable Components Route */}
                                 <Route
@@ -112,14 +112,23 @@ createRoot(document.getElementById("root")!).render(
 
                                 {/* Authentication Routes */}
                                 <Route path="auth">
-                                    <Route path="login" element={<LoginForm />} />
+                                    <Route
+                                        path="login"
+                                        element={<LoginForm />}
+                                    />
                                     {/* We probably don't need a register route, but I'll leave it here for now */}
-                                    <Route path="register" element={<h1>Register</h1>} />
+                                    <Route
+                                        path="register"
+                                        element={<h1>Register</h1>}
+                                    />
                                 </Route>
 
                                 {/* Testing Routes */}
                                 <Route path="test">
-                                    <Route path="test-clerk-go-backend" element={<TestGoBackend />} />
+                                    <Route
+                                        path="test-clerk-go-backend"
+                                        element={<TestGoBackend />}
+                                    />
                                 </Route>
                             </Route>
                             {/* End of Pre-authentication Layout Group */}
@@ -130,12 +139,18 @@ createRoot(document.getElementById("root")!).render(
                                 <Route element={<AuthenticatedLayout />}>
                                     {/* Admin Route Group */}
                                     <Route path="admin">
-                                        <Route index element={<AdminDashboard />} />
+                                        <Route
+                                            index
+                                            element={<AdminDashboard />}
+                                        />
                                         <Route
                                             path="init-apartment-complex"
                                             element={<h1>Initial Admin Apartment Complex Setup</h1>}
                                         />
-                                        <Route path="add-tenant" element={<AddTenant />} />
+                                        <Route
+                                            path="add-tenant"
+                                            element={<AddTenant />}
+                                        />
                                         <Route
                                             path="admin-view-and-edit-leases"
                                             element={<AdminViewEditLeases />}
@@ -148,7 +163,10 @@ createRoot(document.getElementById("root")!).render(
 
                                     {/* Tenant Route Group */}
                                     <Route path="tenant">
-                                        <Route index element={<h1>Tenant Dashboard</h1>} />
+                                        <Route
+                                            index
+                                            element={<TenantDashBoard />}
+                                        />
                                         <Route
                                             path="guest-parking"
                                             element={<h1>Guest Parking</h1>}
@@ -167,11 +185,14 @@ createRoot(document.getElementById("root")!).render(
                             {/* End of Protected Routes (Admin & Tenant) */}
 
                             {/* 404 Route - Always place at the end to catch unmatched routes */}
-                            <Route path="*" element={<ErrorNotFound />} />
+                            <Route
+                                path="*"
+                                element={<ErrorNotFound />}
+                            />
                         </Routes>
                     </ClerkProvider>
                 </BrowserRouter>
             </QueryClientProvider>
         </ConfigProvider>
     </StrictMode>
-)
+);
