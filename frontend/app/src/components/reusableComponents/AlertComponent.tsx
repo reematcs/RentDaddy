@@ -1,5 +1,5 @@
-import React from "react"
-import { Alert } from "antd"
+import React from "react";
+import { Alert } from "antd";
 
 const AlertComponent = (props: any) => {
   return (
@@ -14,4 +14,4 @@ const AlertComponent = (props: any) => {
   )
 }
 
-export default AlertComponent
+export default AlertComponent;
