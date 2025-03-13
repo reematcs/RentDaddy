@@ -27,9 +27,8 @@ import TestGoBackend from "./components/TestGoBackend.tsx"
 // Pages
 import App from "./App.tsx"
 import AdminDashboard from "./pages/AdminDashboard.tsx"
-import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 import AddTenant from "./pages/AddTenant.tsx";
-import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import ReusableComponents from "./pages/ReusableComponents.tsx"
 
@@ -79,7 +78,7 @@ createRoot(document.getElementById("root")!).render(
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
                         signInFallbackRedirectUrl="/"
-                      >
+                    >
                         {/* Routes: Container for all Route definitions */}
                         <Routes>
                             {/* Example and Explanation of Routes */}
