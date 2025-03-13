@@ -21,7 +21,7 @@ RETURNING *;
 -- name: ListLeases :many
 SELECT * FROM leases ORDER BY created_at DESC;
 
--- name: GetLease :one
+-- name: GetLeaseByID :one
 SELECT * FROM leases WHERE document_id = $1 LIMIT 1;
 
 -- name: UpdateLease :one
@@ -33,21 +33,4 @@ SET document_id = $1,
     lease_end_date = $5,
     updated_at = now()
 WHERE document_id = $6
-RETURNING *;
-
--- name: ListLeases :many
-SELECT * FROM lease ORDER BY created_at DESC;
-
--- name: GetLease :one
-SELECT * FROM lease WHERE id = $1 LIMIT 1;
-
--- name: UpdateLease :one
-UPDATE lease
-SET document_id = $1,
-    user_id = $2,
-    status = $3,
-    start_time = $4,
-    end_time = $5,
-    updated_at = now()
-WHERE id = $6
 RETURNING *;
