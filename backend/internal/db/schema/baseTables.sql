@@ -128,8 +128,7 @@ CREATE TABLE IF NOT EXISTS "leases" (
     "lease_start_date" DATE NOT NULL,
     "lease_end_date" DATE NOT NULL,
     "rent_amount" DECIMAL(10,2) NOT NULL,
-    "payment_status" TEXT CHECK (payment_status IN ('PENDING', 'PAID', 'OVERDUE')) NOT NULL DEFAULT 'PENDING',
-    "lease_status" TEXT CHECK (lease_status IN ('DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED', 'RENEWED')) NOT NULL DEFAULT 'DRAFT',
+    "lease_status" "Lease_Status" NOT NULL DEFAULT 'active',
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
 );
