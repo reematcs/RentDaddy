@@ -120,7 +120,7 @@ CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 ALTER TABLE "apartments"
 ADD PRIMARY KEY ("id");
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
-CREATE TABLE leases (
+CREATE TABLE IF NOT EXISTS "leases" (
     "document_id" BIGSERIAL PRIMARY KEY,
     "external_doc_id" TEXT NOT NULL UNIQUE, -- Maps to Documenso's externalId
     "tenant_id" BIGINT NOT NULL REFERENCES users(id),
