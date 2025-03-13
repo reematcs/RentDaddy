@@ -12,48 +12,43 @@ import (
 )
 
 const createLease = `-- name: CreateLease :one
-INSERT INTO leases (document_id, tenant_id, status, lease_start_date, lease_end_date)
-VALUES ($1, $2, 'active', $3, $4)
-RETURNING document_id, external_doc_id, tenant_id, landlord_id, lease_start_date, lease_end_date, rent_amount, payment_status, lease_status, created_at, updated_at
+INSERT INTO leases (external_doc_id, tenant_id, landlord_id, lease_start_date, lease_end_date, rent_amount, lease_status)
+VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT')
+RETURNING document_id
 `
 
 type CreateLeaseParams struct {
-	DocumentID     int64       `json:"document_id"`
-	TenantID       int64       `json:"tenant_id"`
-	LeaseStartDate pgtype.Date `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date `json:"lease_end_date"`
+	ExternalDocID  string         `json:"external_doc_id"`
+	TenantID       int64          `json:"tenant_id"`
+	LandlordID     int64          `json:"landlord_id"`
+	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
+	RentAmount     pgtype.Numeric `json:"rent_amount"`
 }
 
-func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (Lease, error) {
+// PLEASE SHRINK THE LEASES TABLE AND MAKE SURE THESE QUERIES ACTUALLY WORK VIA
+// sqlc vet at the backend folder
+// ALSO MAKE SURE baseTables.sql match init.up.sql
+func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createLease,
-		arg.DocumentID,
+		arg.ExternalDocID,
 		arg.TenantID,
+		arg.LandlordID,
 		arg.LeaseStartDate,
 		arg.LeaseEndDate,
+		arg.RentAmount,
 	)
-	var i Lease
-	err := row.Scan(
-		&i.DocumentID,
-		&i.ExternalDocID,
-		&i.TenantID,
-		&i.LandlordID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
-		&i.RentAmount,
-		&i.PaymentStatus,
-		&i.LeaseStatus,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	var document_id int64
+	err := row.Scan(&document_id)
+	return document_id, err
 }
 
-const getLease = `-- name: GetLease :one
+const getLeaseByID = `-- name: GetLeaseByID :one
 SELECT document_id, external_doc_id, tenant_id, landlord_id, lease_start_date, lease_end_date, rent_amount, payment_status, lease_status, created_at, updated_at FROM leases WHERE document_id = $1 LIMIT 1
 `
 
-func (q *Queries) GetLease(ctx context.Context, documentID int64) (Lease, error) {
-	row := q.db.QueryRow(ctx, getLease, documentID)
+func (q *Queries) GetLeaseByID(ctx context.Context, documentID int64) (Lease, error) {
+	row := q.db.QueryRow(ctx, getLeaseByID, documentID)
 	var i Lease
 	err := row.Scan(
 		&i.DocumentID,
