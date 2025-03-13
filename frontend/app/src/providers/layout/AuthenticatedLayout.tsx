@@ -95,10 +95,6 @@ const items: MenuProps["items"] = [
 const AuthenticatedLayout: React.FC = () => {
     const { isSignedIn, user } = useUser();
 
-    const {
-        token: { colorBgContainer, borderRadiusLG },
-    } = theme.useToken();
-
     // Get the path from the current url and check if it contains admin or tenant and set the default selected key based on that
     const path = useLocation().pathname;
     const isAdmin = path.includes("/admin");

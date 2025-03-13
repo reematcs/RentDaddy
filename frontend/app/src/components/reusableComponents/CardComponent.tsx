@@ -11,16 +11,6 @@ interface CardComponentProps {
     value?: number;
 }
 
-//pass in button like this
-// button={
-//  index === 0 ? (
-//  <ButtonComponent
-//  title="Primary"
-//   type="primary"
-//           />
-//       ) : undefined
-//   }
-
 export const CardComponent = (props: CardComponentProps) => {
     return (
         <>
@@ -28,16 +18,14 @@ export const CardComponent = (props: CardComponentProps) => {
                 //TODO: JJ make these styles better
                 title={props.title}
                 hoverable={props.hoverable}
-                className="h-100 text-center"
-                style={{ minHeight: "280px", minWidth: "280px" }}>
-                <div className="flex flex-column align-items-center">
-                    <span>{props.icon}</span>
+                className="card">
+                <div className="card-content">
+                    {props.icon && <span>{props.icon}</span>}
 
-                    <p className="text-muted">{props.description}</p>
+                    {props.description && <span className="text-muted py-2">{props.description}</span>}
+                    {props.value && <span className="text-muted fs-1 py-2">{props.value}</span>}
 
-                    <p className="text-muted fs-1">{props.value}</p>
-
-                    {props.button}
+                    <span className="pb-2">{props.button}</span>
                 </div>
             </Card>
         </>
