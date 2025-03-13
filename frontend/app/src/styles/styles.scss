@@ -127,6 +127,14 @@ body {
     display: flex;
 }
 
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-grow-1 {
+    flex-grow: 1;
+}
+
 // Ant Design Covers the Styling for Tables Well Enough
 // If we want / need more, we can add it here
 .table {

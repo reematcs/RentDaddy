@@ -111,11 +111,11 @@ const AuthenticatedLayout: React.FC = () => {
     return (
         <Layout
             hasSider
-            className="vh-100">
+            className="min-vh-100 flex flex-row">
             {/* Sidebar Container */}
             <Sider style={siderStyle}>
                 {/* Logo and Title Container */}
-                <div className="logo-container d-flex flex-column align-items-center justify-content-center py-4">
+                <div className="logo-container flex flex-column align-items-center justify-content-center py-4">
                     <Divider className="divider-text border-white" />
                     <Link
                         to="/"
@@ -138,11 +138,11 @@ const AuthenticatedLayout: React.FC = () => {
                 <SidebarLinks />
 
                 {/* Avatar and Login Container */}
-                <div className="avatar-container d-flex flex-column position-absolute bottom-0 w-100">
+                <div className="avatar-container flex flex-column position-absolute bottom-0 w-100">
                     <Divider className="divider-text border-white" />
                     {isSignedIn ? (
                         <SignOutButton>
-                            <div className="d-flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
+                            <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
                                 <p className="login-text text-white m-0">Sign Out</p>
                                 <Avatar
                                     className="avatar-icon"
@@ -155,7 +155,7 @@ const AuthenticatedLayout: React.FC = () => {
                         <Link
                             to="/auth/login"
                             className="text-decoration-none">
-                            <div className="d-flex align-items-center justify-content-center gap-2 mb-4">
+                            <div className="flex align-items-center justify-content-center gap-2 mb-4">
                                 <p className="login-text text-white m-0">Login</p>
                                 <Avatar
                                     className="avatar-icon"
@@ -169,36 +169,33 @@ const AuthenticatedLayout: React.FC = () => {
             </Sider>
 
             {/* Content Container */}
-            <Layout>
-                <Content>
+            <Layout className="flex flex-column flex-grow-1">
+                <Content className="flex-grow-1">
                     <Outlet />
                 </Content>
+
                 {/* Footer Container */}
                 <Footer style={{ textAlign: "center" }}>
-                    <div
-                        className="footer-links"
-                        style={{ marginBottom: "24px" }}>
-                        <Link
-                            to="/about"
-                            style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
-                            About
-                        </Link>
-                        <Link
-                            to="/contact"
-                            style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
-                            Contact
-                        </Link>
-                        <Link
-                            to="/privacy"
-                            style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
-                            Privacy Policy
-                        </Link>
-                        <Link
-                            to="/terms"
-                            style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
-                            Terms of Service
-                        </Link>
-                    </div>
+                    <Link
+                        to="/about"
+                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        About
+                    </Link>
+                    <Link
+                        to="/contact"
+                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        Contact
+                    </Link>
+                    <Link
+                        to="/privacy"
+                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        Privacy Policy
+                    </Link>
+                    <Link
+                        to="/terms"
+                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        Terms of Service
+                    </Link>
                     <p
                         className="footer-text"
                         style={{ margin: 0, color: "#8c8c8c", fontSize: "14px" }}>
