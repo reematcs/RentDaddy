@@ -92,14 +92,6 @@ const PreAuthedLayout: React.FC = () => {
                 </div>
             </Header>
             <Content style={{ padding: "0 48px" }}>
-                {/* TODO: Decide if we are using this */}
-                {/* <Breadcrumb style={{ margin: '16px 0' }}>
-                        <Breadcrumb.Item><Link to="/">Home</Link></Breadcrumb.Item>
-                        <Breadcrumb.Item>Test</Breadcrumb.Item>
-                        <Breadcrumb.Item>Breadcrumb</Breadcrumb.Item>
-                    </Breadcrumb>
-                */}
-
                 <div
                     style={{
                         padding: 24,
@@ -133,9 +125,7 @@ const PreAuthedLayout: React.FC = () => {
                         borderRadius: "8px",
                     }}
                 />
-                <div
-                    className="footer-links"
-                    style={{ marginBottom: "24px" }}>
+                <div>
                     <Link
                         to="/about"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
