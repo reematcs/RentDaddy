@@ -73,26 +73,20 @@ func main() {
 	})
 
 	// User Router
+	userHandler := handlers.NewUserHandler(pool, queries)
 	r.Route("/users", func(r chi.Router) {
 		// Tenants Routes
-
 		r.Get("/tenants", func(w http.ResponseWriter, r *http.Request) {
-			handlers.GetAllUsers(w, r, queries, gen.RoleTenant)
+			userHandler.GetAllUsers(w, r, gen.RoleTenant)
 		})
-		r.Get("/tenants/{clerk_id}", func(w http.ResponseWriter, r *http.Request) {
-			handlers.GetTenantByClerkId(w, r, queries)
-		})
-		r.Patch("/tenants/{clerk_id}/credentials", func(w http.ResponseWriter, r *http.Request) {
-			handlers.UpdateTenantCredentials(w, r, queries)
-		})
+		r.Get("/tenants/{clerk_id}", userHandler.GetTenantByClerkId)
+		r.Patch("/tenants/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
 
 		// Admin Routes
 		r.Get("/admins", func(w http.ResponseWriter, r *http.Request) {
-			handlers.GetAllUsers(w, r, queries, gen.RoleAdmin)
+			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
 		})
-		r.Get("/admins/{clerk_id}", func(w http.ResponseWriter, r *http.Request) {
-			handlers.GetAdminByClerkId(w, r, queries)
-		})
+		r.Get("/admins/{clerk_id}", userHandler.GetAdminByClerkId)
 	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
