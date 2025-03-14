@@ -150,7 +150,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         description: "Heating system is making loud banging noises when it starts up.",
         apartmentNumber: "A333",
         status: "awaiting parts",
-        createdAt: new Date("2025-01-25T09:50:00"),
+        createdAt: new Date("2025-03-14T09:50:00"),
         updatedAt: new Date("2025-01-29T14:20:00")
     },
     {
@@ -289,20 +289,32 @@ const AdminWorkOrder = () => {
         },
     ];
 
-    const overdueServiceCount: number = 5;
-    const recentlyCreatedServiceCount: number = 6;
-    const recentlyCompletedServiceCount: number = 1;
+    const hoursUntilOverdue: number = 48;
+    const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        return status === "open" && hoursSinceCreation <= hoursUntilOverdue;
+    }).length;
+    const hoursSinceRecentlyCreated: number = 24;
+    const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        return hoursSinceCreation <= hoursSinceRecentlyCreated;
+    }).length;
+
+    const hoursSinceRecentlyCompleted: number = 24;
+    const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
+        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), 'hour');
+        return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
+    }).length;
 
     return (
         <div className="container">
             <h1 className="mb-4">Work-Orders & Complaints</h1>
-
             {/* Alerts headers */}
             <div className="d-flex w-100 justify-content-between mb-4">
                 {
                     overdueServiceCount > 0 ?
                         <AlertComponent
-                            description={`${overdueServiceCount} overdue services`}
+                            description={`${overdueServiceCount} services open for`}
                         /> : null
                 }
                 {
@@ -320,34 +332,41 @@ const AdminWorkOrder = () => {
             </div>
 
             {/* Work Order Table */}
-            <TableComponent<WorkOrderData>
-                columns={workOrderColumns}
-                dataSource={workOrderDataRaw}
-                style=".lease-table-container"
-                onChange={(
-                    pagination: TablePaginationConfig,
-                    filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
-                    sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                    extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
-                ) => {
-                    console.log("Table changed:", pagination, filters, sorter, extra);
-                }}
-            />
+            <div className="mb-5">
+                <h4 className="mb-3">Work Orders</h4>
+                <TableComponent<WorkOrderData>
+                    columns={workOrderColumns}
+                    dataSource={workOrderDataRaw}
+                    style=".lease-table-container"
+                    onChange={(
+                        pagination: TablePaginationConfig,
+                        filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
+                        sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
+                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
+                    ) => {
+                        console.log("Table changed:", pagination, filters, sorter, extra);
+                    }}
+                />
+            </div>
 
             {/* Complaints Table */}
-            <TableComponent<WorkOrderData>
-                columns={workOrderColumns}
-                dataSource={workOrderDataRaw}
-                style=".lease-table-container"
-                onChange={(
-                    pagination: TablePaginationConfig,
-                    filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
-                    sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                    extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
-                ) => {
-                    console.log("Table changed:", pagination, filters, sorter, extra);
-                }}
-            />
+            <div className="mt-5">
+                <h4 className="mb-3">Complaints</h4>
+                <TableComponent<WorkOrderData>
+                    columns={workOrderColumns}
+                    dataSource={workOrderDataRaw}
+                    style=".lease-table-container"
+                    onChange={(
+                        pagination: TablePaginationConfig,
+                        filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
+                        sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
+                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
+                    ) => {
+                        console.log("Table changed:", pagination, filters, sorter, extra);
+                    }}
+                />
+            </div>
+
         </div>
     )
 };
