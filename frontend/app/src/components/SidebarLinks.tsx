@@ -108,7 +108,7 @@ const SidebarLinks = () => {
                 <div className="mt-2 ps-4 d-flex flex-column gap-2">
                     <Link
                         to="/tenant"
-                        className={getLinkClass("/tenant")}>
+                        className={getLinkClass("/tenant") + (path === "/tenant" ? "" : " text-white-50 hover:text-secondary")}>
                         Dashboard
                     </Link>
                     <Link
