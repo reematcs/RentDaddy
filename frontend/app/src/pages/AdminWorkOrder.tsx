@@ -214,7 +214,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         key: "createdAt",
         ...getColumnSearchProps("createdAt", "Created"),
         sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"), // Format the date
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
         title: "Updated",
@@ -222,7 +222,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         key: "updatedAt",
         ...getColumnSearchProps("createdAt", "Updated"),
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
-        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"), // Format the date
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
         title: "Status",
