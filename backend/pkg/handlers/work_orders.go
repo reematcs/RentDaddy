@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -43,7 +44,9 @@ func ListWorkOrdersHandler(w http.ResponseWriter, queries *db.Queries) {
 		Offset: 25,
 	}
 	workOrders, err := queries.ListWorkOrders(ctx, props)
+	log.Println(workOrders)
 	if err != nil {
+		log.Println("error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
