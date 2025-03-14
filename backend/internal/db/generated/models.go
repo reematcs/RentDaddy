@@ -412,8 +412,7 @@ type Lease struct {
 	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	PaymentStatus  string           `json:"payment_status"`
-	LeaseStatus    string           `json:"lease_status"`
+	LeaseStatus    LeaseStatus      `json:"lease_status"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }

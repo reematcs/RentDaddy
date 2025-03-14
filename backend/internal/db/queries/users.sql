@@ -32,8 +32,9 @@ WHERE clerk_id = $1;
 -- name: GetUsers :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
+WHERE role = $1
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
+LIMIT $2 OFFSET $3;
 
 -- name: DeleteUserByClerkID :exec
 DELETE FROM users
