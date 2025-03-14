@@ -29,7 +29,7 @@ export interface ComplaintsData {
     category: "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
     title: string;
     description: string;
-    unitNumber: number;
+    unitNumber: string;
     status: "open" | "in_progress" | "resolved" | "closed";
     createdAt: Date;
     updatedAt: Date;

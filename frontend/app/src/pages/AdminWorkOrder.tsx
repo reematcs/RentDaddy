@@ -9,7 +9,7 @@ import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
-import { WorkOrderData } from "../types/types";
+import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TableProps, TablePaginationConfig } from "antd";
 
 
@@ -181,11 +181,11 @@ const workOrderDataRaw: WorkOrderData[] = [
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
-        title: "Apartment No.",
+        title: "Unit No.",
         dataIndex: "apartmentNumber",
         key: "apartmentNumber",
         sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
-        ...getColumnSearchProps("apartmentNumber", "Apartment No."),
+        ...getColumnSearchProps("apartmentNumber", "Unit No."),
         className: "text-secondary text-left",
     },
     {
@@ -267,6 +267,154 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         className: "text-center",
     },
 ];
+
+const complaintsDataRaw: ComplaintsData[] = [
+    {
+        key: 1,
+        complaintNumber: 20001,
+        createdBy: 4,
+        category: "noise",
+        title: "Loud Music at Night",
+        description: "Neighbor plays loud music past midnight.",
+        unitNumber: "A312",
+        status: "open",
+        createdAt: new Date("2025-03-10T22:15:00"),
+        updatedAt: new Date("2025-03-11T08:00:00")
+    },
+    {
+        key: 2,
+        complaintNumber: 20002,
+        createdBy: 7,
+        category: "parking",
+        title: "Unauthorized Vehicle in My Spot",
+        description: "A car is parked in my designated space.",
+        unitNumber: "B210",
+        status: "in_progress",
+        createdAt: new Date("2025-02-28T18:30:00"),
+        updatedAt: new Date("2025-03-01T09:45:00")
+    },
+    {
+        key: 3,
+        complaintNumber: 20003,
+        createdBy: 2,
+        category: "maintenance",
+        title: "Leaking Roof",
+        description: "Water leaking from ceiling during rainstorms.",
+        unitNumber: "C405",
+        status: "resolved",
+        createdAt: new Date("2025-02-20T14:00:00"),
+        updatedAt: new Date("2025-02-22T16:00:00")
+    },
+    {
+        key: 4,
+        complaintNumber: 20004,
+        createdBy: 10,
+        category: "security",
+        title: "Suspicious Person Near Entrance",
+        description: "Unfamiliar person lingering around entrance at night.",
+        unitNumber: "E102",
+        status: "closed",
+        createdAt: new Date("2025-03-02T20:00:00"),
+        updatedAt: new Date("2025-03-03T12:00:00")
+    }
+];
+
+const complaintsColumns: ColumnsType<ComplaintsData> = [
+    {
+        title: "Unit No.",
+        dataIndex: "unitNumber",
+        key: "apartmentNumber",
+        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
+        ...getColumnSearchProps("apartmentNumber", "Unit No."),
+        className: "text-secondary text-left",
+    },
+    {
+        title: "Category",
+        dataIndex: "category",
+        key: "category",
+        sorter: (a, b) => a.category.localeCompare(b.category),
+        filters: [
+            { text: "Maintenance", value: "maintenance" },
+            { text: "Noise", value: "noise" },
+            { text: "Security", value: "security" },
+            { text: "Parking", value: "parking" },
+            { text: "Neighbor", value: "neighbor" },
+            { text: "Trash", value: "trash" },
+            { text: "Internet", value: "internet" },
+            { text: "Lease", value: "lease" },
+            { text: "Natural Disaster", value: "natural_disaster" },
+            { text: "Other", value: "other" },
+        ],
+        onFilter: (value, record) => record.category === value,
+    },
+    {
+        title: "Complaint",
+        dataIndex: "title",
+        key: "title",
+        sorter: (a, b) => a.title.localeCompare(b.title),
+        ...getColumnSearchProps("title", "Complaint"),
+    },
+    {
+        title: "Description",
+        dataIndex: "description",
+        key: "description",
+        ...getColumnSearchProps("description", "Description"),
+    },
+    {
+        title: "Created",
+        dataIndex: "createdAt",
+        key: "createdAt",
+        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
+    },
+    {
+        title: "Updated",
+        dataIndex: "updatedAt",
+        key: "updatedAt",
+        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
+    },
+    {
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        filters: [
+            { text: "Open", value: "open" },
+            { text: "In Progress", value: "in_progress" },
+            { text: "Resolved", value: "resolved" },
+            { text: "Closed", value: "closed" },
+        ],
+        onFilter: (value, record) => record.status === value,
+        render: (status) => {
+            let color = "";
+            let text = "";
+
+            switch (status) {
+                case "open":
+                    color = "red";
+                    text = "Open";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    text = "In Progress";
+                    break;
+                case "resolved":
+                    color = "green";
+                    text = "Resolved";
+                    break;
+                case "closed":
+                    color = "gray";
+                    text = "Closed";
+                    break;
+                default:
+                    color = "default";
+                    text = status;
+            }
+            return <Tag color={color}>{text}</Tag>;
+        },
+    },
+];
+
 
 const AdminWorkOrder = () => {
     const handleAddWorkOrder = () => {
@@ -350,23 +498,23 @@ const AdminWorkOrder = () => {
             </div>
 
             {/* Complaints Table */}
-            <div className="mt-5">
+            <div className="mb-5">
                 <h4 className="mb-3">Complaints</h4>
-                <TableComponent<WorkOrderData>
-                    columns={workOrderColumns}
-                    dataSource={workOrderDataRaw}
+
+                <TableComponent<ComplaintsData>
+                    columns={complaintsColumns}
+                    dataSource={complaintsDataRaw}
                     style=".lease-table-container"
                     onChange={(
                         pagination: TablePaginationConfig,
-                        filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
-                        sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
+                        filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
+                        sorter: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[2],
+                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3],
                     ) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                 />
             </div>
-
         </div>
     )
 };
