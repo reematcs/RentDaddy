@@ -248,7 +248,7 @@ func main() {
 	r.Route("/work_orders", func(r chi.Router) {
 		// Admin route
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			handlers.ListWorkOrdersHandler(w, r, queries)
+			handlers.ListWorkOrdersHandler(w, queries)
 		})
 
 		// All route

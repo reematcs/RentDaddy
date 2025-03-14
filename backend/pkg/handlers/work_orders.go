@@ -28,10 +28,14 @@ func GetWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Que
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(workOrder)
+	err = json.NewEncoder(w).Encode(workOrder)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func ListWorkOrdersHandler(w http.ResponseWriter, queries *db.Queries) {
 	ctx := context.Background()
 
 	props := db.ListWorkOrdersParams{
@@ -45,7 +49,11 @@ func ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request, queries *db.Q
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(workOrders)
+	err = json.NewEncoder(w).Encode(workOrders)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func CreateWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
