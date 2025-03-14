@@ -246,13 +246,21 @@ func main() {
 	// End of Clerk Routes
 
 	r.Route("/work_orders", func(r chi.Router) {
+		// Admin route
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			handlers.ListWorkOrdersHandler(w, r, queries)
+		})
+
+		// All route
 		r.Post("/", nil)
 
 		r.Route("/{order_number}", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				handlers.GetWorkOrderHandler(w, r, queries)
 			})
-			r.Patch("/", nil)
+			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+				handlers.UpdateWorkOrderHandler(w, r, queries)
+			})
 			r.Delete("/", nil)
 		})
 	})
