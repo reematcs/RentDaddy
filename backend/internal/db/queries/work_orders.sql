@@ -26,15 +26,12 @@ LIMIT $1 OFFSET $2;
 -- name: UpdateWorkOrder :exec
 UPDATE work_orders
 SET
-    created_by = $2,
-    order_number = $3,
-    category = $4,
-    title = $5,
-    description = $6,
-    unit_number = $7,
-    status = $8,
-    updated_at = $9,
-    created_at = $10
+    category = $2,
+    title = $3,
+    description = $4,
+    unit_number = $5,
+    status = $6,
+    updated_at = $7
 WHERE id = $1;
 
 -- name: DeleteWorkOrder :exec
