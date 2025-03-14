@@ -36,31 +36,23 @@ const HomePageFeaturesComponent = () => {
     ];
 
     return (
-        <div
-            className="py-5 bg-light"
-            style={{ margin: "50px 0px" }}>
+        <>
             <div className="container">
                 {/* Title */}
-                <h2 className="text-center mb-5 fw-bold">Smart Living</h2>
-                {/* Grid of feature cards */}
-                <Row gutter={[StyleConstants.XS_BREAKPOINT, StyleConstants.XS_BREAKPOINT]}>
-                    {features.map((feature, index) => (
-                        <Col
-                            xs={StyleConstants.XS_BREAKPOINT}
-                            sm={StyleConstants.SM_BREAKPOINT}
-                            lg={StyleConstants.LG_BREAKPOINT}
-                            key={index}>
-                            <CardComponent
-                                hoverable
-                                icon={feature.icon}
-                                title={feature.title}
-                                description={feature.description}
-                            />
-                        </Col>
+                <h2 className="text-center my-3 fw-bold">Smart Living</h2>
+                <div className="flex-container">
+                    {/* Grid of feature cards */}
+                    {features.map((feature) => (
+                        <CardComponent
+                            hoverable
+                            icon={feature.icon}
+                            title={feature.title}
+                            description={feature.description}
+                        />
                     ))}
-                </Row>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 
