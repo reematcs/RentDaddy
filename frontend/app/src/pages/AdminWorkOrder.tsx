@@ -298,7 +298,7 @@ const AdminWorkOrder = () => {
             <h1 className="mb-4">Work-Orders & Complaints</h1>
 
             {/* Alerts headers */}
-            <div className="d-flex w-100 justify-content-between">
+            <div className="d-flex w-100 justify-content-between mb-4">
                 {
                     overdueServiceCount > 0 ?
                         <AlertComponent
