@@ -252,7 +252,9 @@ func main() {
 		})
 
 		// All route
-		r.Post("/", nil)
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			handlers.CreateWorkOrderHandler(w, r, queries)
+		})
 
 		r.Route("/{order_number}", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +263,9 @@ func main() {
 			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
 				handlers.UpdateWorkOrderHandler(w, r, queries)
 			})
-			r.Delete("/", nil)
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				handlers.DeleteWorkOrderHandler(w, r, queries)
+			})
 		})
 	})
 
