@@ -1,8 +1,6 @@
-# Email Alert System - Configuration & Troubleshooting Guide
+# General SMTP - Configuration & Troubleshooting Guide
 
 This guide explains how to set up and manage your email alerts using environment variables. The system is designed for SMTP integration with Amazon SES, but any SMTP server using the same environment variables will work.
-
----
 
 ## 1. SMTP Setup & Authentication
 
@@ -22,8 +20,6 @@ To get your SMTP setup working, you must define the following environment variab
 
 - **TLS/StartTLS**: The system supports both `starttls` and direct `tls`. Choose the one that suits your server's security requirements.
 - **Authentication Method**: Only username and password are used. Ensure that these credentials are stored securely.
-
----
 
 ## 2. Email Sending Process
 
@@ -45,8 +41,6 @@ The main code is structured in two parts:
 - **Testing the Setup**:  
   There are tests provided in the code to verify both the SMTP connection and email sending functionality. Set the `SMTP_TEST_EMAIL` environment variable to a valid address and run the tests. It’s a sanity check, and you should receive an email.
 
----
-
 ## 3. Error Handling
 
 ### Common Issues
@@ -61,8 +55,6 @@ The main code is structured in two parts:
 
 - Errors are logged in the backend. You need to monitor these logs for issues, especially during the initial setup.
 
----
-
 ## 4. Delivery Tracking
 
 - **SMTP Response Codes**:  
@@ -71,8 +63,6 @@ The main code is structured in two parts:
   Bounced emails are managed automatically by your SMTP provider. There’s no additional tracking built into the application. Please ensure the emails user give are real during clerk account creation.
 - **No Read Receipts/Open Tracking**:  
   Documenso handles its own tracking. No other service needs it.
-
----
 
 ## 5. Troubleshooting & FAQs
 
