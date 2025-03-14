@@ -45,8 +45,8 @@ jobs:
             echo "packages=" >> $GITHUB_OUTPUT
             exit 0
           fi
-          packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq)
-          echo "packages=$packages" >> $GITHUB_OUTPUT
+          packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq | tr '\n' ' ')
+          echo "packages=$(echo $packages | tr ' ' ',')" >> $GITHUB_OUTPUT
           echo "Packages to test: $packages"
 
       - name: Test Changed Packages
