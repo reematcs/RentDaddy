@@ -142,6 +142,11 @@ body {
     align-items: stretch;
 }
 
+.alert-container {
+    display: flex;
+    margin-bottom: 20px;
+}
+
 // Ant Design Covers the Styling for Tables Well Enough
 // If we want / need more, we can add it here
 .table {

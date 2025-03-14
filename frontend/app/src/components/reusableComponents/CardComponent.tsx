@@ -25,7 +25,7 @@ export const CardComponent = (props: CardComponentProps) => {
                     {props.description && <span className="text-muted py-2">{props.description}</span>}
                     {props.value && <span className="text-muted fs-1 py-2">{props.value}</span>}
 
-                    <span className="pb-2">{props.button}</span>
+                    {props.button && <span className="pb-2">{props.button}</span>}
                 </div>
             </Card>
         </>

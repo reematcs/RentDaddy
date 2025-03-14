@@ -9,9 +9,18 @@ import { InfoCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 function App() {
     return (
         <>
-            <HeroBanner />
-            <HomePageFeaturesComponent />
-            <HomePageFAQs />
+            <div>
+                <HeroBanner />
+            </div>
+
+            <div className="my-2 flex-container">
+                <HomePageFeaturesComponent />
+            </div>
+
+            <div>
+                <HomePageFAQs />
+            </div>
+
             {/* Button Component */}
             <div>
                 <h1 className="text-center text-2xl font-bold">Button Component</h1>
@@ -75,14 +84,6 @@ function App() {
                     />
                 </div>
             </div>
-
-            {/* Let's completely remove this component once we are done testing */}
-            {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
-            <DemoTestingComponent />
-
-            {/* Let's completely remove this component once we are done testing */}
-            {/* Or when everyone is confident they understand the code and how to use it themselves moving forward */}
-            <ClerkAuthDemo />
         </>
     );
 }
