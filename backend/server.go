@@ -248,22 +248,27 @@ func main() {
 	r.Route("/work_orders", func(r chi.Router) {
 		// Admin route
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("List Orders")
 			handlers.ListWorkOrdersHandler(w, queries)
 		})
 
 		// All route
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Post Order")
 			handlers.CreateWorkOrderHandler(w, r, queries)
 		})
 
 		r.Route("/{order_number}", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Order")
 				handlers.GetWorkOrderHandler(w, r, queries)
 			})
 			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Printf("Update Order")
 				handlers.UpdateWorkOrderHandler(w, r, queries)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Delete Order")
 				handlers.DeleteWorkOrderHandler(w, r, queries)
 			})
 		})
