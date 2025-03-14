@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
+	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -74,6 +75,10 @@ func main() {
 	// User Router
 	r.Route("/users", func(r chi.Router) {
 		// Tenants Routes
+
+		r.Get("/tenants", func(w http.ResponseWriter, r *http.Request) {
+			handlers.GetAllUsers(w, r, queries, gen.RoleTenant)
+		})
 		r.Get("/tenants/{clerk_id}", func(w http.ResponseWriter, r *http.Request) {
 			handlers.GetTenantByClerkId(w, r, queries)
 		})
@@ -82,6 +87,9 @@ func main() {
 		})
 
 		// Admin Routes
+		r.Get("/admins", func(w http.ResponseWriter, r *http.Request) {
+			handlers.GetAllUsers(w, r, queries, gen.RoleAdmin)
+		})
 		r.Get("/admins/{clerk_id}", func(w http.ResponseWriter, r *http.Request) {
 			handlers.GetAdminByClerkId(w, r, queries)
 		})

@@ -57,7 +57,8 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request, queries *db.Queries, ty
 		}
 	}
 
-	res, err := queries.GetAllTenants(r.Context(), db.GetAllTenantsParams{
+	res, err := queries.GetUsers(r.Context(), db.GetUsersParams{
+		Role:   typeOfUser,
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
