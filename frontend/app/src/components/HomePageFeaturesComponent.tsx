@@ -1,8 +1,5 @@
-import { Card, Row, Col } from "antd";
 import { LockOutlined, InboxOutlined, CarOutlined, MobileOutlined } from "@ant-design/icons";
-import { StyleConstants } from "../styles/styleConstants";
 import { CardComponent } from "./reusableComponents/CardComponent";
-import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 /**
  * HomePageFeaturesComponent - Displays a grid of feature cards highlighting smart living amenities
@@ -37,9 +34,9 @@ const HomePageFeaturesComponent = () => {
 
     return (
         <>
-            <div className="container">
+            <div className="container mb-3">
                 {/* Title */}
-                <h2 className="text-center my-3 fw-bold">Smart Living</h2>
+                <h2 className="my-3 fw-bold">Smart Living</h2>
                 <div className="flex-container">
                     {/* Grid of feature cards */}
                     {features.map((feature) => (
