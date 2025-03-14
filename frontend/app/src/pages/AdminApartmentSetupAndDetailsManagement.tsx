@@ -8,9 +8,9 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 // The user can add multiple locations
 
 const AdminApartmentSetupAndDetailsManagement = () => {
-    const [isModalOpen, setIsModalOpen] = React.useState(false);
-
     // State that holds the locations (building #, floor #s in that building, room numbers in that building) that the user has added
+    // TODO: When we get the backend data, make sure to populate this with the data from the backend rather than an empty array, this will ensure that the user can see the locations that are already set up
+    // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number[]; rooms: number[] }[]>([]);
 
     const columns = [
@@ -89,9 +89,18 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         },
                     ]}>
                     <div className="flex flex-row gap-3 mt-3">
-                        <Input placeholder="Building #" />
-                        <Input placeholder="# of Floors" />
-                        <Input placeholder="# of Room" />
+                        <Input
+                            placeholder="Building #"
+                            type="number"
+                        />
+                        <Input
+                            placeholder="# of Floors"
+                            type="number"
+                        />
+                        <Input
+                            placeholder="# of Room"
+                            type="number"
+                        />
                     </div>
                 </Form.Item>
                 {/* Clear Button */}
@@ -99,17 +108,15 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     <ButtonComponent
                         title="Clear Locations"
                         type="danger"
-                        className="flex mb-3"
                         icon={<DeleteOutlined />}
                         onClick={() => {
                             setLocations([]);
-                        }}>
-                        Clear Locations
-                    </ButtonComponent>
+                        }}
+                    />
                     {/* Add Location Button */}
-                    <Button
+                    <ButtonComponent
+                        title="Add Location"
                         type="primary"
-                        className="flex mb-3"
                         icon={<PlusOutlined />}
                         onClick={() => {
                             const buildingInput = document.querySelector('input[placeholder="Building #"]') as HTMLInputElement;
@@ -117,25 +124,9 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             const floors = document.querySelector('input[placeholder="# of Floors"]') as HTMLInputElement;
                             const rooms = document.querySelector('input[placeholder="# of Room"]') as HTMLInputElement;
                             setLocations([...locations, { building, floors: [parseInt(floors?.value || "0")], rooms: [parseInt(rooms?.value || "0")] }]);
-                        }}>
-                        Add Location
-                    </Button>
+                        }}
+                    />
                 </div>
-                {/* <TableComponent /> */}
-                {/* <Form.Item
-                    name="room-numbers"
-                    label="Room Numbers"
-                    rules={[{ required: true, message: "Please enter room numbers" }]}>
-                    <Select placeholder="Room Numbers">
-                        {[...Array(101)].map((_, i) => (
-                            <Select.Option
-                                key={i}
-                                value={i}>
-                                {i}
-                            </Select.Option>
-                        ))}
-                    </Select>
-                </Form.Item> */}
                 <Form.Item
                     name="parking-settings"
                     label="Parking Settings"
@@ -179,7 +170,10 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     ]}>
                     <div className="flex flex-column gap-3">
                         {/* Phone Number */}
-                        <Input placeholder="Phone Number" />
+                        <Input
+                            placeholder="Phone Number"
+                            type="number"
+                        />
                         {/* Email */}
                         <Input placeholder="Email" />
                     </div>
@@ -190,7 +184,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         <Button
                             type="default"
                             onClick={() => {
-                                setIsModalOpen(false);
+                                console.log("Cancel");
                             }}>
                             Cancel
                         </Button>
