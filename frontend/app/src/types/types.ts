@@ -22,6 +22,19 @@ export interface WorkOrderData {
     updatedAt: Date;
 }
 
+export interface ComplaintsData {
+    key: number;
+    complaintNumber: number;
+    createdBy: number;
+    category: "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
+    title: string;
+    description: string;
+    unitNumber: number;
+    status: "open" | "in_progress" | "resolved" | "closed";
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 
 // Defines a generic type for user-related tables
 export interface UserData {
