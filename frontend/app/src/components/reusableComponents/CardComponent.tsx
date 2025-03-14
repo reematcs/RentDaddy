@@ -18,7 +18,7 @@ export const CardComponent = (props: CardComponentProps) => {
                 //TODO: JJ make these styles better
                 title={props.title}
                 hoverable={props.hoverable}
-                className="card">
+                className="card pb-2">
                 <div className="card-content">
                     {props.icon && <span>{props.icon}</span>}
 

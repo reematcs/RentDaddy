@@ -46,7 +46,7 @@ export const TenantDashBoard = () => {
                 <CardComponent
                     title="Package info"
                     value={10}
-                    description="You have a package, head to your locker and click the button to open it"
+                    description="You have a package. Click the button at your locker to open it"
                     hoverable={true}
                     icon={<InboxOutlined className="icon" />}
                     button={
@@ -115,7 +115,7 @@ export const TenantDashBoard = () => {
                     button={
                         <ModalComponent
                             type="default"
-                            buttonTitle="View All Complaints"
+                            buttonTitle="View all omplaints"
                             content="Complaint should go here"
                             buttonType="primary"
                             handleOkay={() => {}}

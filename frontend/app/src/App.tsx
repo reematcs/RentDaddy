@@ -5,15 +5,13 @@ import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent";
 function App() {
     return (
         <>
-            <div>
+            <div className="container">
                 <HeroBanner />
-            </div>
 
-            <div className="my-2 flex-container">
-                <HomePageFeaturesComponent />
-            </div>
+                <div className="my-2 flex-container">
+                    <HomePageFeaturesComponent />
+                </div>
 
-            <div>
                 <HomePageFAQs />
             </div>
         </>
