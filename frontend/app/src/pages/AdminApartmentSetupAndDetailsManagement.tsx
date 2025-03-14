@@ -2,7 +2,7 @@ import { Button, Form, Input, Select, Table } from "antd";
 import React from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
 // The user can add multiple locations
@@ -100,6 +100,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         title="Clear Locations"
                         type="danger"
                         className="flex mb-3"
+                        icon={<DeleteOutlined />}
                         onClick={() => {
                             setLocations([]);
                         }}>
@@ -109,6 +110,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     <Button
                         type="primary"
                         className="flex mb-3"
+                        icon={<PlusOutlined />}
                         onClick={() => {
                             const buildingInput = document.querySelector('input[placeholder="Building #"]') as HTMLInputElement;
                             const building = parseInt(buildingInput?.value || "0");
