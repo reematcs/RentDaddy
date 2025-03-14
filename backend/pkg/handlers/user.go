@@ -9,12 +9,25 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func GetTenantByClerkId(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+type UserHandler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
+
+func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
+	return &UserHandler{
+		pool:    pool,
+		queries: queries,
+	}
+}
+
+func (u UserHandler) GetTenantByClerkId(w http.ResponseWriter, r *http.Request) {
 	userClerkId := r.URL.Query().Get("clerk_id")
 
-	res, err := queries.GetTenantByClerkID(r.Context(), userClerkId)
+	res, err := u.queries.GetTenantByClerkID(r.Context(), userClerkId)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Get tenant by ClerkId failed: %v", err)
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
@@ -33,7 +46,7 @@ func GetTenantByClerkId(w http.ResponseWriter, r *http.Request, queries *db.Quer
 	w.WriteHeader(200)
 }
 
-func GetAllUsers(w http.ResponseWriter, r *http.Request, queries *db.Queries, typeOfUser db.Role) {
+func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -57,7 +70,7 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request, queries *db.Queries, ty
 		}
 	}
 
-	res, err := queries.GetUsers(r.Context(), db.GetUsersParams{
+	res, err := u.queries.GetUsers(r.Context(), db.GetUsersParams{
 		Role:   typeOfUser,
 		Limit:  int32(limit),
 		Offset: int32(offset),
@@ -81,7 +94,8 @@ func GetAllUsers(w http.ResponseWriter, r *http.Request, queries *db.Queries, ty
 	w.WriteHeader(200)
 }
 
-func UpdateTenantCredentials(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func (u UserHandler) UpdateTenantCredentials(w http.ResponseWriter, r *http.Request) {
+	userClerkId := r.URL.Query().Get("clerk_id")
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)
@@ -90,6 +104,7 @@ func UpdateTenantCredentials(w http.ResponseWriter, r *http.Request, queries *db
 	}
 
 	var updatePayload db.UpdateUserCredentialsParams
+	updatePayload.ClerkID = userClerkId
 	err = json.Unmarshal(body, &updatePayload)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing payload to JSON: %v", err)
@@ -97,7 +112,7 @@ func UpdateTenantCredentials(w http.ResponseWriter, r *http.Request, queries *db
 		return
 	}
 
-	err = queries.UpdateUserCredentials(r.Context(), updatePayload)
+	err = u.queries.UpdateUserCredentials(r.Context(), updatePayload)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed updating user credentials: %v", err)
 		http.Error(w, "Error updating user credentials", http.StatusInternalServerError)
@@ -107,10 +122,10 @@ func UpdateTenantCredentials(w http.ResponseWriter, r *http.Request, queries *db
 	w.WriteHeader(200)
 }
 
-func GetAdminByClerkId(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func (u UserHandler) GetAdminByClerkId(w http.ResponseWriter, r *http.Request) {
 	userClerkId := chi.URLParam(r, "clerk_id")
 
-	res, err := queries.GetAdminByClerkID(r.Context(), userClerkId)
+	res, err := u.queries.GetAdminByClerkID(r.Context(), userClerkId)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Error Get admin by clerk_id failed: %v", err)
 		http.Error(w, "Error querying user data", http.StatusInternalServerError)
