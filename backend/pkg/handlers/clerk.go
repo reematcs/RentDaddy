@@ -12,12 +12,14 @@ import (
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	svix "github.com/svix/svix-webhooks/go"
 )
 
 type ClerkUserPublicMetaData struct {
-	DbId int32   `json:"db_id"`
-	Role db.Role `json:"role"`
+	DbId       int32   `json:"db_id"`
+	Role       db.Role `json:"role"`
+	UnitNumber int     `json:"unit_number"`
 }
 
 type EmailVerification struct {
@@ -47,7 +49,7 @@ type ClerkWebhookPayload struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, queries *db.Queries) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
@@ -85,7 +87,7 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, queries *db.Que
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
-		createUser(w, r, clerkUserData, queries)
+		createUser(w, r, clerkUserData, pool, queries)
 	case "user.updated":
 		updateUser(w, r, clerkUserData, queries)
 	case "user.deleted":
@@ -119,7 +121,10 @@ func Verify(payload []byte, headers http.Header) bool {
 	return true
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool, queries *db.Queries) {
+	// Add logic user invitation
+	// See if user's metadata has "unit_number" attached
+	// If so create a new apartment entry associated with this unit_nubmber
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
@@ -144,7 +149,20 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		primaryUserEmail = userData.EmailAddresses[0].EmailAddress
 	}
 
-	res, err := queries.CreateUser(r.Context(), db.CreateUserParams{
+	// DB transaction
+	tx, err := pool.Begin(r.Context())
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed instablishing a database connection: %v", err)
+		http.Error(w, "Error connecting to database", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+	qtx := queries.WithTx(tx)
+
+	// TODO: finish apartment entry
+	// qtx.createApartment
+
+	res, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
@@ -167,6 +185,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
 		return
 	}
+	tx.Commit(r.Context())
 
 	// Update clerk user metadata with DB ID, role, ect.
 	metadata := &ClerkUserPublicMetaData{
