@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS "leases" (
     "rent_amount" DECIMAL(10,2) NOT NULL,
     "lease_status" "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by" BIGINT NOT NULL,
-    "updated_by" BIGINT NOT NULL,
+    "updated
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
 );
