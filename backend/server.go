@@ -69,7 +69,7 @@ func main() {
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ClerkWebhookHandler(w, r, queries)
+		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
 	// User Router
