@@ -122,9 +122,6 @@ func Verify(payload []byte, headers http.Header) bool {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool, queries *db.Queries) {
-	// Add logic user invitation
-	// See if user's metadata has "unit_number" attached
-	// If so create a new apartment entry associated with this unit_nubmber
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
@@ -149,6 +146,14 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		primaryUserEmail = userData.EmailAddresses[0].EmailAddress
 	}
 
+	var userMetadata ClerkUserPublicMetaData
+	err := json.Unmarshal(userData.PublicMetaData, &userMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
+		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		return
+	}
+
 	// DB transaction
 	tx, err := pool.Begin(r.Context())
 	if err != nil {
@@ -159,10 +164,13 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	defer tx.Rollback(r.Context())
 	qtx := queries.WithTx(tx)
 
-	// TODO: finish apartment entry
-	// qtx.createApartment
+	if userMetadata.UnitNumber != 0 {
+		// TODO: Add apartment entry
+		// qtx.createApartment
+		log.Printf("[CLERK_WEBHOOK] Add Aprtment Entry %v", userMetadata)
+	}
 
-	res, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
+	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
@@ -189,8 +197,8 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 	// Update clerk user metadata with DB ID, role, ect.
 	metadata := &ClerkUserPublicMetaData{
-		DbId: int32(res.ID),
-		Role: res.Role,
+		DbId: int32(userRes.ID),
+		Role: userRes.Role,
 	}
 
 	// Convert metadata to raw json
