@@ -59,15 +59,6 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     return (
         <div className="container">
             <h1 className="mb-3">Admin Apartment Setup And Details Management</h1>
-            {/* Form to set up the apartment or edit the setup */}
-            {/* I need these sections */}
-            {/* Location (Floor 1, Floor 2, Floor 3) */}
-            {/* Room Numbers ( 0-999) */}
-            {/* Parking Settings (Available Spots, and Max Spots Per User */}
-            {/* Mail Locker Settings (Available Lockers)*/}
-            {/* SMTP Settings (Url/Domain, Port, Username, Password) */}
-            {/* Apartment Manager Contact Information (Phone Number, Email) */}
-            {/* Cancel and Submit Buttons */}
             <Form
                 className="admin-apartment-setup-form-container"
                 layout="vertical">
