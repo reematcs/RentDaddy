@@ -3,26 +3,37 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func GetWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-	ctx := context.Background()
+type WorkOrderHandler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
 
+func NewWorkOrderHandler(pool *pgxpool.Pool, queries *db.Queries) *WorkOrderHandler {
+	return &WorkOrderHandler{
+		pool:    pool,
+		queries: queries,
+	}
+}
+
+func (h *WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
 	param := chi.URLParam(r, "work_order")
-	workOrderNumber, err := strconv.ParseInt(param, 10, 64)
+	workOrderNumber, err := strconv.Atoi(param)
 	if err != nil {
 		http.Error(w, "Invalid work order number", http.StatusBadRequest)
 		return
 	}
 
-	workOrder, err := queries.GetWorkOrder(ctx, workOrderNumber)
+	workOrder, err := queries.GetWorkOrder(r.Context(), int64(workOrderNumber))
 	if err != nil {
 		http.Error(w, "Work order not found", http.StatusNotFound)
 		return
@@ -83,21 +94,24 @@ func CreateWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.
 }
 
 func UpdateWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-	ctx := context.Background()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	var params db.UpdateWorkOrderParams
+	if err := json.Unmarshal(body, &params); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
 	param := chi.URLParam(r, "work_order")
-	workOrderNumber, err := strconv.ParseInt(param, 10, 64)
+	workOrderNumber, err := strconv.Atoi(param)
 	if err != nil {
 		http.Error(w, "Invalid work order number", http.StatusBadRequest)
 		return
 	}
-	workOrder, err := queries.GetWorkOrder(ctx, workOrderNumber)
-	if err != nil {
-		http.Error(w, "Work order not found", http.StatusNotFound)
-		return
-	}
-
-	fmt.Printf("work order: %v\n", workOrder)
-	w.WriteHeader(http.StatusOK)
+	params.ID = int64(workOrderNumber)
 }
 
 func DeleteWorkOrderHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
