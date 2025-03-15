@@ -245,6 +245,8 @@ func main() {
 	})
 	// End of Clerk Routes
 
+	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+
 	r.Route("/work_orders", func(r chi.Router) {
 		// Admin route
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
