@@ -149,7 +149,28 @@ export default function AdminViewEditLeases() {
         },
     });
 
-    console.log(leaseTemplates);
+    const { mutate: sendLease } = useMutation({
+        mutationKey: ["sendLease"],
+        mutationFn: async () => {
+            const res = await fetch(`${API_URL}/admins/leases/sendLease`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: "1" }),
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to fetch lease templates");
+            }
+
+            console.log("success");
+
+            return res.json(); // Assuming the response is JSON.
+        },
+    });
+
+    const templates = leaseTemplates?.data;
+
+    console.log(templates);
 
     const leaseColumns: ColumnsType<LeaseData> = [
         {
