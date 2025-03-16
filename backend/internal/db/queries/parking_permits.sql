@@ -29,3 +29,8 @@ LIMIT $1 OFFSET $2;
 -- name: DeleteParkingPermit :exec
 DELETE FROM parking_permits
 WHERE id = $1;
+
+-- name: GetNumOfUserParkingPermits :one
+SELECT COUNT(*)
+FROM parking_permits
+WHERE created_by = $1;
