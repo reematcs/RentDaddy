@@ -112,6 +112,7 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+	leasesHandler := handlers.NewLeaseHandler(pool, queries)
 	// Tenants Routes
 	r.Route("/tenants", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +128,8 @@ func main() {
 		})
 		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
+		//TODO: Check with Hector
+		r.Get("/leases/getLeaseTemplates", leasesHandler.GetLeaseTemplates)
 	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {

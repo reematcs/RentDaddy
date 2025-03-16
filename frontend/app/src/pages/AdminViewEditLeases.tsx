@@ -11,6 +11,7 @@ import type { ColumnType } from "antd/es/table";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { LeaseData } from "../types/types.ts";
 import { ItemType } from "antd/es/menu/interface";
+import { useMutation } from "@tanstack/react-query";
 
 const today = dayjs();
 
@@ -37,6 +38,8 @@ const leaseDataRaw = [
     { key: 19, tenantName: "Dennis Garcia", apartment: "D299", leaseStartDate: "2024-08-20", leaseEndDate: "2024-09-20", rentAmount: 1550, status: "expires_soon" },
     { key: 20, tenantName: "Yoon Soon", apartment: "B305", leaseStartDate: "2024-09-15", leaseEndDate: "2025-09-15", rentAmount: 2000, status: "active" },
 ];
+
+
 
 // This is the dropdown that performs a search in each column
 const getColumnSearchProps = (dataIndex: keyof LeaseData, title: string): ColumnType<LeaseData> => {
@@ -100,6 +103,8 @@ const getStatusAlertType = (status: string) => {
 // Button actions -> will be used for backend calls
 const sendLease = (record: LeaseData) => {
     console.log(`Sending lease for ${record.tenantName}`);
+    // Retrieve Templates from backend
+    // Call modal with list of templates
 };
 
 const terminateLease = (record: LeaseData) => {
@@ -235,6 +240,26 @@ const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
 };
 
 export default function AdminViewEditLeases() {
+    const { mutate: getLeaseTemplates } = useMutation({
+        mutationFn: async () => {
+            const res = await fetch(`http://${DOMAIN_URL}:${PORT}/admins/leases/getLeaseTemplates`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            const jsonRes = await res.json(); // ✅ Parse JSON response
+            console.log("getLeaseTemplates response:", jsonRes); // ✅ Log response to console
+            return jsonRes;
+        },
+        onSuccess: (data) => {
+            console.log("Success fetching lease templates:", data);
+        },
+        onError: (e: any) => {
+            console.error("Error fetching lease templates:", e);
+        },
+    });
+
+    console.log("getLeaseTemplates function:", getLeaseTemplates);
+
     const filteredData: LeaseData[] = leaseDataRaw.map(function (lease) {
         return {
             key: lease.key,
