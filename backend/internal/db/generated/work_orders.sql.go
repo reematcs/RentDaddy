@@ -19,20 +19,24 @@ INSERT INTO work_orders (
     title,
     description,
     unit_number,
-    status
+    status,
+    updated_at,
+    created_at
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 `
 
 type CreateWorkOrderParams struct {
-	CreatedBy   int64        `json:"created_by"`
-	OrderNumber int64        `json:"order_number"`
-	Category    WorkCategory `json:"category"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
-	Status      Status       `json:"status"`
+	CreatedBy   int64            `json:"created_by"`
+	OrderNumber int64            `json:"order_number"`
+	Category    WorkCategory     `json:"category"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	UnitNumber  int16            `json:"unit_number"`
+	Status      Status           `json:"status"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams) (WorkOrder, error) {
@@ -44,6 +48,8 @@ func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams
 		arg.Description,
 		arg.UnitNumber,
 		arg.Status,
+		arg.UpdatedAt,
+		arg.CreatedAt,
 	)
 	var i WorkOrder
 	err := row.Scan(

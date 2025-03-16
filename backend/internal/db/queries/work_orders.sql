@@ -6,9 +6,11 @@ INSERT INTO work_orders (
     title,
     description,
     unit_number,
-    status
+    status,
+    updated_at,
+    created_at
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetWorkOrder :one

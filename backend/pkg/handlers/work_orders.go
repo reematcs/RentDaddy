@@ -64,6 +64,11 @@ func (h *WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.
 	}
 
 	workOrders, err := h.queries.ListWorkOrders(r.Context(), props)
+	if workOrders == nil || len(workOrders) == 0 {
+		log.Printf("No work orders found: %v", err)
+		http.Error(w, "No work orders found", http.StatusNotFound)
+		return
+	}
 	if err != nil {
 		log.Printf("Error fetching work orders: %v", err)
 		http.Error(w, "Failed to fetch work orders", http.StatusInternalServerError)
@@ -134,7 +139,7 @@ func (h *WorkOrderHandler) UpdateWorkOrderHandler(w http.ResponseWriter, r *http
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	
+
 	updateParams.ID = int64(workOrderNumber)
 	err = h.queries.UpdateWorkOrder(r.Context(), updateParams)
 	if err != nil {
