@@ -442,7 +442,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // leases={leaseTemplates || []} // Add null check
                         okButtonProps={{ disabled: !props.leases?.length }}
-                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
                     >
                         <Form>
                             {/* Pick a Lease */}

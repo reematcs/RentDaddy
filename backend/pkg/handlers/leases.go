@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"math/big"
 	"net/http"
@@ -121,50 +122,46 @@ func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 
 func (h LeaseHandler) GetLeaseTemplates(w http.ResponseWriter, r *http.Request) {
 	log.Println("Fetching lease templates from Documenso API...")
-	//TODO - do console log
 
-	// req, err := http.NewRequest("GET", DOCUMENSO_API_URL+"/api/v1/templates", nil)
-	// if err != nil {
-	// 	h.respondWithError(w, http.StatusInternalServerError, "Failed to create request")
-	// 	return
-	// }
-	// req.Header.Set("Authorization", "Bearer "+DOCUMENSO_API_KEY)
+	req, err := http.NewRequest("GET", DOCUMENSO_API_URL+"/api/v1/templates", nil)
+	if err != nil {
+		h.respondWithError(w, http.StatusInternalServerError, "Failed to create request")
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+DOCUMENSO_API_KEY)
 
-	// client := &http.Client{}
-	// resp, err := client.Do(req)
-	// if err != nil {
-	// 	h.respondWithError(w, http.StatusInternalServerError, "Failed to fetch templates")
-	// 	return
-	// }
-	// defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("❌ Error making request to Documenso:", err)
+		h.respondWithError(w, http.StatusInternalServerError, "Failed to fetch templates")
+		return
+	}
+	defer resp.Body.Close()
 
-	// if resp.StatusCode != http.StatusOK {
-	// 	h.respondWithError(w, http.StatusInternalServerError, "Error fetching templates from Documenso")
-	// 	return
-	// }
-
-	//var templatesResponse interface{}
-	// if err := json.NewDecoder(resp.Body).Decode(&templatesResponse); err != nil {
-	// 	h.respondWithError(w, http.StatusInternalServerError, "Failed to parse response")
-	// 	return
-	// }
-	// if err := json.NewDecoder(resp.Body).Decode(&templatesResponse); err != nil {
-	// 	h.respondWithError(w, http.StatusInternalServerError, "Failed to parse response")
-	// 	return
-	// }
-	log.Println("Fetching lease templates from backend...") // ✅ Log on backend
-
-	// ✅ Dummy response for testing
-	response := map[string]interface{}{
-		"status":  "success",
-		"message": "Templates retrieved successfully (dummy data)",
-		"data": []map[string]string{
-			{"id": "1", "title": "Standard Lease Agreement"},
-			{"id": "2", "title": "Short-Term Lease Agreement"},
-		},
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("❌ Documenso API error: Status %d, Response: %s", resp.StatusCode, string(bodyBytes)) // ✅ Log API error response
+		h.respondWithError(w, http.StatusInternalServerError, "Error fetching templates from Documenso")
+		return
 	}
 
-	h.respondWithJSON(w, http.StatusOK, response)
+	var templatesResponse interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&templatesResponse); err != nil {
+		log.Println("❌ Error decoding response:", err) // ✅ Log JSON parsing error
+		h.respondWithError(w, http.StatusInternalServerError, "Failed to parse response")
+		return
+	}
+
+	// ✅ Log successful response
+	log.Println("✅ Successfully fetched templates:", templatesResponse)
+
+	// ✅ Return JSON response
+	h.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "success",
+		"message": "Templates retrieved successfully",
+		"data":    templatesResponse,
+	})
 }
 
 // Utility functions for response handling
