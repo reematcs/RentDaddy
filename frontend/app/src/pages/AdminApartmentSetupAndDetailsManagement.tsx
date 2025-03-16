@@ -1,17 +1,68 @@
 import { Button, Form, Input, Select, Table } from "antd";
-import React from "react";
+import React, { useState } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import ModalComponent from "../components/ModalComponent";
+import { useMutation } from "@tanstack/react-query";
+
+const DOMAIN_URL = import.meta.env.DOMAIN_URL;
+const PORT = import.meta.env.PORT;
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
 // The user can add multiple locations
 
+type Building = {
+    buildingNumber: number;
+    floorNumbers: number;
+    numberOfRooms: number;
+};
+
 const AdminApartmentSetupAndDetailsManagement = () => {
-    // State that holds the locations (building #, floor #s in that building, room numbers in that building) that the user has added
-    // TODO: When we get the backend data, make sure to populate this with the data from the backend rather than an empty array, this will ensure that the user can see the locations that are already set up
+    // State that holds the locations (building #, floor #s in that building, room numbers in that building)
     // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number[]; rooms: number[] }[]>([]);
+
+    // State the holds the location that is currently being located
+    const [editBuildingObj, setEditBuildingObj] = useState<Building>({
+        buildingNumber: 0,
+        floorNumbers: 0,
+        numberOfRooms: 0,
+    });
+
+    console.log(editBuildingObj);
+
+    // tanstack for editing locations that were put in
+    const { mutate: editLocations } = useMutation({
+        mutationFn: async (buildingData: Building) => {
+            console.log(editBuildingObj, "editBuildingObj in tanstack mutation");
+            // TODO: James, when you finish the backend route, change the variable endpoint to the right one.
+            const res = await fetch(`${API_URL}/admins/apartment/edit/{id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(buildingData),
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to update location");
+            }
+
+            return res;
+        },
+        onSuccess: () => {
+            // Invalidate and refetch
+            console.log("success");
+        },
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
+
+    const handleEditLocation = () => {
+        console.log("starting edit location");
+        editLocations(editBuildingObj);
+    };
 
     const columns = [
         {
@@ -44,12 +95,15 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             setLocations(locations.filter((location) => location.building !== record.building));
                         }}
                     />
-                    <ButtonComponent
-                        title="Edit"
-                        type="primary"
-                        onClick={() => {
-                            console.log("Edit Location", record);
-                        }}
+                    <ModalComponent
+                        buttonType="default"
+                        buttonTitle="Edit"
+                        modalTitle="Edit Apartment Building"
+                        content=""
+                        type="Edit Apartment Building"
+                        apartmentBuildingSetEditBuildingState={setEditBuildingObj}
+                        apartmentBuildingEditProps={editBuildingObj}
+                        handleOkay={() => handleEditLocation()}
                     />
                 </div>
             ),
@@ -124,16 +178,25 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     rules={[{ required: true, message: "Please enter parking settings" }]}>
                     {/* Available Spots */}
                     <div className="flex flex-column gap-3">
-                        <Input placeholder="Available Spots" />
+                        <Input
+                            placeholder="Available Spots"
+                            type="number"
+                        />
                         {/* Max Spots Per User */}
-                        <Input placeholder="Max Spots Per User" />
+                        <Input
+                            placeholder="Max Spots Per User"
+                            type="number"
+                        />
                     </div>
                 </Form.Item>
                 <Form.Item
                     name="mail-locker-settings"
                     label="Mail Locker Settings"
                     rules={[{ required: true, message: "Please enter mail locker settings" }]}>
-                    <Input placeholder="Available Lockers" />
+                    <Input
+                        placeholder="Available Lockers"
+                        type="number"
+                    />
                 </Form.Item>
                 <Form.Item
                     name="smtp-settings"
@@ -143,7 +206,10 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         {/* Url / Domain */}
                         <Input placeholder="Url/Domain" />
                         {/* Port */}
-                        <Input placeholder="Port" />
+                        <Input
+                            placeholder="Port"
+                            type="number"
+                        />
                         {/* Username */}
                         <Input placeholder="Username" />
                         {/* Password */}
