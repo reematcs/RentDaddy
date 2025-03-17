@@ -1,5 +1,5 @@
 import { Table } from "antd";
-import type { ColumnsType } from "antd/es/table/interface";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table/interface";
 import type { TableProps } from "antd";
 
 interface TableComponentProps<T> {
@@ -7,7 +7,8 @@ interface TableComponentProps<T> {
     dataSource?: T[];
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
-    style?: string
+    style?: string;
+    pagination: TablePaginationConfig;
 }
 
 const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, pagination }: TableComponentProps<T>) => {
