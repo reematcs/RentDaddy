@@ -46,7 +46,13 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	items[itemID] = updatedItem
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(updatedItem)
+
+	// Encode response and handle error
+	if err := json.NewEncoder(w).Encode(updatedItem); err != nil {
+		http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
+		return
+	}
+
 }
 
 // QuickDump is a function that dumps the request to the console for debugging purposes
@@ -113,14 +119,6 @@ func main() {
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
 	leasesHandler := handlers.NewLeaseHandler(pool, queries)
-	// Tenants Routes
-	r.Route("/tenants", func(r chi.Router) {
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			userHandler.GetAllUsers(w, r, gen.RoleTenant)
-		})
-		r.Get("/{clerk_id}", userHandler.GetTenantByClerkId)
-		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
-	})
 	// Admin Routes
 	r.Route("/admins", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -128,8 +126,31 @@ func main() {
 		})
 		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
-		//TODO: Check with Hector
-		r.Get("/leases/getLeaseTemplates", leasesHandler.GetLeaseTemplates)
+	})
+
+	// Admin Lease Routes (Admins Manage Leases)
+	r.Route("/admins/leases", func(r chi.Router) {
+		// r.Post("/", leasesHandler.CreateLease)                            // Admin creates a lease
+		// r.Patch("/{lease_id}", leasesHandler.UpdateLease)                 // Admin updates lease details
+		r.Patch("/{lease_id}/renew", leasesHandler.RenewLease) // Admin renews lease
+		// r.Patch("/{lease_id}/terminate", leasesHandler.TerminateLease)    // Admin terminates lease
+		// r.Patch("/{lease_id}/file", leasesHandler.UpdateLeaseFileKey)     // Admin updates lease file
+		// r.Get("/{lease_id}/template", leasesHandler.GetLeaseWithTemplate) // Admin gets lease with template
+		// r.Get("/templates", leasesHandler.GetLeaseTemplates)              // Admin gets all lease templates
+		// r.Post("/templates", leasesHandler.CreateLeaseTemplate)           // Admin creates a new lease template
+	})
+
+	// Tenant Routes
+	r.Route("/tenants", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			userHandler.GetAllUsers(w, r, gen.RoleTenant)
+		})
+		r.Get("/{clerk_id}", userHandler.GetTenantByClerkId)
+		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
+		// Tenant Lease Routes (READ-ONLY for tenants)
+		// r.Get("/", leasesHandler.GetLeasesForTenant)           // List all leases for a tenant
+		// r.Get("/latest", leasesHandler.GetLatestLeaseByTenant) // Get latest lease for a tenant
+		// r.Get("/{lease_id}", leasesHandler.GetLeaseByID)       // Get specific lease for a tenant
 	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +172,11 @@ func main() {
 		fmt.Printf("post success")
 		w.WriteHeader(http.StatusOK)
 		w.Write(body)
-		w.Write([]byte("Success in post"))
+		_, err = w.Write([]byte("Success in post"))
+		if err != nil {
+			log.Printf("Failed to write response: %v", err)
+		}
+
 	})
 
 	r.Put("/test/put", func(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +267,10 @@ func main() {
 		// Return the updated user as JSON using the response writer and the resource
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(resource)
+		if err := json.NewEncoder(w).Encode(resource); err != nil {
+			http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
+			return
+		}
 	})
 	// End of Clerk Routes
 

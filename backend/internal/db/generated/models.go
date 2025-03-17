@@ -405,20 +405,29 @@ type Complaint struct {
 }
 
 type Lease struct {
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	CreatedBy      int64            `json:"created_by"`
-	UpdatedBy      int64            `json:"updated_by"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	ID              int32            `json:"id"`
+	LeaseVersion    int64            `json:"lease_version"`
+	LeaseFileKey    pgtype.Text      `json:"lease_file_key"`
+	LeaseTemplateID pgtype.Int4      `json:"lease_template_id"`
+	TenantID        int64            `json:"tenant_id"`
+	LandlordID      int64            `json:"landlord_id"`
+	ApartmentID     pgtype.Int8      `json:"apartment_id"`
+	LeaseStartDate  pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate    pgtype.Date      `json:"lease_end_date"`
+	RentAmount      pgtype.Numeric   `json:"rent_amount"`
+	LeaseStatus     string           `json:"lease_status"`
+	CreatedBy       int64            `json:"created_by"`
+	UpdatedBy       int64            `json:"updated_by"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
+}
+
+type LeaseTemplate struct {
+	ID           int32            `json:"id"`
+	TemplateName string           `json:"template_name"`
+	S3Key        string           `json:"s3_key"`
+	CreatedBy    int32            `json:"created_by"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
 type LeaseTenant struct {
