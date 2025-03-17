@@ -194,6 +194,35 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         key: "category",
         sorter: (a, b) => a.category.localeCompare(b.category),
         ...getColumnSearchProps("category", "Category"),
+        render: (category) => {
+            let color = "";
+            let text = "";
+
+            // If naming convention here is changed, we will need to change the strings for cases
+            switch (category) {
+                case "plumbing":
+                    text = "Plumbing 🛀";
+                    color = "blue";
+                    break;
+                case "electrical":
+                    text = "Electrical ⚡";
+                    color = "yellow";
+                    break;
+                case "carpentry":
+                    text = "Carpentry 🪚";
+                    color = "brown";
+                    break;
+                case "hvac":
+                    text = "HVAC 🌡️";
+                    color = "grey";
+                    break;
+                default:
+                    text = "Other";
+            }
+
+            return <Tag color={color}>{text}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Inquiry",
@@ -239,6 +268,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
             let color = "";
             let text = "";
 
+            // If naming convention here is changed, we will need to change the strings for cases
             switch (status) {
                 case "open":
                     color = "red";
@@ -323,9 +353,9 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
         title: "Unit No.",
         dataIndex: "unitNumber",
-        key: "apartmentNumber",
+        key: "unitNumber",
         sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
-        ...getColumnSearchProps("apartmentNumber", "Unit No."),
+        ...getColumnSearchProps("unitNumber", "Unit No."),
         className: "text-secondary text-left",
     },
     {
@@ -345,7 +375,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Natural Disaster", value: "natural_disaster" },
             { text: "Other", value: "other" },
         ],
-        onFilter: (value, record) => record.category === value,
+        onFilter: (value, record) => record.category === value as ComplaintsData["category"],
     },
     {
         title: "Complaint",
@@ -384,7 +414,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Resolved", value: "resolved" },
             { text: "Closed", value: "closed" },
         ],
-        onFilter: (value, record) => record.status === value,
+        onFilter: (value, record) => record.status === value as ComplaintsData["status"],
         render: (status) => {
             let color = "";
             let text = "";
@@ -412,6 +442,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             }
             return <Tag color={color}>{text}</Tag>;
         },
+        className: "text-center",
     },
 ];
 
