@@ -13,27 +13,23 @@ import (
 
 const createLease = `-- name: CreateLease :one
 INSERT INTO leases (
-    lease_version, lease_file_key, lease_template_id, tenant_id, landlord_id, apartment_id, 
-    lease_start_date, lease_end_date, rent_amount, lease_status,
-    created_by, updated_by
+    lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id
 `
 
 type CreateLeaseParams struct {
-	LeaseVersion    int64          `json:"lease_version"`
-	LeaseFileKey    pgtype.Text    `json:"lease_file_key"`
-	LeaseTemplateID pgtype.Int4    `json:"lease_template_id"`
-	TenantID        int64          `json:"tenant_id"`
-	LandlordID      int64          `json:"landlord_id"`
-	ApartmentID     pgtype.Int8    `json:"apartment_id"`
-	LeaseStartDate  pgtype.Date    `json:"lease_start_date"`
-	LeaseEndDate    pgtype.Date    `json:"lease_end_date"`
-	RentAmount      pgtype.Numeric `json:"rent_amount"`
-	LeaseStatus     string         `json:"lease_status"`
-	CreatedBy       int64          `json:"created_by"`
-	UpdatedBy       int64          `json:"updated_by"`
+	LeaseNumber    int64          `json:"lease_number"`
+	ExternalDocID  string         `json:"external_doc_id"`
+	TenantID       int64          `json:"tenant_id"`
+	LandlordID     int64          `json:"landlord_id"`
+	ApartmentID    pgtype.Int8    `json:"apartment_id"`
+	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
+	RentAmount     pgtype.Numeric `json:"rent_amount"`
+	LeaseStatus    LeaseStatus    `json:"lease_status"`
 }
 
 func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int32, error) {
@@ -48,29 +44,8 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int32
 		arg.LeaseEndDate,
 		arg.RentAmount,
 		arg.LeaseStatus,
-		arg.CreatedBy,
-		arg.UpdatedBy,
 	)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
-}
-
-const createLeaseTemplate = `-- name: CreateLeaseTemplate :one
-INSERT INTO lease_templates (template_name, s3_key, created_by)
-VALUES ($1, $2, $3)
-RETURNING id
-`
-
-type CreateLeaseTemplateParams struct {
-	TemplateName string `json:"template_name"`
-	S3Key        string `json:"s3_key"`
-	CreatedBy    int32  `json:"created_by"`
-}
-
-func (q *Queries) CreateLeaseTemplate(ctx context.Context, arg CreateLeaseTemplateParams) (int32, error) {
-	row := q.db.QueryRow(ctx, createLeaseTemplate, arg.TemplateName, arg.S3Key, arg.CreatedBy)
-	var id int32
+	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
