@@ -1,10 +1,9 @@
 -- name: CreateLease :one
 INSERT INTO leases (
-    lease_version, lease_file_key, lease_template_id, tenant_id, landlord_id, apartment_id, 
-    lease_start_date, lease_end_date, rent_amount, lease_status,
-    created_by, updated_by
+    lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id;
 
 -- name: RenewLease :exec
@@ -52,6 +51,7 @@ SET
 WHERE id = $6
 RETURNING id;
 
+
 -- name: UpdateLeaseFileKey :exec
 UPDATE leases
 SET lease_file_key = $1, updated_by = $2, updated_at = now()
@@ -67,3 +67,4 @@ WHERE leases.id = $1;
 INSERT INTO lease_templates (template_name, s3_key, created_by)
 VALUES ($1, $2, $3)
 RETURNING id;
+
