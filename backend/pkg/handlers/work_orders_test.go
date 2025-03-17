@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -63,14 +62,9 @@ func TestWorkOrderHandler_ListWorkOrdersHandler(t *testing.T) {
 	// Check the status code
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	// Check the response body
+	// verify the response body
 	var workOrders []db.WorkOrder
-	err = json.Unmarshal(rr.Body.Bytes(), &workOrders)
-	if err != nil {
-		t.Logf("Response body: %s", rr.Body.String())
-		t.Fatalf("an error '%s' was not expected when unmarshalling the response body", err)
-		return
-	}
+	err = utils.UnmarshalBody(rr.Body.Bytes(), workOrders)
 
 	// Find the created work order in the response
 	var foundWorkOrder *db.WorkOrder
