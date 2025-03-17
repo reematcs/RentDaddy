@@ -2,7 +2,7 @@ import "../styles/styles.scss";
 
 import dayjs from "dayjs";
 import { Tag } from "antd";
-import { Input, Space } from "antd";
+import { Input } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
@@ -525,6 +525,18 @@ const AdminWorkOrder = () => {
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
+    const sortedComplaints = complaintsDataRaw.sort((a, b) => {
+        const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
+        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+        if (priorityDiff !== 0) return priorityDiff;
+
+        if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    })
+
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
         const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
@@ -572,7 +584,7 @@ const AdminWorkOrder = () => {
                 <h4 className="mb-3">Work Orders</h4>
                 <TableComponent<WorkOrderData>
                     columns={workOrderColumns}
-                    dataSource={workOrderDataRaw}
+                    dataSource={sortedWorkOrders}
                     style=".lease-table-container"
                     pagination={paginationConfig}
                     onChange={(
