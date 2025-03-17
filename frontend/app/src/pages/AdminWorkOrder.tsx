@@ -198,7 +198,6 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
             let color = "";
             let text = "";
 
-            // If naming convention here is changed, we will need to change the strings for cases
             switch (category) {
                 case "plumbing":
                     text = "Plumbing 🛀";
@@ -376,6 +375,59 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Other", value: "other" },
         ],
         onFilter: (value, record) => record.category === value as ComplaintsData["category"],
+        render: (category) => {
+            let color = "";
+            let text = "";
+
+            switch (category) {
+                case "maintenance":
+                    text = "Maintenance 🔧";
+                    color = "blue";
+                    break;
+                case "noise":
+                    text = "Noise 🔊";
+                    color = "orange";
+                    break;
+                case "security":
+                    text = "Security 🔒";
+                    color = "red";
+                    break;
+                case "parking":
+                    text = "Parking 🚗";
+                    color = "purple";
+                    break;
+                case "neighbor":
+                    text = "Neighbor 🏘️";
+                    color = "green";
+                    break;
+                case "trash":
+                    text = "Trash 🗑️";
+                    color = "brown";
+                    break;
+                case "internet":
+                    text = "Internet 🌐";
+                    color = "cyan";
+                    break;
+                case "lease":
+                    text = "Lease 📝";
+                    color = "gold";
+                    break;
+                case "natural_disaster":
+                    text = "Disaster 🌪️";
+                    color = "grey";
+                    break;
+                case "other":
+                    text = "Other ❓";
+                    color = "default";
+                    break;
+                default:
+                    text = category;
+                    color = "default";
+            }
+
+            return <Tag color={color}>{text}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Complaint",
@@ -447,6 +499,11 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
 ];
 
 
+const paginationConfig: TablePaginationConfig = {
+    pageSize: 10,
+    showSizeChanger: false,
+};
+
 const AdminWorkOrder = () => {
     const handleAddWorkOrder = () => {
         console.log("Added package successfully.")
@@ -456,17 +513,17 @@ const AdminWorkOrder = () => {
         console.log("Added complaint successfully.")
     };
 
-    const workOrders: ColumnsType<{ roomNumber: string; name: string; leaseStatus: string }> = [
-        { title: "Name", dataIndex: "roomNumber" },
-        { title: "Room Number", dataIndex: "name" },
-        {
-            title: "Lease Status",
-            dataIndex: "leaseStatus",
-            render: (leaseStatus: string) => (
-                <Tag color={leaseStatus === "Active" ? "green" : "red"}>{leaseStatus}</Tag>
-            ),
-        },
-    ];
+    const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
+        const statusPriority = { open: 1, "in progress": 2, "awaiting parts": 3, completed: 4 };
+        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+        if (priorityDiff !== 0) return priorityDiff;
+
+        if (a.status !== "completed" && b.status !== "completed") {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
 
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
@@ -517,6 +574,7 @@ const AdminWorkOrder = () => {
                     columns={workOrderColumns}
                     dataSource={workOrderDataRaw}
                     style=".lease-table-container"
+                    pagination={paginationConfig}
                     onChange={(
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
@@ -536,6 +594,7 @@ const AdminWorkOrder = () => {
                     columns={complaintsColumns}
                     dataSource={complaintsDataRaw}
                     style=".lease-table-container"
+                    pagination={paginationConfig}
                     onChange={(
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
