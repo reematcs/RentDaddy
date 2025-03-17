@@ -10,13 +10,14 @@ interface TableComponentProps<T> {
     style?: string
 }
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, pagination }: TableComponentProps<T>) => {
     return (
         <div className={`${style}`}>
             {icon && <div className="table-icon">{icon}</div>}
             <Table<T>
                 columns={columns}
                 dataSource={dataSource}
+                pagination={pagination}
                 onChange={onChange}
                 className="table"
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
