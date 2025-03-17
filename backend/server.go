@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/signal"
 	"syscall"
@@ -240,6 +241,73 @@ func main() {
 	})
 	// End of Clerk Routes
 
+	// Locker Test Routes
+	r.Route("/test/lockers", func(r chi.Router) {
+		// Test getting all lockers
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			recorder := httptest.NewRecorder()
+			handlers.GetLockersHandler(recorder, r, queries, 10, 0)
+			
+			// Copy the response from recorder to the actual response writer
+			for k, v := range recorder.Header() {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(recorder.Code)
+			w.Write(recorder.Body.Bytes())
+		})
+
+		// Add this new route for creating a locker
+		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
+			recorder := httptest.NewRecorder()
+			handlers.TestCreateLocker(recorder, r, queries)
+			
+			// Copy the response from recorder to the actual response writer
+			for k, v := range recorder.Header() {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(recorder.Code)
+			w.Write(recorder.Body.Bytes())
+		})
+
+		// Test getting single locker
+		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
+			recorder := httptest.NewRecorder()
+			handlers.GetLockerHandler(recorder, r, queries)
+			
+			// Copy the response from recorder to the actual response writer
+			for k, v := range recorder.Header() {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(recorder.Code)
+			w.Write(recorder.Body.Bytes())
+		})
+
+		// Test updating locker user
+		r.Patch("/{id}/user", func(w http.ResponseWriter, r *http.Request) {
+			recorder := httptest.NewRecorder()
+			handlers.UpdateLockerUserHandler(recorder, r, queries)
+			
+			// Copy the response from recorder to the actual response writer
+			for k, v := range recorder.Header() {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(recorder.Code)
+			w.Write(recorder.Body.Bytes())
+		})
+
+		// Test updating locker access code
+		r.Patch("/{id}/access-code", func(w http.ResponseWriter, r *http.Request) {
+			recorder := httptest.NewRecorder()
+			handlers.UpdateLockerAccessCodeHandler(recorder, r, queries)
+			
+			// Copy the response from recorder to the actual response writer
+			for k, v := range recorder.Header() {
+				w.Header()[k] = v
+			}
+			w.WriteHeader(recorder.Code)
+			w.Write(recorder.Body.Bytes())
+		})
+	})
 
 	// Start of Locker Routes
 	r.Route("/lockers", func(r chi.Router) {

@@ -11,6 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createLocker = `-- name: CreateLocker :exec
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+) VALUES (
+    $1, $2, $3
+)
+`
+
+type CreateLockerParams struct {
+	AccessCode pgtype.Text `json:"access_code"`
+	UserID     pgtype.Int8 `json:"user_id"`
+	InUse      bool        `json:"in_use"`
+}
+
+func (q *Queries) CreateLocker(ctx context.Context, arg CreateLockerParams) error {
+	_, err := q.db.Exec(ctx, createLocker, arg.AccessCode, arg.UserID, arg.InUse)
+	return err
+}
+
 const getLocker = `-- name: GetLocker :one
 SELECT id, access_code, in_use, user_id
 FROM lockers

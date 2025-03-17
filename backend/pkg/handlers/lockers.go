@@ -10,6 +10,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype" // Updated import path
 )
 
+func TestCreateLocker(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+    // Parse request body
+    var req struct {
+        AccessCode string `json:"access_code"`
+        UserID     *int32 `json:"user_id,omitempty"` // Make it optional
+        Status     string `json:"status"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // For testing purposes, set UserID to nil to avoid foreign key constraint
+    createParams := db.CreateLockerParams{
+        AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
+        UserID:    pgtype.Int8{Valid: false}, // Set Valid: false for NULL value
+        InUse:     false,
+    }
+
+    locker := queries.CreateLocker(r.Context(), createParams)
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(locker)
+}
+
 func GetLockersHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries, limit, offset int32) {
     lockers, err := queries.GetLockers(r.Context(), db.GetLockersParams{
         Limit:  limit,

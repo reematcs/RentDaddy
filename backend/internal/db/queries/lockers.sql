@@ -1,3 +1,13 @@
+-- name: CreateLocker :exec
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+) VALUES (
+    $1, $2, $3
+);
+
+
 -- name: UpdateLockerUser :exec
 UPDATE lockers
 SET user_id = $2, in_use = $3
