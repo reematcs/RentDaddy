@@ -19,9 +19,11 @@ INSERT INTO users (
     email,
     phone,
     role,
-    last_login
+    last_login,
+    updated_at,
+    created_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
 `
 
@@ -33,6 +35,8 @@ type CreateUserParams struct {
 	Phone     pgtype.Text      `json:"phone"`
 	Role      Role             `json:"role"`
 	LastLogin pgtype.Timestamp `json:"last_login"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 type CreateUserRow struct {
@@ -55,6 +59,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.Phone,
 		arg.Role,
 		arg.LastLogin,
+		arg.UpdatedAt,
+		arg.CreatedAt,
 	)
 	var i CreateUserRow
 	err := row.Scan(
@@ -321,7 +327,7 @@ func (q *Queries) GetUsersByRole(ctx context.Context, arg GetUsersByRoleParams) 
 
 const updateTenantProfile = `-- name: UpdateTenantProfile :exec
 UPDATE users 
-SET first_name = $2, last_name = $3, email = $4, phone = $5, unit_number = $6, updated_at = now()
+SET first_name = $2, last_name = $3, email = $4, phone = $5, unit_number = $6 
 WHERE clerk_id = $1 AND role = 'tenant'
 `
 
@@ -348,7 +354,7 @@ func (q *Queries) UpdateTenantProfile(ctx context.Context, arg UpdateTenantProfi
 
 const updateTenantsUnitNumber = `-- name: UpdateTenantsUnitNumber :exec
 UPDATE users
-SET unit_number = $2, updated_at = now()
+SET unit_number = $2
 WHERE clerk_id = $1
 `
 
@@ -364,7 +370,7 @@ func (q *Queries) UpdateTenantsUnitNumber(ctx context.Context, arg UpdateTenants
 
 const updateUserCredentials = `-- name: UpdateUserCredentials :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
+SET first_name = $2, last_name = $3, email = $4, phone = $5
 WHERE clerk_id = $1
 `
 
@@ -389,7 +395,7 @@ func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCrede
 
 const updateUserRole = `-- name: UpdateUserRole :exec
 UPDATE users
-SET role = $2, updated_at = now()
+SET role = $2
 WHERE clerk_id = $1
 `
 

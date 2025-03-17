@@ -320,55 +320,38 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	}
 }
 
-// reconcile CreateLeaseRequest and CreateLeaseResponse with db/generated/models Lease struct
-type CreateLeaseRequest struct {
-	db.Lease `json:",inline"` // Embedding Lease struct to inherit fields
-
-	// Overriding fields that we want to expose with simplified types
-	StartDate     time.Time `json:"start_date"`
-	EndDate       time.Time `json:"end_date"`
-	RentAmount    float64   `json:"rent_amount"`
-	DocumentTitle string    `json:"document_title"`
-}
-
-// Convert `CreateLeaseRequest` to `db.CreateLeaseParams`
-func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
-	return db.CreateLeaseParams{
-		LeaseNumber:    0, // Auto-generated
-		ExternalDocID:  "",
-		TenantID:       r.TenantID,
-		LandlordID:     r.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false}, // Default empty
-		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: true},
-		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
-		RentAmount:     floatToPgNumeric(r.RentAmount),
-		LeaseStatus:    "active",
+// GenerateLeaseURL generates a pre-signed S3 URL for lease document viewing.
+func (h LeaseHandler) GenerateLeaseURL(lease db.Lease) (string, error) {
+	// Ensure lease file key exists
+	if !lease.LeaseFileKey.Valid {
+		return "", fmt.Errorf("lease file key is empty")
 	}
-}
 
-type CreateLeaseResponse struct {
-	db.Lease `json:",inline"`
-
-	// Explicitly expose only required fields
-	LeaseID       int64  `json:"lease_id"`
-	ExternalDocID string `json:"external_doc_id,omitempty"`
-	LeaseStatus   string `json:"lease_status"`
-}
-
-// Convert `db.Lease` to `CreateLeaseResponse`
-func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
-	return CreateLeaseResponse{
-		Lease:         lease,
-		LeaseID:       lease.ID,
-		ExternalDocID: lease.ExternalDocID,
-		LeaseStatus:   string(lease.LeaseStatus),
+	// Generate S3 pre-signed URL
+	req, _ := h.s3.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(h.bucket),
+		Key:    aws.String(lease.LeaseFileKey.String),
+	})
+	urlStr, err := req.Presign(15 * time.Minute) // URL valid for 15 minutes
+	if err != nil {
+		return "", fmt.Errorf("failed to generate signed URL: %w", err)
 	}
+	return urlStr, nil
 }
 
-func (h LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
-	var req CreateLeaseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondWithError(w, http.StatusBadRequest, "Invalid JSON")
+// GetLeaseByID retrieves a lease and returns its signed URL.
+func (h LeaseHandler) GetLeaseByID(w http.ResponseWriter, r *http.Request) {
+	leaseIDStr := chi.URLParam(r, "id")
+	leaseID, err := strconv.Atoi(leaseIDStr)
+	if err != nil {
+		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
+		return
+	}
+	leaseID32 := int32(leaseID)
+
+	leaseRow, err := h.queries.GetLeaseByID(context.Background(), leaseID32)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
 		return
 	}
 

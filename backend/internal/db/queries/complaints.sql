@@ -6,9 +6,11 @@ INSERT INTO complaints (
     title,
     description,
     unit_number,
-    status
+    status,
+    updated_at,
+    created_at
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetComplaint :one
@@ -33,7 +35,8 @@ SET
     description = $6,
     unit_number = $7,
     status = $8,
-    updated_at = now()
+    updated_at = $9,
+    created_at = $10
 WHERE id = $1;
 
 -- name: DeleteComplaint :exec

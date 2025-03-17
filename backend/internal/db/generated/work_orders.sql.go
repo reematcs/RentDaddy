@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createWorkOrder = `-- name: CreateWorkOrder :one
@@ -17,20 +19,24 @@ INSERT INTO work_orders (
     title,
     description,
     unit_number,
-    status
+    status,
+    updated_at,
+    created_at
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 `
 
 type CreateWorkOrderParams struct {
-	CreatedBy   int64        `json:"created_by"`
-	OrderNumber int64        `json:"order_number"`
-	Category    WorkCategory `json:"category"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
-	Status      Status       `json:"status"`
+	CreatedBy   int64            `json:"created_by"`
+	OrderNumber int64            `json:"order_number"`
+	Category    WorkCategory     `json:"category"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	UnitNumber  int16            `json:"unit_number"`
+	Status      Status           `json:"status"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams) (WorkOrder, error) {
@@ -42,6 +48,8 @@ func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams
 		arg.Description,
 		arg.UnitNumber,
 		arg.Status,
+		arg.UpdatedAt,
+		arg.CreatedAt,
 	)
 	var i WorkOrder
 	err := row.Scan(
@@ -140,32 +148,43 @@ func (q *Queries) ListWorkOrders(ctx context.Context, arg ListWorkOrdersParams) 
 const updateWorkOrder = `-- name: UpdateWorkOrder :exec
 UPDATE work_orders
 SET
-    category = $2,
-    title = $3,
-    description = $4,
-    unit_number = $5,
-    status = $6,
-    updated_at = now()
+    created_by = $2,
+    order_number = $3,
+    category = $4,
+    title = $5,
+    description = $6,
+    unit_number = $7,
+    status = $8,
+    updated_at = $9,
+    created_at = $10
 WHERE id = $1
 `
 
 type UpdateWorkOrderParams struct {
-	ID          int64        `json:"id"`
-	Category    WorkCategory `json:"category"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
-	Status      Status       `json:"status"`
+	ID          int64            `json:"id"`
+	CreatedBy   int64            `json:"created_by"`
+	OrderNumber int64            `json:"order_number"`
+	Category    WorkCategory     `json:"category"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	UnitNumber  int16            `json:"unit_number"`
+	Status      Status           `json:"status"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) UpdateWorkOrder(ctx context.Context, arg UpdateWorkOrderParams) error {
 	_, err := q.db.Exec(ctx, updateWorkOrder,
 		arg.ID,
+		arg.CreatedBy,
+		arg.OrderNumber,
 		arg.Category,
 		arg.Title,
 		arg.Description,
 		arg.UnitNumber,
 		arg.Status,
+		arg.UpdatedAt,
+		arg.CreatedAt,
 	)
 	return err
 }
