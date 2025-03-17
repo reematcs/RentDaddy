@@ -416,12 +416,8 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
                     text = "Disaster 🌪️";
                     color = "grey";
                     break;
-                case "other":
-                    text = "Other ❓";
-                    color = "default";
-                    break;
                 default:
-                    text = category;
+                    text = "Other";
                     color = "default";
             }
 
