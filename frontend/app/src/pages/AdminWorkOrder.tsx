@@ -558,19 +558,19 @@ const AdminWorkOrder = () => {
                 {
                     overdueServiceCount > 0 ?
                         <AlertComponent
-                            description={`${overdueServiceCount} services open for`}
+                            description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`}
                         /> : null
                 }
                 {
                     recentlyCreatedServiceCount > 0 ?
                         <AlertComponent
-                            description={`${recentlyCreatedServiceCount} services created in past 48 hours`}
+                            description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`}
                         /> : null
                 }
                 {
                     recentlyCompletedServiceCount > 0 ?
                         <AlertComponent
-                            description={`${recentlyCompletedServiceCount} services completed in past 24 hours`}
+                            description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`}
                         /> : null
                 }
             </div>
