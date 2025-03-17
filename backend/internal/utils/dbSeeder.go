@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"github.com/bxcodec/faker/v3"
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,12 +14,12 @@ func SeedDB(pool *pgxpool.Pool, queries *db.Queries) {
 	// Create a new test user
 	user := db.CreateUserParams{
 		ClerkID:   "clerk_user_id",
-		Email:     "test@gmail.com",
-		FirstName: "Mister",
-		LastName:  "Director",
-		Phone:     pgtype.Text{String: "+254712345678", Valid: true},
-		Status:    db.AccountStatusActive,
-		Role:      db.RoleAdmin,
+		FirstName: faker.FirstName(),
+		LastName:  faker.LastName(),
+		Email:     faker.Email(),
+		Phone:     pgtype.Text{String: faker.Phonenumber(), Valid: true},
+		Status:    "active",
+		Role:      db.RoleTenant,
 		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},

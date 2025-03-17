@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS "work_orders"
 );
 
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE "Role" AS ENUM ('tenant', 'admin', 'landlord');
+CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

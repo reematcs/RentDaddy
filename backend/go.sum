@@ -1,3 +1,5 @@
+github.com/bxcodec/faker/v3 v3.8.1 h1:qO/Xq19V6uHt2xujwpaetgKhraGCapqY2CRWGD/SqcM=
+github.com/bxcodec/faker/v3 v3.8.1/go.mod h1:DdSDccxF5msjFo5aO4vrobRQ8nIApg8kq3QWPEQD6+o=
 github.com/clerk/clerk-sdk-go/v2 v2.2.0 h1:7z2HBQ7L1sW+xVm5LM/bOpzmfhExwa4xgII4fMNFk64=
 github.com/clerk/clerk-sdk-go/v2 v2.2.0/go.mod h1:tA+JDYh9xEmysBRs+BfJH9HeR0J0HOh8txfsiB115zY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
