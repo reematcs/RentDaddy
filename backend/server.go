@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -65,21 +66,17 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	dbUrl := os.Getenv("PG_URL")
-	if dbUrl == "" {
-		log.Fatal("[ENV] Error: No Database url")
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
 	}
-	// Get the secret key from the environment variable
+
+	// Get environment variables
+	dbUrl := os.Getenv("PG_URL")
+
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
 
-	if clerkSecretKey == "" {
-		log.Fatal("[ENV] CLERK_SECRET_KEY environment vars are required")
-	}
-	webhookSecret := os.Getenv("CLERK_WEBHOOK")
-
-	if webhookSecret == "" {
-		log.Fatal("[ENV] CLERK_WEBHOOK environment vars are required")
-	}
+	// Initialize the database
 
 	ctx := context.Background()
 
@@ -242,6 +239,41 @@ func main() {
 		json.NewEncoder(w).Encode(resource)
 	})
 	// End of Clerk Routes
+
+
+	// Start of Locker Routes
+	r.Route("/lockers", func(r chi.Router) {
+		// Get all lockers with pagination
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("List Lockers")
+			// Parse query parameters for pagination
+			limit := int32(10)  // default limit
+			offset := int32(0)  // default offset
+			handlers.GetLockersHandler(w, r, queries, limit, offset)
+		})
+	
+		// Routes for specific locker operations
+		r.Route("/{id}", func(r chi.Router) {
+			// Get single locker
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Locker")
+				handlers.GetLockerHandler(w, r, queries)
+			})
+	
+			// Update locker user and status
+			r.Patch("/user", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Update Locker User")
+				handlers.UpdateLockerUserHandler(w, r, queries)
+			})
+	
+			// Update locker access code
+			r.Patch("/access-code", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Update Locker Access Code")
+				handlers.UpdateLockerAccessCodeHandler(w, r, queries)
+			})
+		})
+	})
+	// End of Locker Routes
 
 	// Server config
 	port := os.Getenv("PORT")

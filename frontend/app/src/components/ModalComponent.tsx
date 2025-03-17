@@ -20,11 +20,21 @@ interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Add Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
+    type:
+        | "default"
+        | "Smart Locker"
+        | "Guest Parking"
+        | "Add Tenant"
+        | "Edit Tenant"
+        | "View Tenant Complaints"
+        | "View Tenant Work Orders"
+        | "Send Tenant Lease"
+        | "Edit Apartment Building"
+        | "Add Tenant Package in Locker";
     handleOkay: () => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
-    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
+    apartmentBuildingSetEditBuildingState?: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     leases?: Lease[];
 }
@@ -53,6 +63,7 @@ const ModalComponent = (props: ModalComponentProps) => {
         "View Tenant Complaints": "View Tenant Complaints",
         "View Tenant Work Orders": "View Tenant Work Orders",
         "Send Tenant Lease": "Send Tenant Lease",
+        "Add Tenant Package in Locker": "Add Tenant Package in Locker",
     };
 
     const getAdminSmartLocker = () => {
@@ -265,7 +276,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     onChange={(e) => {
                                         const updatedValue = Number(e.target.value);
 
-                                        props.apartmentBuildingSetEditBuildingState({
+                                        props.apartmentBuildingSetEditBuildingState!({
                                             ...props.apartmentBuildingEditProps!,
                                             buildingNumber: updatedValue,
                                         });
@@ -279,7 +290,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     onChange={(e) => {
                                         const updatedValue = Number(e.target.value);
 
-                                        props.apartmentBuildingSetEditBuildingState({
+                                        props.apartmentBuildingSetEditBuildingState!({
                                             ...props.apartmentBuildingEditProps!,
                                             floorNumbers: updatedValue,
                                         });
@@ -293,7 +304,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     onChange={(e) => {
                                         const updatedValue = Number(e.target.value);
 
-                                        props.apartmentBuildingSetEditBuildingState({
+                                        props.apartmentBuildingSetEditBuildingState!({
                                             ...props.apartmentBuildingEditProps!,
                                             numberOfRooms: updatedValue,
                                         });
@@ -532,6 +543,34 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 />
                             </Form.Item>
                             <p>Please go create a template in Documenso.</p>
+                        </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Add Tenant Package in Locker" && (
+                <>
+                    <Button
+                        type="primary"
+                        onClick={showModal}>
+                        <EditOutlined />
+                        {props.buttonTitle}
+                    </Button>
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <Form>
+                            <Form.Item
+                                name="locker number"
+                                label="Locker Number">
+                                <Input name="Locker Number" />
+                            </Form.Item>
                         </Form>
                     </Modal>
                 </>

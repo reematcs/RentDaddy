@@ -10,6 +10,7 @@ require (
 	github.com/clerk/clerk-sdk-go/v2 v2.2.0
 	github.com/go-chi/cors v1.2.1
 	github.com/jackc/pgx/v5 v5.7.2
+	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.8.2
 	github.com/svix/svix-webhooks v1.61.3
 )

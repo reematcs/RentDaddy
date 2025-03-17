@@ -10,15 +10,20 @@ looking to simplify their workflow.
 
 ## Table of Contents
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Development](#development)
-  - [Project Structure](#project-structure)
-  - [Testing](#testing)
-  - [Linting & Formatting](#linting--formatting)
+- [RentDaddy](#rentdaddy)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Usage](#usage)
+    - [Running the Application](#running-the-application)
+    - [Using Docker](#using-docker)
+  - [Development](#development)
+    - [Project Structure](#project-structure)
+    - [Testing](#testing)
+    - [Linting \& Formatting](#linting--formatting)
 
 ## Features
 
@@ -148,3 +153,7 @@ go test -v
   ```bash
   gofmt -s -w .
   ```
+
+Add Package Button opens a Modal for Lockers in Admin Dashboard
+
+Card that has unlock button "Open Locker Button" with Confirmation

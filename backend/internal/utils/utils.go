@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 )
 
 func GetAbsoluteUrl(path string) string {
@@ -21,4 +22,13 @@ func CreatePhoneNumber() string {
 	last := rand.Intn(10000)
 
 	return fmt.Sprintf("%d%d%d", area, middle, last)
+}
+
+func ConvertStringToInt64(input string) int64 {
+    newNum, err := strconv.Atoi(input)
+    if err != nil {
+        fmt.Println(err)
+    }
+    
+    return int64(newNum)
 }

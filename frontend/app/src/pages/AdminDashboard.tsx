@@ -7,10 +7,43 @@ import type { ColumnsType } from "antd/es/table/interface";
 import ModalComponent from "../components/ModalComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { Link } from "react-router";
+import { useMutation } from "@tanstack/react-query";
+
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
+const PORT = import.meta.env.VITE_PORT;
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing
 
 const AdminDashboard = () => {
+    const id = 1;
+    const { mutate: addPackage } = useMutation({
+        mutationKey: ["addPackage"],
+        mutationFn: async () => {
+            const res = await fetch(`${API_URL}/lockers/${id}/user`, {
+                method: "PATCH", // Changed from POST to PATCH to match backend
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: 1, // Replace with actual user ID
+                    in_use: true, // Indicate the locker is now in use
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to update locker");
+            }
+
+            const data = await res.json();
+            return data;
+        },
+        onSuccess: () => {
+            console.log("Package added successfully");
+        },
+        onError: (error) => {
+            console.error("Failed to add package:", error);
+        },
+    });
+
     const handleAddPackage = () => {
-        console.log("Package added successfully");
+        addPackage();
     };
 
     const columnsLeases: ColumnsType<{ name: string; roomNumber: string; leaseStatus: string }> = [
@@ -99,10 +132,11 @@ const AdminDashboard = () => {
                     icon={<InboxOutlined style={{ fontSize: "24px", color: "#52c41a", marginBottom: "16px" }} />}
                     button={
                         <ModalComponent
-                            buttonTitle="Add Package"
+                            buttonTitle="Add Tenant Package in Locker"
                             buttonType="default"
                             content=""
-                            type="Smart Locker"
+                            modalTitle="Add Tenant Package in Locker"
+                            type="Add Tenant Package in Locker"
                             handleOkay={handleAddPackage}
                         />
                     }
