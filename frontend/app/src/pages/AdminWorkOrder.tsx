@@ -102,8 +102,8 @@ const workOrderDataRaw: WorkOrderData[] = [
         description: "Kitchen cabinet door hinge is broken and the door won't stay closed.",
         apartmentNumber: "C378",
         status: "completed",
-        createdAt: new Date("2025-02-05T10:00:00"),
-        updatedAt: new Date("2025-02-08T15:30:00")
+        createdAt: new Date("2025-03-17T00:00:00"),
+        updatedAt: new Date("2025-03-17T00:00:00"),
     },
     {
         key: 5,
@@ -536,7 +536,7 @@ const AdminWorkOrder = () => {
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
         const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
-        return status === "open" && hoursSinceCreation <= hoursUntilOverdue;
+        return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
     }).length;
     const hoursSinceRecentlyCreated: number = 24;
     const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
