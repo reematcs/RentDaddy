@@ -3,13 +3,14 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/mock/gomock"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/mocks"
+	"github.com/careecodes/RentDaddy/internal/db/generated/mocks"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
