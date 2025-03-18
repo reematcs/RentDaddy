@@ -320,6 +320,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 		s3:      s3.New(sess),
 		bucket:  "rentdaddydocumenso",
 	}
+
 }
 
 // GenerateLeaseURL generates a pre-signed S3 URL for lease document viewing.
@@ -486,8 +487,8 @@ func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Fetch lease template from DB
-	leaseTemplate, err := h.queries.GetLeaseTemplateByID(context.Background(), req.LeaseTemplateID)
+	// Fetch lease template using `GetLeaseWithTemplate`
+	leaseTemplate, err := h.queries.GetLeaseWithTemplate(context.Background(), req.LeaseTemplateID)
 	if err != nil {
 		http.Error(w, "Lease template not found", http.StatusNotFound)
 		return
@@ -497,7 +498,7 @@ func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Re
 	s3Client := h.s3
 	getObjInput := &s3.GetObjectInput{
 		Bucket: aws.String(h.bucket),
-		Key:    aws.String(leaseTemplate.S3Key),
+		Key:    aws.String(leaseTemplate.TemplateS3Key),
 	}
 	obj, err := s3Client.GetObject(getObjInput)
 	if err != nil {
@@ -523,14 +524,7 @@ func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Re
 
 	// Create a new PDF writer
 	pdfWriter := model.NewPdfWriter()
-
-	numPages, err := pdfReader.GetNumPages()
-	if err != nil {
-		http.Error(w, "Error getting page count", http.StatusInternalServerError)
-		return
-	}
-
-	for i := 0; i < numPages; i++ {
+	for i := 0; i < len(pdfReader.PageList); i++ {
 		page, err := pdfReader.GetPage(i + 1)
 		if err != nil {
 			http.Error(w, "Error reading page", http.StatusInternalServerError)
@@ -543,22 +537,8 @@ func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	// Load AcroForm fields
-	acroForm := pdfReader.AcroForm
-	if acroForm == nil {
-		http.Error(w, "PDF does not contain AcroForm fields", http.StatusInternalServerError)
-		return
-	}
-
-	// Get all form fields
-	fields := *acroForm.Fields
-	if len(fields) == 0 {
-		http.Error(w, "No AcroForm fields found in PDF", http.StatusInternalServerError)
-		return
-	}
-
-	// Populate fields
-	for _, field := range fields {
+	// Load AcroForm fields and populate them
+	for _, field := range *pdfReader.AcroForm.Fields {
 		fieldName := field.T.String()
 		switch fieldName {
 		case "TenantName":
@@ -600,10 +580,10 @@ func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Re
 		LeaseTemplateID: pgtype.Int4{Int32: req.LeaseTemplateID, Valid: true},
 		TenantID:        int64(req.TenantID),
 		LandlordID:      int64(req.LandlordID),
-		ApartmentID:     int64{req.ApartmentID, Valid: true},
+		ApartmentID:     pgtype.Int8{Int64: int64(req.ApartmentID), Valid: req.ApartmentID != 0},
 		LeaseStartDate:  pgtype.Date{Time: req.LeaseStartDate, Valid: true},
 		LeaseEndDate:    pgtype.Date{Time: req.LeaseEndDate, Valid: true},
-		RentAmount:      pgtype.Numeric{Valid: true}, // Ensure correct parsing
+		RentAmount:      pgtype.Numeric{Valid: true},
 		LeaseStatus:     "pending",
 		CreatedBy:       int64(req.CreatedBy),
 		UpdatedBy:       int64(req.UpdatedBy),

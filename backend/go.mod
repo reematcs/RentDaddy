@@ -11,10 +11,13 @@ require (
 	github.com/clerk/clerk-sdk-go/v2 v2.2.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-faker/faker/v4 v4.6.0
+	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/stretchr/testify v1.10.0
 	github.com/svix/svix-webhooks v1.61.3
 	github.com/unidoc/unipdf/v3 v3.67.0
+	go.uber.org/mock v0.5.0
 )
 
 require (
@@ -28,7 +31,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/unidoc/freetype v0.2.3 // indirect
 	github.com/unidoc/pkcs7 v0.2.0 // indirect
 	github.com/unidoc/timestamp v0.0.0-20200412005513-91597fd3793a // indirect
