@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/internal/smtp"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -86,7 +87,7 @@ type CreateLeaseRequest struct {
 }
 
 // CreateLease - Admin Creates a Lease
-func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
+func (h LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	var req CreateLeaseRequest
 
 	// Decode JSON Request
@@ -290,6 +291,7 @@ func (h LeaseHandler) GenerateLeaseDocument(w http.ResponseWriter, r *http.Reque
 		"message":   "Lease document generated successfully",
 		"lease_url": fmt.Sprintf("https://%s.s3.amazonaws.com/%s", h.bucket, newLeaseKey),
 	})
+
 }
 
 // LeaseHandler handles lease-related operations.
@@ -465,4 +467,166 @@ func StartLeaseActivationCron(db *sql.DB) {
 		log.Fatalf("Error initializing cron job: %v", err)
 	}
 	c.Start()
+}
+
+// CreateLeaseFromTemplate - Admin Creates Lease from Template
+func (h *LeaseHandler) CreateLeaseFromTemplate(w http.ResponseWriter, r *http.Request) {
+	var req CreateLeaseRequest
+
+	// Decode JSON Request
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate Input
+	if req.TenantID == 0 || req.LandlordID == 0 || req.ApartmentID == 0 || req.LeaseTemplateID == 0 {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	// Fetch lease template from DB
+	leaseTemplate, err := h.queries.GetLeaseTemplateByID(context.Background(), req.LeaseTemplateID)
+	if err != nil {
+		http.Error(w, "Lease template not found", http.StatusNotFound)
+		return
+	}
+
+	// Download template from S3
+	s3Client := h.s3
+	getObjInput := &s3.GetObjectInput{
+		Bucket: aws.String(h.bucket),
+		Key:    aws.String(leaseTemplate.S3Key),
+	}
+	obj, err := s3Client.GetObject(getObjInput)
+	if err != nil {
+		http.Error(w, "Error fetching template", http.StatusInternalServerError)
+		return
+	}
+	defer obj.Body.Close()
+
+	// Read the PDF file into memory
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, obj.Body)
+	if err != nil {
+		http.Error(w, "Error reading template", http.StatusInternalServerError)
+		return
+	}
+
+	// Load PDF and fill AcroForm fields
+	pdfReader, err := model.NewPdfReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		http.Error(w, "Error opening PDF", http.StatusInternalServerError)
+		return
+	}
+
+	// Create a new PDF writer
+	pdfWriter := model.NewPdfWriter()
+
+	numPages, err := pdfReader.GetNumPages()
+	if err != nil {
+		http.Error(w, "Error getting page count", http.StatusInternalServerError)
+		return
+	}
+
+	for i := 0; i < numPages; i++ {
+		page, err := pdfReader.GetPage(i + 1)
+		if err != nil {
+			http.Error(w, "Error reading page", http.StatusInternalServerError)
+			return
+		}
+		err = pdfWriter.AddPage(page)
+		if err != nil {
+			http.Error(w, "Error adding page to PDF", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Load AcroForm fields
+	acroForm := pdfReader.AcroForm
+	if acroForm == nil {
+		http.Error(w, "PDF does not contain AcroForm fields", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all form fields
+	fields := *acroForm.Fields
+	if len(fields) == 0 {
+		http.Error(w, "No AcroForm fields found in PDF", http.StatusInternalServerError)
+		return
+	}
+
+	// Populate fields
+	for _, field := range fields {
+		fieldName := field.T.String()
+		switch fieldName {
+		case "TenantName":
+			field.V = core.MakeString(strconv.Itoa(int(req.TenantID)))
+		case "LeaseStart":
+			field.V = core.MakeString(req.LeaseStartDate.Format("2006-01-02"))
+		case "LeaseEnd":
+			field.V = core.MakeString(req.LeaseEndDate.Format("2006-01-02"))
+		case "RentAmount":
+			field.V = core.MakeString(fmt.Sprintf("%.2f", req.RentAmount))
+		}
+	}
+
+	// Write the modified PDF to a buffer
+	modifiedPDF := new(bytes.Buffer)
+	err = pdfWriter.Write(modifiedPDF)
+	if err != nil {
+		http.Error(w, "Error generating filled PDF", http.StatusInternalServerError)
+		return
+	}
+
+	// Upload generated lease to S3
+	newLeaseKey := fmt.Sprintf("leases/%d_filled.pdf", req.TenantID)
+	_, err = s3Client.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(h.bucket),
+		Key:    aws.String(newLeaseKey),
+		Body:   bytes.NewReader(modifiedPDF.Bytes()),
+		ACL:    aws.String("private"),
+	})
+	if err != nil {
+		http.Error(w, "Error uploading lease", http.StatusInternalServerError)
+		return
+	}
+
+	// Store lease in DB
+	id, err := h.queries.CreateLease(context.Background(), db.CreateLeaseParams{
+		LeaseVersion:    1,
+		LeaseFileKey:    pgtype.Text{String: newLeaseKey, Valid: true},
+		LeaseTemplateID: pgtype.Int4{Int32: req.LeaseTemplateID, Valid: true},
+		TenantID:        int64(req.TenantID),
+		LandlordID:      int64(req.LandlordID),
+		ApartmentID:     int64{req.ApartmentID, Valid: true},
+		LeaseStartDate:  pgtype.Date{Time: req.LeaseStartDate, Valid: true},
+		LeaseEndDate:    pgtype.Date{Time: req.LeaseEndDate, Valid: true},
+		RentAmount:      pgtype.Numeric{Valid: true}, // Ensure correct parsing
+		LeaseStatus:     "pending",
+		CreatedBy:       int64(req.CreatedBy),
+		UpdatedBy:       int64(req.UpdatedBy),
+	})
+
+	if err != nil {
+		http.Error(w, "Failed to store lease", http.StatusInternalServerError)
+		return
+	}
+
+	// Send email to tenant with signing link
+	signingURL := fmt.Sprintf("https://yourapp.com/tenant/lease/sign/%d", id)
+	emailBody := fmt.Sprintf("Your lease is ready for signing. Click the link: %s", signingURL)
+
+	err = smtp.SendEmail("tenant@example.com", "Lease Signing Request", emailBody)
+	if err != nil {
+		http.Error(w, "Failed to send email", http.StatusInternalServerError)
+		return
+	}
+
+	h.respondWithJSON(w, http.StatusOK, map[string]interface{}{
+		"message":  "Lease created successfully",
+		"lease_id": id,
+		"sign_url": signingURL,
+	})
 }
