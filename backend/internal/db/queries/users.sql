@@ -5,12 +5,9 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    role,
-    last_login,
-    updated_at,
-    created_at
+    role
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at;
 
 -- name: UpdateUserRole :exec

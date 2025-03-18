@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.6
 	github.com/clerk/clerk-sdk-go/v2 v2.2.0
 	github.com/go-chi/cors v1.2.1
+	github.com/go-faker/faker/v4 v4.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/svix/svix-webhooks v1.61.3

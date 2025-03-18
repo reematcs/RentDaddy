@@ -228,11 +228,8 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Email:     primaryUserEmail,
 		// Phone numbers are paid tier
 		// Create a phone number generator
-		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
-		Role:      userRole,
-		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
-		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		Phone: pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
+		Role:  userRole,
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
