@@ -7,128 +7,182 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype" // Updated import path
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestCreateLocker(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-    // Parse request body
-    var req struct {
-        AccessCode string `json:"access_code"`
-        UserID     *int32 `json:"user_id,omitempty"` // Make it optional
-        Status     string `json:"status"`
-    }
-
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request body", http.StatusBadRequest)
-        return
-    }
-
-    // For testing purposes, set UserID to nil to avoid foreign key constraint
-    createParams := db.CreateLockerParams{
-        AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
-        UserID:    pgtype.Int8{Valid: false}, // Set Valid: false for NULL value
-        InUse:     false,
-    }
-
-    locker := queries.CreateLocker(r.Context(), createParams)
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(locker)
+type LockerHandler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
 }
 
-func GetLockersHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries, limit, offset int32) {
-    lockers, err := queries.GetLockers(r.Context(), db.GetLockersParams{
-        Limit:  limit,
-        Offset: offset,
-    })
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    json.NewEncoder(w).Encode(lockers)
+// Add this new struct near the top with other structs
+type UpdateLockerRequest struct {
+    UserID     *int64 `json:"user_id,omitempty"`
+    InUse      *bool  `json:"in_use,omitempty"`
+    AccessCode *string `json:"access_code,omitempty"`
 }
 
-func GetLockerHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-	// id needs to be a string because chi.URLParam returns a string?
+func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
+	return &LockerHandler{
+		pool:    pool,
+		queries: queries,
+	}
+}
+
+func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccessCode string `json:"access_code"`
+		UserID     *int32 `json:"user_id,omitempty"`
+		Status     string `json:"status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	createParams := db.CreateLockerParams{
+		AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
+		UserID:    pgtype.Int8{Valid: false},
+		InUse:     false,
+	}
+
+	locker := l.queries.CreateLocker(r.Context(), createParams)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(locker)
+}
+
+func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	limit := int32(20)
+	if limitStr != "" {
+		if parsedLimit, err := strconv.ParseInt(limitStr, 10, 32); err == nil {
+			limit = int32(parsedLimit)
+		}
+	}
+
+	offset := int32(0)
+	if offsetStr != "" {
+		if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 32); err == nil {
+			offset = int32(parsedOffset)
+		}
+	}
+
+	lockers, err := l.queries.GetLockers(r.Context(), db.GetLockersParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(lockers)
+}
+
+func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid locker ID", http.StatusBadRequest)
+		return
+	}
+	
+	locker, err := l.queries.GetLocker(r.Context(), id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(locker)
+}
+
+// Add this new handler function
+func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     id, err := strconv.ParseInt(idStr, 10, 64)
     if err != nil {
         http.Error(w, "Invalid locker ID", http.StatusBadRequest)
         return
     }
-    locker, err := queries.GetLocker(r.Context(), id)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusNotFound)
-        return
-    }
-    json.NewEncoder(w).Encode(locker)
-}
 
-func UpdateLockerUserHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-    // Convert string ID to int64
-    idStr := chi.URLParam(r, "id")
-    id, err := strconv.ParseInt(idStr, 10, 64)
-    if err != nil {
-        http.Error(w, "Invalid locker ID", http.StatusBadRequest)
-        return
-    }
-    
-    // Define request structure
-    var req struct {
-        UserID *int64 `json:"user_id"`
-        InUse  bool   `json:"in_use"`
-    }
-
-    // Decode request body
+    var req UpdateLockerRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
 
-    // Create pgtype.Int8 value
-    var userID pgtype.Int8
-    if req.UserID == nil {
-        userID = pgtype.Int8{Valid: false}
-    } else {
-        userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+    // Handle user and status update
+    if req.UserID != nil || req.InUse != nil {
+        var userID pgtype.Int8
+        if req.UserID == nil {
+            userID = pgtype.Int8{Valid: false}
+        } else {
+            userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+        }
+
+        inUse := false
+        if req.InUse != nil {
+            inUse = *req.InUse
+        }
+
+        err = l.queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
+            ID:     id,
+            UserID: userID,
+            InUse:  inUse,
+        })
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
     }
 
-    // Update locker user and status
-    err = queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
-        ID:     id,
-        UserID: userID,
-        InUse:  req.InUse,
-    })
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+    // Handle access code update
+    if req.AccessCode != nil {
+        err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
+            ID:         id,
+            AccessCode: pgtype.Text{String: *req.AccessCode, Valid: true},
+        })
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
     }
 
     w.WriteHeader(http.StatusOK)
 }
 
-func UpdateLockerAccessCodeHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
-    idStr := chi.URLParam(r, "id")
-    id, err := strconv.ParseInt(idStr, 10, 64)
-    if err != nil {
-        http.Error(w, "Invalid locker ID", http.StatusBadRequest)
-        return
-    }
-    var req struct {
-        AccessCode string `json:"access_code"`
-    }
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-    err = queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
-        ID:         id,
-        AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
-    })
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    w.WriteHeader(http.StatusOK)
+func (l LockerHandler) CreateManyLockers(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Count int32 `json:"count"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Count <= 0 || req.Count > 100 {
+		http.Error(w, "Count must be between 1 and 100", http.StatusBadRequest)
+		return
+	}
+
+	rowsAffected, err := l.queries.CreateManyLockers(r.Context(), req.Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int64{
+		"lockers_created": rowsAffected,
+	})
 }

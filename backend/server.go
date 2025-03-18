@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/signal"
 	"syscall"
@@ -110,6 +109,10 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+	
+	// Initialize locker handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+
 	// Tenants Routes
 	r.Route("/tenants", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +128,37 @@ func main() {
 		})
 		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
+
+		r.Route("/lockers", func(r chi.Router) {
+			// Get all lockers with pagination
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("List Lockers")
+				lockerHandler.GetLockers(w, r)
+			})
+			// Create many lockers (used for the initial apartment setup)
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Creating Multiple Lockers")
+				lockerHandler.CreateManyLockers(w, r)
+			})
+			
+			// Routes for specific locker operations
+			r.Route("/{id}", func(r chi.Router) {
+				// Get single locker
+				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+					log.Println("Get Locker")
+					lockerHandler.GetLocker(w, r)
+				})
+		
+				// Update locker (user/status or access code)d
+				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+					log.Println("Update Locker")
+					lockerHandler.UpdateLocker(w, r)
+				})
+			})
+		})
 	})
+
+
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -240,108 +273,6 @@ func main() {
 		json.NewEncoder(w).Encode(resource)
 	})
 	// End of Clerk Routes
-
-	// Locker Test Routes
-	r.Route("/test/lockers", func(r chi.Router) {
-		// Test getting all lockers
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			recorder := httptest.NewRecorder()
-			handlers.GetLockersHandler(recorder, r, queries, 10, 0)
-			
-			// Copy the response from recorder to the actual response writer
-			for k, v := range recorder.Header() {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(recorder.Code)
-			w.Write(recorder.Body.Bytes())
-		})
-
-		// Add this new route for creating a locker
-		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-			recorder := httptest.NewRecorder()
-			handlers.TestCreateLocker(recorder, r, queries)
-			
-			// Copy the response from recorder to the actual response writer
-			for k, v := range recorder.Header() {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(recorder.Code)
-			w.Write(recorder.Body.Bytes())
-		})
-
-		// Test getting single locker
-		r.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			recorder := httptest.NewRecorder()
-			handlers.GetLockerHandler(recorder, r, queries)
-			
-			// Copy the response from recorder to the actual response writer
-			for k, v := range recorder.Header() {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(recorder.Code)
-			w.Write(recorder.Body.Bytes())
-		})
-
-		// Test updating locker user
-		r.Patch("/{id}/user", func(w http.ResponseWriter, r *http.Request) {
-			recorder := httptest.NewRecorder()
-			handlers.UpdateLockerUserHandler(recorder, r, queries)
-			
-			// Copy the response from recorder to the actual response writer
-			for k, v := range recorder.Header() {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(recorder.Code)
-			w.Write(recorder.Body.Bytes())
-		})
-
-		// Test updating locker access code
-		r.Patch("/{id}/access-code", func(w http.ResponseWriter, r *http.Request) {
-			recorder := httptest.NewRecorder()
-			handlers.UpdateLockerAccessCodeHandler(recorder, r, queries)
-			
-			// Copy the response from recorder to the actual response writer
-			for k, v := range recorder.Header() {
-				w.Header()[k] = v
-			}
-			w.WriteHeader(recorder.Code)
-			w.Write(recorder.Body.Bytes())
-		})
-	})
-
-	// Start of Locker Routes
-	r.Route("/lockers", func(r chi.Router) {
-		// Get all lockers with pagination
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("List Lockers")
-			// Parse query parameters for pagination
-			limit := int32(10)  // default limit
-			offset := int32(0)  // default offset
-			handlers.GetLockersHandler(w, r, queries, limit, offset)
-		})
-	
-		// Routes for specific locker operations
-		r.Route("/{id}", func(r chi.Router) {
-			// Get single locker
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Get Locker")
-				handlers.GetLockerHandler(w, r, queries)
-			})
-	
-			// Update locker user and status
-			r.Patch("/user", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Update Locker User")
-				handlers.UpdateLockerUserHandler(w, r, queries)
-			})
-	
-			// Update locker access code
-			r.Patch("/access-code", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Update Locker Access Code")
-				handlers.UpdateLockerAccessCodeHandler(w, r, queries)
-			})
-		})
-	})
-	// End of Locker Routes
 
 	// Server config
 	port := os.Getenv("PORT")

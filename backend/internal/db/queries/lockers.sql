@@ -7,6 +7,17 @@ INSERT INTO lockers (
     $1, $2, $3
 );
 
+-- name: CreateManyLockers :execrows
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+)
+SELECT 
+    gen_random_uuid()::text,  -- generates a random UUID for access code
+    NULL::bigint,             -- default null user_id, explicitly cast to bigint
+    false                     -- default not in use
+FROM generate_series(1, sqlc.arg(count)::int);  -- creates n number of rows
 
 -- name: UpdateLockerUser :exec
 UPDATE lockers

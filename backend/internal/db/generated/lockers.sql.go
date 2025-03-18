@@ -32,6 +32,27 @@ func (q *Queries) CreateLocker(ctx context.Context, arg CreateLockerParams) erro
 	return err
 }
 
+const createManyLockers = `-- name: CreateManyLockers :execrows
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+)
+SELECT 
+    gen_random_uuid()::text,  -- generates a random UUID for access code
+    NULL::bigint,             -- default null user_id, explicitly cast to bigint
+    false                     -- default not in use
+FROM generate_series(1, $1::int)
+`
+
+func (q *Queries) CreateManyLockers(ctx context.Context, count int32) (int64, error) {
+	result, err := q.db.Exec(ctx, createManyLockers, count)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getLocker = `-- name: GetLocker :one
 SELECT id, access_code, in_use, user_id
 FROM lockers
@@ -105,6 +126,7 @@ func (q *Queries) UpdateAccessCode(ctx context.Context, arg UpdateAccessCodePara
 }
 
 const updateLockerUser = `-- name: UpdateLockerUser :exec
+
 UPDATE lockers
 SET user_id = $2, in_use = $3
 WHERE id = $1
@@ -116,6 +138,7 @@ type UpdateLockerUserParams struct {
 	InUse  bool        `json:"in_use"`
 }
 
+// creates n number of rows
 func (q *Queries) UpdateLockerUser(ctx context.Context, arg UpdateLockerUserParams) error {
 	_, err := q.db.Exec(ctx, updateLockerUser, arg.ID, arg.UserID, arg.InUse)
 	return err
