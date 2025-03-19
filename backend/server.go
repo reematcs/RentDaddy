@@ -128,37 +128,35 @@ func main() {
 		})
 		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
+	})
 
-		r.Route("/lockers", func(r chi.Router) {
-			// Get all lockers with pagination
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("List Lockers")
-				lockerHandler.GetLockers(w, r)
-			})
-			// Create many lockers (used for the initial apartment setup)
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Creating Multiple Lockers")
-				lockerHandler.CreateManyLockers(w, r)
-			})
-			
-			// Routes for specific locker operations
-			r.Route("/{id}", func(r chi.Router) {
-				// Get single locker
-				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					log.Println("Get Locker")
-					lockerHandler.GetLocker(w, r)
-				})
+	r.Route("/lockers", func(r chi.Router) {
+		// Get all lockers with pagination
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("List Lockers")
+			lockerHandler.GetLockers(w, r)
+		})
+		// Create many lockers (used for the initial apartment setup)
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Creating Multiple Lockers")
+			lockerHandler.CreateManyLockers(w, r)
+		})
 		
-				// Update locker (user/status or access code)d
-				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-					log.Println("Update Locker")
-					lockerHandler.UpdateLocker(w, r)
-				})
+		// Routes for specific locker operations
+		r.Route("/{id}", func(r chi.Router) {
+			// Get single locker
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Locker")
+				lockerHandler.GetLocker(w, r)
+			})
+	
+			// Update locker (user/status or access code)d
+			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Update Locker")
+				lockerHandler.UpdateLocker(w, r)
 			})
 		})
 	})
-
-
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

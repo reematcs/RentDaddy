@@ -16,7 +16,6 @@ type LockerHandler struct {
 	queries *db.Queries
 }
 
-// Add this new struct near the top with other structs
 type UpdateLockerRequest struct {
     UserID     *int64 `json:"user_id,omitempty"`
     InUse      *bool  `json:"in_use,omitempty"`
@@ -56,6 +55,7 @@ func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) 
 }
 
 func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
+	// Get limit and offset query parameters for pagination
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 
@@ -73,6 +73,7 @@ func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Query database for lockers with pagination params
 	lockers, err := l.queries.GetLockers(r.Context(), db.GetLockersParams{
 		Limit:  limit,
 		Offset: offset,
@@ -104,7 +105,7 @@ func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(locker)
 }
 
-// Add this new handler function
+// This can handle updating the userId, access code, and the inUse status separately and together.
 func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     id, err := strconv.ParseInt(idStr, 10, 64)
@@ -123,11 +124,14 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
     if req.UserID != nil || req.InUse != nil {
         var userID pgtype.Int8
         if req.UserID == nil {
+			// If there is no userId the field is invalid
             userID = pgtype.Int8{Valid: false}
         } else {
+			// If there is a userId, it is stored and valid.
             userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
         }
 
+		// inUse is false by default, but takes in a value if given
         inUse := false
         if req.InUse != nil {
             inUse = *req.InUse
@@ -159,6 +163,7 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
+// This is the function that we are using to create all the lockers based off the given number in the Apartment setup page.
 func (l LockerHandler) CreateManyLockers(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Count int32 `json:"count"`
