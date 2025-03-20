@@ -87,7 +87,7 @@ const items: MenuProps["items"] = [
     {
         key: "settings",
         icon: React.createElement(SettingOutlined),
-        label: <Link to="/components/settings">Settings</Link>,
+        label: <Link to="/settings">Settings</Link>,
     },
 ];
 

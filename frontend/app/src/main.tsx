@@ -34,6 +34,7 @@ import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
+import SettingsPage from "./pages/SettingsPage.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -163,6 +164,7 @@ createRoot(document.getElementById("root")!).render(
                                             path="admin-view-and-edit-work-orders-and-complaints"
                                             element={<AdminWorkOrder />}
                                         />
+                                        <Route path="settings" element={<SettingsPage />} />
                                     </Route>
 
                                     {/* Tenant Route Group */}
@@ -183,9 +185,13 @@ createRoot(document.getElementById("root")!).render(
                                             path="tenant-work-orders-and-complaints"
                                             element={<TenantComplaintsAndWorkOrders />}
                                         />
+                                        <Route path="settings" element={<SettingsPage />} />
                                     </Route>
                                 </Route>
                             </Route>
+
+                            {/* Settings Route */}
+
                             {/* End of Protected Routes (Admin & Tenant) */}
 
                             {/* 404 Route - Always place at the end to catch unmatched routes */}

@@ -81,8 +81,8 @@ const SidebarLinks = () => {
                         Work Orders & Complaints
                     </Link>
                     <Link
-                        to="/components/settings"
-                        className={getLinkClass("/components/settings") + " hover-lift transition-all"}>
+                        to="/admin/settings"
+                        className={getLinkClass("/admin/settings") + " hover-lift transition-all"}>
                         Settings
                     </Link>
                 </div>
