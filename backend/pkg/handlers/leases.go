@@ -1113,7 +1113,10 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 	maxLeaseNumber := maxLeaseNumberRaw.(int64)
 	maxLeaseNumber = maxLeaseNumber + 1
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -1124,15 +1127,24 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		LeaseNumber:    maxLeaseNumber,
 		ExternalDocID:  docID,
 		TenantID:       req.TenantID,
+<<<<<<< Updated upstream
 		LandlordID:     int64(landlordID),
+=======
+		LandlordID:     req.LandlordID,
+>>>>>>> Stashed changes
 		ApartmentID:    req.ApartmentID,
 		LeaseStartDate: pgtype.Date{Time: startDate, Valid: true},
 		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:         db.LeaseStatus(db.LeaseStatusPendingApproval),
 		LeasePdfS3:     pgtype.Text{String: s3bucket, Valid: true},
+<<<<<<< Updated upstream
 		CreatedBy:      int64(landlordID), // Use landlord ID from database
 		UpdatedBy:      int64(landlordID),
+=======
+		CreatedBy:      landlordID, // Use landlord ID from request
+		UpdatedBy:      landlordID,
+>>>>>>> Stashed changes
 		TenantSigningUrl: pgtype.Text{
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",
