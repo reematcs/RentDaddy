@@ -7,6 +7,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/exec"
+	"sync"
+	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/middleware"
@@ -18,6 +21,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type SetupAdminRequest struct {
+	ClerkID string `json:"clerk_id"`
+}
 type AdminOverviewRequest struct {
 	WorkeOrders []db.WorkOrder `json:"work_orders"`
 	Complaints  []db.Complaint `json:"complaints"`
@@ -171,10 +177,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	complaints, err := u.queries.ListComplaints(r.Context(), db.ListComplaintsParams{
-		Limit:  5,
-		Offset: 0,
-	})
+	complaints, err := u.queries.ListComplaints(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying complaints for adminOverview: %v", err)
 		http.Error(w, "Error querying complaints", http.StatusInternalServerError)
@@ -556,7 +559,7 @@ func (u UserHandler) TenantCreateComplaint(w http.ResponseWriter, r *http.Reques
 		Category:    createComplaintReq.Category,
 		Title:       createComplaintReq.Title,
 		Description: createComplaintReq.Description,
-		UnitNumber:  pgtype.Int2{Int16: createComplaintReq.UnitNumber.Int16, Valid: true},
+		UnitNumber:  pgtype.Int8{Int64: createComplaintReq.UnitNumber.Int64, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed creating tenant complaint: %v", err)
@@ -674,3 +677,310 @@ func (u UserHandler) TenantCreateWorkOrder(w http.ResponseWriter, r *http.Reques
 }
 
 // TENANT END
+func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
+	var payload SetupAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Always fetch Clerk user first
+	clerkUser, err := user.Get(ctx, payload.ClerkID)
+	if err != nil {
+		log.Printf("[SETUP] Failed to fetch Clerk user: %v", err)
+		http.Error(w, "Invalid Clerk ID", http.StatusBadRequest)
+		return
+	}
+
+	// Extract primary email
+	primaryEmail := ""
+	for _, email := range clerkUser.EmailAddresses {
+		if clerkUser.PrimaryEmailAddressID != nil && email.ID == *clerkUser.PrimaryEmailAddressID {
+			primaryEmail = email.EmailAddress
+			break
+		}
+	}
+	if primaryEmail == "" && len(clerkUser.EmailAddresses) > 0 {
+		primaryEmail = clerkUser.EmailAddresses[0].EmailAddress
+	}
+
+	// Parse public metadata from Clerk
+	var metadata ClerkUserPublicMetaData
+	if err := json.Unmarshal(clerkUser.PublicMetadata, &metadata); err != nil {
+		log.Printf("[SETUP] Failed parsing Clerk metadata: %v", err)
+		http.Error(w, "Invalid Clerk metadata", http.StatusBadRequest)
+		return
+	}
+
+	// Check if an admin already exists in the DB
+	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
+	if err == nil && len(admins) > 0 {
+		// Allow only if this is the default admin
+		if primaryEmail == "wrldconnect1@gmail.com" && metadata.DbId == 1 {
+			log.Println("[SETUP] Default admin override accepted")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Default admin recognized"))
+			return
+		}
+		log.Println("[SETUP] Admin already exists and override not allowed")
+		http.Error(w, "Admin already seeded", http.StatusConflict)
+		return
+	}
+
+	// Check if the intended db_id already exists
+	if _, err := u.queries.GetUserByID(ctx, int64(metadata.DbId)); err == nil {
+		log.Printf("[SETUP] db_id %d already exists in DB", metadata.DbId)
+		http.Error(w, "db_id already in use", http.StatusConflict)
+		return
+	}
+
+	// Insert the admin into the DB using provided db_id
+	admin, err := u.queries.InsertAdminWithID(ctx, db.InsertAdminWithIDParams{
+		ID:        int64(metadata.DbId),
+		ClerkID:   clerkUser.ID,
+		FirstName: deref(clerkUser.FirstName),
+		LastName:  deref(clerkUser.LastName),
+		Email:     primaryEmail,
+		Role:      db.RoleAdmin,
+	})
+	if err != nil {
+		log.Printf("[SETUP] Failed to insert admin into DB: %v", err)
+		http.Error(w, "Failed to insert admin", http.StatusInternalServerError)
+		return
+	}
+
+	// Update Clerk metadata if needed
+	meta := ClerkUserPublicMetaData{
+		DbId: int32(admin.ID),
+		Role: db.RoleAdmin,
+	}
+	metaBytes, _ := json.Marshal(meta)
+	metaRawMessage := json.RawMessage(metaBytes)
+	_, err = user.Update(ctx, clerkUser.ID, &user.UpdateParams{
+		PublicMetadata: &metaRawMessage,
+	})
+	if err != nil {
+		log.Printf("[SETUP] Failed to update Clerk metadata: %v", err)
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("Admin seeded successfully"))
+}
+
+// deref returns the string value of a pointer or "" if nil
+func deref(s *string) string {
+	if s != nil {
+		return *s
+	}
+	return ""
+}
+// SeedingState tracks the progress of seeding operations
+type SeedingState struct {
+	InProgress   bool   `json:"in_progress"`
+	LastError    string `json:"last_error,omitempty"`
+	LastComplete string `json:"last_complete,omitempty"`
+	StartedAt    string `json:"started_at,omitempty"`
+}
+
+// Package-level variables to track seeding status
+var (
+	usersSeedingState    = SeedingState{InProgress: false}
+	usersSeedingMutex    sync.Mutex
+	dataSeedingState     = SeedingState{InProgress: false}
+	dataSeedingMutex     sync.Mutex
+)
+
+func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("[SEED_USERS] Admin login detected, no tenants found. Auto-seeding.")
+	log.Println("[SEED_USERS] Triggered by admin")
+
+	// Set CORS headers immediately to ensure they're sent even if the operation times out
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+	// Check if seeding is already in progress
+	usersSeedingMutex.Lock()
+	if usersSeedingState.InProgress {
+		resp := map[string]string{
+			"status":  "in_progress",
+			"message": "User seeding is already in progress",
+		}
+		usersSeedingMutex.Unlock()
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Mark seeding as in progress with timestamp
+	now := time.Now()
+	usersSeedingState.InProgress = true
+	usersSeedingState.LastError = ""
+	usersSeedingState.StartedAt = now.Format(time.RFC3339)
+	usersSeedingMutex.Unlock()
+
+	// Start the seeding process asynchronously
+	go func() {
+		defer func() {
+			usersSeedingMutex.Lock()
+			usersSeedingState.InProgress = false
+			usersSeedingState.LastComplete = time.Now().Format(time.RFC3339)
+			usersSeedingMutex.Unlock()
+		}()
+
+		cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
+		cmd.Dir = "/app" // ECS container working directory
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			errMsg := err.Error()
+			if len(output) > 0 {
+				errMsg += ": " + string(output)
+			}
+			
+			log.Printf("[SEED_USERS] Failed: %v\nOutput: %s", err, string(output))
+			
+			usersSeedingMutex.Lock()
+			usersSeedingState.LastError = errMsg
+			usersSeedingMutex.Unlock()
+			return
+		}
+		
+		log.Println("[SEED_USERS] Seeding complete successfully")
+	}()
+
+	// Return immediately with a success message
+	resp := map[string]string{
+		"status":  "started",
+		"message": "User seeding process started",
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
+	log.Println("[SEED_DATA] Triggered by admin")
+
+	// Set CORS headers immediately to ensure they're sent even if the operation times out
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+	// Check if seeding is already in progress
+	dataSeedingMutex.Lock()
+	if dataSeedingState.InProgress {
+		resp := map[string]string{
+			"status":  "in_progress",
+			"message": "Data seeding is already in progress",
+		}
+		dataSeedingMutex.Unlock()
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Mark seeding as in progress with timestamp
+	now := time.Now()
+	dataSeedingState.InProgress = true
+	dataSeedingState.LastError = ""
+	dataSeedingState.StartedAt = now.Format(time.RFC3339)
+	dataSeedingMutex.Unlock()
+
+	// Start the seeding process asynchronously
+	go func() {
+		defer func() {
+			dataSeedingMutex.Lock()
+			dataSeedingState.InProgress = false
+			dataSeedingState.LastComplete = time.Now().Format(time.RFC3339)
+			dataSeedingMutex.Unlock()
+		}()
+
+		cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
+		cmd.Dir = "/app"
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			errMsg := err.Error()
+			if len(output) > 0 {
+				errMsg += ": " + string(output)
+			}
+			
+			log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", err, string(output))
+			
+			dataSeedingMutex.Lock()
+			dataSeedingState.LastError = errMsg
+			dataSeedingMutex.Unlock()
+			return
+		}
+		
+		log.Println("[SEED_DATA] Seeding complete successfully")
+	}()
+
+	// Return immediately with a success message
+	resp := map[string]string{
+		"status":  "started",
+		"message": "Complaints and work orders seeding started",
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
+	if err != nil {
+		log.Printf("[CHECK_ADMIN] DB error: %v", err)
+		http.Error(w, "Error checking admin", http.StatusInternalServerError)
+		return
+	}
+
+	tenants, err := u.queries.ListUsersByRole(ctx, db.RoleTenant)
+	if err != nil {
+		log.Printf("[CHECK_ADMIN] DB error listing tenants: %v", err)
+		http.Error(w, "Error checking tenants", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"admin_exists":  len(admins) > 0,
+		"tenants_exist": len(tenants) > 0,
+	})
+}
+
+// GetSeedingStatus returns the current status of seeding operations
+func (u UserHandler) GetSeedingStatus(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	
+	// Get current status
+	usersSeedingMutex.Lock()
+	userStatus := usersSeedingState
+	usersSeedingMutex.Unlock()
+	
+	dataSeedingMutex.Lock()
+	dataStatus := dataSeedingState
+	dataSeedingMutex.Unlock()
+	
+	status := map[string]interface{}{
+		"user_seeding": userStatus,
+		"data_seeding": dataStatus,
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(status)
+}
