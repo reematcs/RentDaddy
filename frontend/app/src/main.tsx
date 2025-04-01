@@ -35,7 +35,6 @@ import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetup
 import TenantComplaints from "./pages/TenantComplaints.tsx";
 import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
-import SetupAdmin from "./pages/SetupAdmin";
 // Add type declaration for window global variables
 declare global {
     interface Window {
@@ -106,7 +105,6 @@ createRoot(document.getElementById("root")!).render(
                         signUpFallbackRedirectUrl="/"
                         signInFallbackRedirectUrl="/">
                         <Routes>
-                            <Route path="/setup" element={<SetupAdmin />} />
                             <Route element={<PreAuthedLayout />}>
                                 <Route path="/healthz" element={<div>ok</div>} />
                                 {/* Landing Page */}
