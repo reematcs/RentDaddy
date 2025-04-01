@@ -1,9 +1,19 @@
-// Import Bootstrap functions first
+// Place variable overrides first, then import just the styles you need. Note that some stylesheets are required no matter what.
+
+// Toggle global options
+$enable-gradients: true;
+$enable-shadows: true;
+
+$offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+
+// Include functions first
 @import "bootstrap/scss/functions";
 
-// Define custom colors and variables
+// Customize some defaults
 $text: #00050a;
 $background: #ffffff;
+
+// Colors
 
 // Primary
 $primary: #00674f;
@@ -26,34 +36,82 @@ $warning95: hsl(359, 60%, 62%, 95%);
 // Info
 $info: #f3f3f3;
 
-// Required Bootstrap setup - in the correct order
+// Text Contrast
+$text-contrast: #64d97b;
+
+// Background Contrast
+$bg-contrast: #64d97b;
+$primary-contrast: #ffdd00;
+$secondary-contrast: #ffdd00;
+$accent-contrast: #ffdd00;
+
+// Text
+$text5: hsl(210, 100%, 2%, 5%);
+$text50: hsl(210, 100%, 2%, 50%);
+$text95: hsl(210, 100%, 2%, 95%);
+
+// Gradients
+$linearPrimarySecondary: linear-gradient(#00674f, #7789f4);
+$linearPrimaryAccent: linear-gradient(#00674f, #d86364);
+$linearSecondaryAccent: linear-gradient(#7789f4, #d86364);
+$radialPrimarySecondary: radial-gradient(#00674f, #7789f4);
+$radialPrimaryAccent: radial-gradient(#00674f, #d86364);
+$radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
+
+// Required
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
 @import "bootstrap/scss/maps";
 @import "bootstrap/scss/mixins";
-@import "bootstrap/scss/root";
-
-// Components
 @import "bootstrap/scss/utilities";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+
+@import "bootstrap/scss/type";
+// @import "bootstrap/scss/images";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+// @import "bootstrap/scss/tables";
+// @import "bootstrap/scss/forms";
 @import "bootstrap/scss/buttons";
 @import "bootstrap/scss/transitions";
 @import "bootstrap/scss/dropdown";
-@import "bootstrap/scss/nav";
-@import "bootstrap/scss/navbar";
-@import "bootstrap/scss/card";
+// @import "bootstrap/scss/button-group";
+// @import "bootstrap/scss/nav";
+// @import "bootstrap/scss/navbar"; // Requires nav
+// @import "bootstrap/scss/card";
+// @import "bootstrap/scss/breadcrumb";
+// @import "bootstrap/scss/accordion";
+// @import "bootstrap/scss/pagination";
+// @import "bootstrap/scss/badge";
+// @import "bootstrap/scss/alert";
+// @import "bootstrap/scss/progress";
+// @import "bootstrap/scss/list-group";
 @import "bootstrap/scss/close";
-@import "bootstrap/scss/modal";
+// @import "bootstrap/scss/toasts";
+@import "bootstrap/scss/modal"; // Requires transitions
+// @import "bootstrap/scss/tooltip";
 @import "bootstrap/scss/popover";
-@import "bootstrap/scss/offcanvas";
+// @import "bootstrap/scss/carousel";
+// @import "bootstrap/scss/spinners";
+@import "bootstrap/scss/offcanvas"; // Requires transitions
+// @import "bootstrap/scss/placeholders";
 
-// Finally, API to generate utility classes
+// Helpers
+// @import "bootstrap/scss/helpers";
+
+// Utilities
 @import "bootstrap/scss/utilities/api";
 
-// Base Styles
+//
+// Custom styles
+//
+
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
+
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -64,7 +122,7 @@ body {
     margin: 0;
 }
 
-// Utility Classes
+//add more commonly used classes here to be able to write them quicker
 .flex {
     display: flex;
 }
@@ -87,16 +145,19 @@ body {
     justify-content: center;
 }
 
-.text-center {
-    text-align: center;
-}
-
-.text-success {
-    color: green;
-}
-
 .disabled-link {
     pointer-events: none;
+}
+
+.alert-container {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+// Ant Design Covers the Styling for Tables Well Enough
+// If we want / need more, we can add it here
+.table {
+    background: $secondary5;
 }
 
 .card {
@@ -109,6 +170,29 @@ body {
     text-align: center;
 }
 
+.card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 50%;
+    max-height: 90%;
+    text-align: center;
+}
+
+// Buttons
+// Primary Actions
+// Secondary Actions
+// Tertiary (If needed)
+// Cancel Buttons
+// Info
+// Loading
+// Disabled
+
+// Cards
+// Card-base
+// Consider using props
+// Card-dashboard
 .card-primary {
     background: $primary5;
 }
@@ -121,16 +205,15 @@ body {
     background: $warning95;
 }
 
-.card-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: stretch;
-    min-height: 50%;
-    max-height: 90%;
+.icon {
+    font-size: 24px;
+    margin-bottom: 16px;
 }
 
-// Footer & Header
+.btn {
+    display: inline-flex !important;
+}
+
 .footer {
     text-align: center;
     padding: 24px 50px;
@@ -145,6 +228,12 @@ body {
     margin: 1rem auto;
     max-height: 50px;
     border-radius: 8px;
+}
+
+.link {
+    padding: 0 16px;
+    color: #595959;
+    text-decoration: none;
 }
 
 .footer-text {
@@ -164,26 +253,58 @@ body {
     background-color: #00674f;
 }
 
-// Ant Design overrides
 .hoverable-row {
     &:hover {
-        background-color: #1890ff20 !important;
+        background-color: #1890ff20 !important; // Light blue with opacity
         transition: background-color 0.3s;
     }
 }
 
-.ant-table-tbody>tr.hoverable-row:hover>td {
+.ant-table-tbody > tr.hoverable-row:hover > td {
     background-color: #1890ff20 !important;
 }
 
-.ant-table-filter-dropdown {
-    background: #fff !important;
-    border: 1px solid #ccc !important;
-    padding: 10px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+// Text Sizes
+// H1 Page Titles
+// H2 Section Titles
+// H3 Section Subtitles
+// Regular Text = Size 16 <p>
+
+// Fonts
+// Poppins
+// Fallback System Font
+
+// Potentially
+// Tooltip
+
+.lease-table-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; // Adjust spacing as needed
 }
 
-// Dropdown tweaks
+.table-icon {
+    font-size: 24px;
+    color: #1890ff; // Ant Design blue
+}
+
+.ant-table-filter-dropdown {
+    background: #fff !important; // Ensures visibility
+    border: 1px solid #ccc !important; // Adds a visible border
+    padding: 10px !important; // Adds spacing
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); // Adds a slight shadow for contrast
+}
+
+// Hover Effects for the Sidebar Links
+.hover-lift {
+    transition: transform 0.3s ease-in-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
+
+// Admin tenant table action menu
 .custom-dropdown .ant-dropdown-menu-item,
 .custom-dropdown .ant-dropdown-menu-submenu-title {
     background-color: white !important;
@@ -196,151 +317,4 @@ body {
 .custom-dropdown .ant-dropdown-menu-submenu-title:active {
     background-color: #eeeeee !important;
     color: inherit !important;
-}
-
-// Hover Effects
-.hover-lift {
-    transition: transform 0.3s ease-in-out;
-}
-
-.hover-lift:hover {
-    transform: translateY(-5px);
-}
-
-// Modal Styles
-.modal-scroll-container {
-    overflow-y: auto;
-    max-height: 200px;
-}
-
-.warning-icon {
-    font-size: 4rem;
-    color: #faad14;
-    margin-bottom: 1rem;
-}
-
-.lease-modal-title {
-    margin-bottom: 1rem;
-}
-
-.lease-modal-note {
-    margin-top: 1rem;
-    font-style: italic;
-}
-
-// Buttons
-.btn-loading {
-    opacity: 0.65;
-    pointer-events: none;
-}
-
-.spinner-border {
-    display: inline-block;
-    width: 2rem;
-    height: 2rem;
-    vertical-align: -0.125em;
-    border: 0.25em solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: spinner-border .75s linear infinite;
-}
-
-.spinner-border.text-primary {
-    color: $primary;
-}
-
-@keyframes spinner-border {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-// Button colors
-.btn-success {
-    background-color: #52c41a !important;
-    color: white !important;
-    border-color: #52c41a !important;
-
-    &:hover {
-        background-color: darken(#52c41a, 10%) !important;
-        border-color: darken(#52c41a, 10%) !important;
-    }
-}
-
-.btn-danger {
-    background-color: #ff4d4f !important;
-    color: white !important;
-    border-color: #ff4d4f !important;
-
-    &:hover {
-        background-color: darken(#ff4d4f, 10%) !important;
-        border-color: darken(#ff4d4f, 10%) !important;
-    }
-}
-
-.btn-accent {
-    background-color: $warning !important;
-    color: white !important;
-    border-color: $warning !important;
-
-    &:hover {
-        background-color: darken($warning, 10%) !important;
-        border-color: darken($warning, 10%) !important;
-    }
-}
-
-.btn-primary {
-    background-color: $primary !important;
-    color: white !important;
-    border-color: $primary !important;
-
-    &:hover {
-        background-color: darken($primary, 10%) !important;
-        border-color: darken($primary, 10%) !important;
-    }
-}
-
-.btn-secondary {
-    background-color: $secondary !important;
-    color: white !important;
-    border-color: $secondary !important;
-
-    &:hover {
-        background-color: darken($secondary, 10%) !important;
-        border-color: darken($secondary, 10%) !important;
-    }
-}
-
-.btn-warning {
-    background-color: $warning !important;
-    color: white !important;
-    border-color: $warning !important;
-
-    &:hover {
-        background-color: darken($warning, 10%) !important;
-        border-color: darken($warning, 10%) !important;
-    }
-}
-
-.btn-info {
-    background-color: $info !important;
-    color: $text !important;
-    border-color: $info !important;
-
-    &:hover {
-        background-color: darken($info, 10%) !important;
-        border-color: darken($info, 10%) !important;
-    }
 }
