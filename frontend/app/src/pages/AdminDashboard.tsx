@@ -13,9 +13,8 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const API_URL = import.meta.env.VITE_BACKEND_URL;
+
 
 interface Locker {
     id: number;
@@ -151,11 +150,12 @@ const AdminDashboard = () => {
                 throw new Error(`Failed to fetch complaints: ${res.status}`);
             }
 
-            const data = await res.json();
+            const data = await res.json() as Complaint[];
             return data;
         },
     });
 
+    console.log("complaints:", complaints);
     console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
 
     // Query for fetching lockers
@@ -446,12 +446,15 @@ const AdminDashboard = () => {
 
     const WORK_ORDERS_COUNT = workOrders?.length ?? 0;
     const COMPLAINTS_COUNT = complaints?.length ?? 0;
+    console.log("Work orders count:", workOrdersWithKeys.length);
+    console.log("Complaints count:", COMPLAINTS_COUNT);
 
     return (
         <div className="container">
             <PageTitleComponent title="Admin Dashboard" />
             <AlertComponent
                 title="Welcome to the Admin Dashboard"
+                message="Admin Dashboard Alert"
                 description="This is the Admin Dashboard. Here's a demo alert component."
                 type="success"
             />
@@ -475,8 +478,8 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT}
-                    description="Pending tenant issues"
+                    value={isLoadingComplaints ? undefined : COMPLAINTS_COUNT ?? 0}
+                    description={isLoadingComplaints ? "Loading..." : "Pending tenant issues"}
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}
                     button={
@@ -552,7 +555,7 @@ const AdminDashboard = () => {
                         columns={columnsComplaints}
                         dataSource={combinedItems.filter((item) => item.type === "complaint").slice(0, 5)}
                         loading={isLoadingComplaints}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -567,7 +570,7 @@ const AdminDashboard = () => {
                         columns={columnsWorkOrders}
                         dataSource={combinedItems.filter((item) => item.type === "work_order").slice(0, 5)}
                         loading={isLoadingWorkOrders}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -583,7 +586,7 @@ const AdminDashboard = () => {
                 <TableComponent
                     columns={columnsLeases}
                     dataSource={tenantsWithKeys.slice(0, 5)}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     loading={isLoadingTenants}
                     pagination={false}
                 />

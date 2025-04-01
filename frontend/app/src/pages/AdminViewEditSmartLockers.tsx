@@ -8,7 +8,7 @@ import ModalComponent, { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { ArrowRightOutlined } from "@ant-design/icons";
-import { Button, Dropdown, MenuProps, Modal } from "antd";
+import { Button, Dropdown, MenuProps } from "antd";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -74,20 +74,22 @@ const AdminViewEditSmartLockers = () => {
     });
 
     const { mutate: unlockLocker } = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (lockerID: number) => {
             const token = await getToken();
 
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/${selectedUserId}`, {
+            const res = await fetch(`${API_URL}/admin/lockers/${lockerID}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
+                    locker_id: lockerID,
+                    access_code: accessCode,
                     in_use: false,
                 }),
             });
@@ -109,16 +111,18 @@ const AdminViewEditSmartLockers = () => {
                 content={`Current password: ${password}`}
                 type="Update Password Locker"
                 locker={lockerId}
-                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 handleOkay={async () => {
                     await handleOkay();
                 }}
+                setUserId={setSelectedUserId}
+                selectedUserId={selectedUserId ?? ""}
+                accessCode={accessCode}
             />
         );
     };
 
-    const UnlockLockerModal = ({ lockerId, handleOkay }: UnlockLockerModalProps) => {
+    const UnlockLockerModal = ({ lockerId, handleOkay, setAccessCode }: UnlockLockerModalProps) => {
         return (
             <ModalComponent
                 buttonTitle="Unlock Locker"
@@ -126,12 +130,14 @@ const AdminViewEditSmartLockers = () => {
                 modalTitle="Unlock Locker"
                 content="Are you sure that you would like to unlock the locker?"
                 type="Admin Unlock Locker"
-                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 locker={lockerId}
                 handleOkay={async () => {
                     await handleOkay();
                 }}
+                setUserId={setSelectedUserId}
+                selectedUserId={selectedUserId ?? ""}
+                accessCode={accessCode}
             />
         );
     };
@@ -155,7 +161,7 @@ const AdminViewEditSmartLockers = () => {
                 label: (
                     <UnlockLockerModal
                         lockerId={props.lockerId}
-                        handleOkay={unlockLocker}
+                        handleOkay={() => unlockLocker(props.lockerId)}
                         // setLockerId={setSelectedUserId}
                         setAccessCode={setAccessCode}
                     />
@@ -421,6 +427,8 @@ const AdminViewEditSmartLockers = () => {
                     type="Smart Locker"
                     setUserId={setSelectedUserId}
                     setAccessCode={setAccessCode}
+                    selectedUserId={selectedUserId ?? ""}
+                    accessCode={accessCode}
                     handleOkay={async () => {
                         await handleAddPackage();
                     }}
