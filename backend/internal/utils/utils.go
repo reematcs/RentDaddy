@@ -12,10 +12,14 @@ import (
 )
 
 func GetAbsoluteUrl(path string) string {
-	url := os.Getenv("DOMAIN_URL")
+	base := os.Getenv("DOMAIN_URL")
+	if base != "" {
+		// Ensure no double slash
+		return fmt.Sprintf("%s%s", base, path)
+	}
 	port := os.Getenv("PORT")
-	if url != "" {
-		return fmt.Sprintf("https://%s%s", url, path)
+	if port == "" {
+		port = "8080"
 	}
 	return fmt.Sprintf("http://localhost:%s%s", port, path)
 }
