@@ -13,9 +13,8 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const API_URL = import.meta.env.VITE_BACKEND_URL;
+
 
 interface Locker {
     id: number;

@@ -50,6 +50,14 @@ services:
     volumes:
       - ./frontend/app:/app
       - /app/node_modules
+      - /app/node_modules/.vite
+    environment:
+      # Ensure these variables are explicitly set for Vite
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8080}
+      - VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:8080}
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ}
+      - VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL:-http://localhost:3000}
+      - VITE_ENV=${VITE_ENV:-development}
     networks:
       - app-network
     env_file:

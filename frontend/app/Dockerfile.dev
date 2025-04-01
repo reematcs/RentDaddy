@@ -28,5 +28,9 @@ ENV HOST=0.0.0.0
 # Expose the port specified in the Vite configuration
 EXPOSE 5173
 
-# Start the development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Make the entry point script executable
+COPY dev-entrypoint.sh /app/dev-entrypoint.sh
+RUN chmod +x /app/dev-entrypoint.sh
+
+# Start the development server using our custom entrypoint
+CMD ["/app/dev-entrypoint.sh"]

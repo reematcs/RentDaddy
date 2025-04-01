@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"sync"
+	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/middleware"
@@ -774,41 +776,163 @@ func deref(s *string) string {
 	}
 	return ""
 }
+// SeedingState tracks the progress of seeding operations
+type SeedingState struct {
+	InProgress   bool   `json:"in_progress"`
+	LastError    string `json:"last_error,omitempty"`
+	LastComplete string `json:"last_complete,omitempty"`
+	StartedAt    string `json:"started_at,omitempty"`
+}
+
+// Package-level variables to track seeding status
+var (
+	usersSeedingState    = SeedingState{InProgress: false}
+	usersSeedingMutex    sync.Mutex
+	dataSeedingState     = SeedingState{InProgress: false}
+	dataSeedingMutex     sync.Mutex
+)
+
 func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 	log.Println("[SEED_USERS] Admin login detected, no tenants found. Auto-seeding.")
-
 	log.Println("[SEED_USERS] Triggered by admin")
 
-	cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
+	// Set CORS headers immediately to ensure they're sent even if the operation times out
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
-	cmd.Dir = "/app" // ECS container working directory
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("[SEED_USERS] Failed: %v\nOutput: %s", err, string(output))
-		http.Error(w, "Failed to seed users", http.StatusInternalServerError)
+	// Check if seeding is already in progress
+	usersSeedingMutex.Lock()
+	if usersSeedingState.InProgress {
+		resp := map[string]string{
+			"status":  "in_progress",
+			"message": "User seeding is already in progress",
+		}
+		usersSeedingMutex.Unlock()
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	log.Println("[SEED_USERS] Seeding complete")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Users seeded successfully"))
+	// Mark seeding as in progress with timestamp
+	now := time.Now()
+	usersSeedingState.InProgress = true
+	usersSeedingState.LastError = ""
+	usersSeedingState.StartedAt = now.Format(time.RFC3339)
+	usersSeedingMutex.Unlock()
+
+	// Start the seeding process asynchronously
+	go func() {
+		defer func() {
+			usersSeedingMutex.Lock()
+			usersSeedingState.InProgress = false
+			usersSeedingState.LastComplete = time.Now().Format(time.RFC3339)
+			usersSeedingMutex.Unlock()
+		}()
+
+		cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
+		cmd.Dir = "/app" // ECS container working directory
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			errMsg := err.Error()
+			if len(output) > 0 {
+				errMsg += ": " + string(output)
+			}
+			
+			log.Printf("[SEED_USERS] Failed: %v\nOutput: %s", err, string(output))
+			
+			usersSeedingMutex.Lock()
+			usersSeedingState.LastError = errMsg
+			usersSeedingMutex.Unlock()
+			return
+		}
+		
+		log.Println("[SEED_USERS] Seeding complete successfully")
+	}()
+
+	// Return immediately with a success message
+	resp := map[string]string{
+		"status":  "started",
+		"message": "User seeding process started",
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 	log.Println("[SEED_DATA] Triggered by admin")
 
-	cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
-	cmd.Dir = "/app"
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", err, string(output))
-		http.Error(w, "Failed to seed demo data", http.StatusInternalServerError)
+	// Set CORS headers immediately to ensure they're sent even if the operation times out
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+	// Check if seeding is already in progress
+	dataSeedingMutex.Lock()
+	if dataSeedingState.InProgress {
+		resp := map[string]string{
+			"status":  "in_progress",
+			"message": "Data seeding is already in progress",
+		}
+		dataSeedingMutex.Unlock()
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	log.Println("[SEED_DATA] Seeding complete")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Complaints and work orders seeded"))
+	// Mark seeding as in progress with timestamp
+	now := time.Now()
+	dataSeedingState.InProgress = true
+	dataSeedingState.LastError = ""
+	dataSeedingState.StartedAt = now.Format(time.RFC3339)
+	dataSeedingMutex.Unlock()
+
+	// Start the seeding process asynchronously
+	go func() {
+		defer func() {
+			dataSeedingMutex.Lock()
+			dataSeedingState.InProgress = false
+			dataSeedingState.LastComplete = time.Now().Format(time.RFC3339)
+			dataSeedingMutex.Unlock()
+		}()
+
+		cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
+		cmd.Dir = "/app"
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			errMsg := err.Error()
+			if len(output) > 0 {
+				errMsg += ": " + string(output)
+			}
+			
+			log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", err, string(output))
+			
+			dataSeedingMutex.Lock()
+			dataSeedingState.LastError = errMsg
+			dataSeedingMutex.Unlock()
+			return
+		}
+		
+		log.Println("[SEED_DATA] Seeding complete successfully")
+	}()
+
+	// Return immediately with a success message
+	resp := map[string]string{
+		"status":  "started",
+		"message": "Complaints and work orders seeding started",
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
@@ -833,4 +957,30 @@ func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
 		"admin_exists":  len(admins) > 0,
 		"tenants_exist": len(tenants) > 0,
 	})
+}
+
+// GetSeedingStatus returns the current status of seeding operations
+func (u UserHandler) GetSeedingStatus(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	
+	// Get current status
+	usersSeedingMutex.Lock()
+	userStatus := usersSeedingState
+	usersSeedingMutex.Unlock()
+	
+	dataSeedingMutex.Lock()
+	dataStatus := dataSeedingState
+	dataSeedingMutex.Unlock()
+	
+	status := map[string]interface{}{
+		"user_seeding": userStatus,
+		"data_seeding": dataStatus,
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(status)
 }

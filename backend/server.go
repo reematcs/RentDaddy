@@ -79,9 +79,10 @@ func main() {
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
-	r.Post("/api/setup/admin", userHandler.SetupAdminUser)
-	r.Get("/api/check-admin", userHandler.CheckAdminExists)
+	r.Post("/setup/admin", userHandler.SetupAdminUser)
+	r.Get("/check-admin", userHandler.CheckAdminExists)
 	r.Post("/seed-users", userHandler.AdminSeedUsers)
+	r.Get("/seed-users/status", userHandler.GetSeedingStatus)
 	r.Post("/seed-demo-data", userHandler.AdminSeedData)
 
 	// Locker Handler
@@ -259,6 +260,9 @@ func main() {
 
 	// Server config
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: r,

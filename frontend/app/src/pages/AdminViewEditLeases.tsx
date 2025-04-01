@@ -15,11 +15,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { FileTextOutlined } from "@ant-design/icons";
 
-const isDevelopment = import.meta.env.MODE === 'development';
+const API_URL = import.meta.env.VITE_BACKEND_URL;
 
-const API_URL = isDevelopment
-    ? `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`
-    : '/api';
 
 // Log the API_URL to ensure it's correctly formed
 console.log("API URL:", API_URL);

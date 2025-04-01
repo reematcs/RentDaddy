@@ -292,52 +292,53 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       essential = true
       links     = ["main-postgres"],
       environment = [
-        {
-          name  = "FORCE_REDEPLOY"
-          value = timestamp() # This forces a new revision each deploy
-        },
+        # Database Configuration
         { name = "POSTGRES_PORT", value = "5432" },
         { name = "POSTGRES_HOST", value = "main-postgres" },
         { name = "POSTGRES_USER", value = "appuser" },
         { name = "POSTGRES_DB", value = "appdb" },
-        { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk" },
-        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
-        { name = "ADMIN_CLERK_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
-        { name = "VITE_PORT", value = "8080" },
-        { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
+        # Server Configuration
         { name = "PORT", value = "8080" },
         { name = "DOMAIN_URL", value = "https://app.curiousdev.net" },
         { name = "TEMP_DIR", value = "/app/temp" },
-        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
-        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
-        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        # Frontend Configuration (for cross-service communication)
         { name = "FRONTEND_PORT", value = "5173" },
+        # SMTP Configuration
         { name = "SMTP_PORT", value = "587" },
         { name = "SMTP_ENDPOINT_ADDRESS", value = "email-smtp.us-east-2.amazonaws.com" },
-        { name = "SMTP_USER", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
         { name = "SMTP_TLS_MODE", value = "starttls" },
         { name = "SMTP_FROM", value = "rentdaddyadmin@gitfor.ge" },
         { name = "SMTP_TEST_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
-        { name = "s3Region", value = "us-east-1" },
-        { name = "s3Bucket", value = "rentdaddydocumenso" },
-        { name = "s3BaseURL", value = "https://s3.us-east-1.amazonaws.com" },
-        { name = "awsAccessID", value = "AKIASOMWUJVJOJ63YFFE" },
+        # Documenso Integration
         { name = "DOCUMENSO_HOST", value = "documenso" },
         { name = "DOCUMENSO_PORT", value = "3000" },
         { name = "DOCUMENSO_API_URL", value = "https://docs.curiousdev.net" },
         { name = "DOCUMENSO_PUBLIC_URL", value = "https://docs.curiousdev.net" },
-        { name = "ENV", value = "development" },
+        # Admin information
+        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
+        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        # Application Environment
+        { name = "ENV", value = "production" },
         { name = "DEBUG_MODE", value = var.debug_mode }
       ]
       portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }]
       secrets = [
         { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
+        { name = "CLERK_WEBHOOK", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_WEBHOOK::" },
+        { name = "ADMIN_CLERK_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_CLERK_ID::" },
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
+        # Database
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
         { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
+        # SMTP
+        { name = "SMTP_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_USER::" },
         { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
-        { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
+        # Documenso
         { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
         { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
+        # OpenAI (if needed)
+        { name = "OPENAI_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:OPENAI_API_KEY::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -356,26 +357,20 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       essential    = true
       portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
       environment = [
-        {
-          name  = "FORCE_REDEPLOY"
-          value = timestamp() # This forces a new revision each deploy
-        },
-        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
-        { name = "ADMIN_CLERK_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
-        { name = "VITE_PORT", value = "8080" },
-        { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
-        { name = "PORT", value = "8080" },
-        { name = "DOMAIN_URL", value = "https://app.curiousdev.net" },
-        { name = "ADMIN_FIRST_NAME", value = "Rent Daddy" },
-        { name = "ADMIN_LAST_NAME", value = "Landlord" },
-        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        # API configuration
+        { name = "VITE_BACKEND_URL", value = "https://api.curiousdev.net" },
+        # Frontend Configuration
         { name = "FRONTEND_PORT", value = "5173" },
+        # Optional Documenso integration
+        { name = "VITE_DOCUMENSO_PUBLIC_URL", value = "https://docs.curiousdev.net" },
+        # Application Environment
+        { name = "VITE_ENV", value = "production" },
         { name = "ENV", value = "production" },
         { name = "DEBUG_MODE", value = "false" }
       ]
       secrets = [
-        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
-        { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
+        # Clerk Authentication (Frontend only needs publishable key)
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -642,7 +637,7 @@ resource "aws_ecs_service" "backend_with_frontend" {
   health_check_grace_period_seconds  = 30
   enable_execute_command             = true
   deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 100
+  deployment_maximum_percent         = 200
   # network_configuration {
   #   subnets          = aws_subnet.public[*].id
   #   security_groups  = [aws_security_group.ec2_sg.id]
@@ -662,8 +657,10 @@ resource "aws_ecs_service" "backend_with_frontend" {
     container_name   = "backend"
     container_port   = 8080
   }
+  # Place app service in availability zone b
   placement_constraints {
-    type = "distinctInstance"
+    type       = "memberOf"
+    expression = "attribute:ecs.availability-zone == us-east-2b"
   }
   lifecycle {
     ignore_changes = [desired_count]
@@ -681,13 +678,17 @@ resource "aws_ecs_service" "documenso" {
   #   security_groups  = [aws_security_group.ec2_sg.id]
   #   assign_public_ip = false
   # }
-  enable_execute_command = true
+  enable_execute_command             = true
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
   ordered_placement_strategy {
     type  = "binpack"
     field = "memory"
   }
+  # Place documenso service in availability zone a
   placement_constraints {
-    type = "distinctInstance"
+    type       = "memberOf"
+    expression = "attribute:ecs.availability-zone == us-east-2a"
   }
   lifecycle {
     ignore_changes = [desired_count]
@@ -860,23 +861,20 @@ resource "aws_lb_target_group" "documenso" {
 }
 
 resource "aws_lb_target_group_attachment" "frontend" {
-  count            = length(data.aws_instances.ecs_instances.ids)
   target_group_arn = aws_lb_target_group.frontend.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  target_id        = "i-0ded6293342aa51bf"  # Instance in zone B for main app
   port             = 5173
 }
 
 resource "aws_lb_target_group_attachment" "backend" {
-  count            = length(data.aws_instances.ecs_instances.ids)
   target_group_arn = aws_lb_target_group.backend.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  target_id        = "i-0ded6293342aa51bf"  # Instance in zone B for main app
   port             = 8080
 }
 
 resource "aws_lb_target_group_attachment" "documenso" {
-  count            = length(data.aws_instances.ecs_instances.ids)
   target_group_arn = aws_lb_target_group.documenso.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  target_id        = "i-07fc1015320b68724"  # Instance in zone A for documenso
   port             = 3000
 }
 

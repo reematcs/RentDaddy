@@ -16,10 +16,8 @@ import EmptyState from "../components/reusableComponents/EmptyState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const isDevelopment = import.meta.env.MODE === 'development';
-const API_URL = isDevelopment
-    ? `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`
-    : '/api';
+const API_URL = import.meta.env.VITE_BACKEND_URL;
+
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
