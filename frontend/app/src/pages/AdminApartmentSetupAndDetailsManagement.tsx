@@ -598,26 +598,32 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             type="primary"
                             title={seedingStatus && seedingStatus.user_seeding.in_progress
                                 ? "Seeding Users (This may take a minute)..."
-                                : seedingStatus && seedingStatus.user_seeding.last_complete
-                                    ? "Seed More Users"
-                                    : tenantsExist 
-                                        ? "Seed More Users" 
-                                        : "Seed Demo Users"}
+                                : !tenantsExist 
+                                    ? "Initialize Database with Demo Users"
+                                    : seedingStatus && seedingStatus.user_seeding.last_complete
+                                        ? "Seed Additional Users"
+                                        : "Seed More Users"}
                             onClick={() => triggerSeedUsers()}
                             loading={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
                             disabled={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
                         />
 
                         {seedingStatus && seedingStatus.user_seeding.last_error && (
-                            <div className="text-red-500">
-                                Error seeding users: {seedingStatus.user_seeding.last_error}
-                            </div>
+                            <AlertComponent
+                                type="error"
+                                title="Error Seeding Users"
+                                message={seedingStatus.user_seeding.last_error}
+                                description=""
+                            />
                         )}
                         
                         {seedingStatus && seedingStatus.user_seeding.last_complete && !seedingStatus.user_seeding.in_progress && (
-                            <div className="text-green-500">
-                                Last seeding completed at: {new Date(seedingStatus.user_seeding.last_complete).toLocaleString()}
-                            </div>
+                            <AlertComponent
+                                type="success"
+                                title="Seeding Complete"
+                                message={`Last seeding completed at: ${new Date(seedingStatus.user_seeding.last_complete).toLocaleString()}`}
+                                description=""
+                            />
                         )}
                     </Space>
                 </div>
