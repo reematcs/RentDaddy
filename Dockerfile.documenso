@@ -1,0 +1,32 @@
+FROM --platform=linux/amd64 documenso/documenso:latest
+
+USER root
+
+# Optional: install tools for debugging (psql, etc.)
+RUN apk add --no-cache postgresql-client
+
+# ✅ Install Inngest CLI globally (with permissions fix for Docker)
+RUN npm install -g inngest --unsafe-perm
+
+# ✅ Copy certificate if needed (for signature workflows)
+COPY cert.p12 /opt/documenso/cert.p12
+
+RUN chown 1001:1001 /opt/documenso/cert.p12 && \
+    chmod 644 /opt/documenso/cert.p12
+
+# ✅ Optional: enable verbose logging (for debugging only)
+ENV NODE_DEBUG=nextauth:,prisma:*,net,http,tls,mail,smtp,email
+ENV DEBUG=nodemailer,nodemailer:*,email:*,smtp:*,documenso:*,next:*,auth:*,*
+ENV MAILER_DEBUG=true
+ENV NEXT_PRIVATE_MAILER_DEBUG=true
+ENV NEXT_LOG_LEVEL=debug
+ENV NODE_OPTIONS="--trace-warnings --trace-deprecation"
+
+# Switch back to non-root app user
+USER nextjs
+
+# Port exposed by the web server
+EXPOSE 3000
+
+# ✅ ECS will override this — no need to change
+CMD ["yarn", "start"]

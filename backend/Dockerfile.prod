@@ -43,6 +43,7 @@ RUN mkdir -p /app/config
 COPY --from=builder /app/server .
 COPY --from=builder /app/entrypoint-prod.sh .
 COPY --from=builder /app/internal/db/migrations /app/internal/db/migrations
+COPY --from=builder /app/scripts /app/scripts
 
 # Note: In production, environment variables should be passed at runtime
 # We don't copy .env files into the Docker image for security

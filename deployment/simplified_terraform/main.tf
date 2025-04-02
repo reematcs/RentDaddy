@@ -307,7 +307,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "SMTP_PORT", value = "587" },
         { name = "SMTP_ENDPOINT_ADDRESS", value = "email-smtp.us-east-2.amazonaws.com" },
         { name = "SMTP_TLS_MODE", value = "starttls" },
-        { name = "SMTP_FROM", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "SMTP_FROM", value = "ezra@gitfor.ge" },
         { name = "SMTP_TEST_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
         # Documenso Integration
         { name = "DOCUMENSO_HOST", value = "documenso" },
@@ -456,7 +456,7 @@ resource "aws_ecs_task_definition" "documenso" {
   container_definitions = jsonencode([
     {
       name      = "documenso"
-      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:latest"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:debug-amd64"
       essential = true
       portMappings = [
         {
@@ -465,20 +465,41 @@ resource "aws_ecs_task_definition" "documenso" {
           protocol      = "tcp"
         }
       ]
+      mountPoints = [
+        {
+          sourceVolume  = "documenso-cert"
+          containerPath = "/opt/documenso"
+          readOnly      = false
+        }
+      ]
       links = ["documenso-postgres"],
+      links = ["documenso"],
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "POSTGRES_USER", value = "documenso" },
         { name = "POSTGRES_DB", value = "documenso" },
-        { name = "NEXT_PUBLIC_WEBAPP_URL", value = "http://localhost:3000" },
-        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
+        { name = "NEXT_PUBLIC_WEBAPP_URL", value = "https://docs.curiousdev.net" },
+        { name = "NEXTAUTH_URL", value = "https://docs.curiousdev.net" },
+        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://host.docker.internal:3000" },
+        { name = "NEXT_PUBLIC_JOBS_URL", value = "http://host.docker.internal:3000/api/jobs" },
+        { name = "NEXT_PUBLIC_API_URL", value = "https://docs.curiousdev.net" },
         { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
         { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
         { name = "NEXT_PRIVATE_SMTP_USERNAME", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
         { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },
         { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.us-east-2.amazonaws.com" },
         { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
-        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "NEXT_PRIVATE_SMTP_IGNORE_TLS", value = "false" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "ezra@gitfor.ge" },
+        { name = "NEXT_PRIVATE_SMTP_APIKEY_USER", value = "" },
+        { name = "NEXT_PRIVATE_SMTP_APIKEY", value = "" },
+        { name = "NEXT_PRIVATE_SMTP_SERVICE", value = "" },
+        { name = "NEXT_PRIVATE_RESEND_API_KEY", value = "" },
+        { name = "NEXT_PRIVATE_MAILCHANNELS_API_KEY", value = "" },
+        { name = "NEXT_PRIVATE_MAILCHANNELS_ENDPOINT", value = "" },
+        { name = "NEXT_PRIVATE_MAILCHANNELS_DKIM_DOMAIN", value = "" },
+        { name = "NEXT_PRIVATE_MAILCHANNELS_DKIM_SELECTOR", value = "" },
+        { name = "NEXT_PRIVATE_MAILCHANNELS_DKIM_PRIVATE_KEY", value = "" },
         { name = "PORT", value = "3000" },
         { name = "NEXT_PUBLIC_UPLOAD_TRANSPORT", value = "s3" },
         { name = "NEXT_PRIVATE_UPLOAD_BUCKET", value = "rentdaddydocumenso" },
@@ -486,6 +507,15 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", value = "false" },
         { name = "NEXT_PRIVATE_UPLOAD_REGION", value = "us-east-1" },
         { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", value = "AKIASOMWUJVJM34XMXUN" },
+        { name = "NEXT_PUBLIC_MARKETING_URL", value = "https://docs.curiousdev.net" },
+        { name = "NEXT_PUBLIC_DISABLE_SIGNUP", value = "false" },
+        { name = "NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT", value = "10" },
+        { name = "NEXT_PUBLIC_POSTHOG_KEY", value = "" },
+        { name = "NEXTAUTH_DEBUG", value = "true" },
+        { name = "NEXT_LOG_LEVEL", value = "debug" },
+        { name = "NEXTAUTH_COOKIE_DOMAIN", value = "docs.curiousdev.net" },
+        { name = "NEXTAUTH_COOKIE_SECURE", value = "true" },
+        { name = "NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH", value = "/opt/documenso/cert.p12" },
         { name = "NEXT_PRIVATE_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
         { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
       ]
@@ -509,7 +539,7 @@ resource "aws_ecs_task_definition" "documenso" {
     },
     {
       name      = "documenso-postgres"
-      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy-main:postgres-15-amd64"
+      image     = "postgres:15"
       user      = "postgres"
       essential = true
       portMappings = [
@@ -542,7 +572,29 @@ resource "aws_ecs_task_definition" "documenso" {
           "awslogs-stream-prefix" = "postgres"
         }
       }
+    },
+    {
+      name      = "documenso-worker"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:debug-amd64"
+      essential = false
+      command   = ["inngest", "dev", "-u", "http://documenso:3000/api/jobs"]
+      environment = [
+        {
+          name  = "NEXT_PRIVATE_DATABASE_URL"
+          value = "postgresql://documenso:password@documenso-postgres:5432/documenso"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = "/ecs/documenso"
+          awslogs-region        = "us-east-2"
+          awslogs-stream-prefix = "worker"
+        }
+      }
     }
+
+
   ])
 
 
@@ -557,6 +609,15 @@ resource "aws_ecs_task_definition" "documenso" {
       #   "device" = "/home/ec2-user/documenso/postgres-data",
       #   "o"      = "bind"
       # }
+    }
+  }
+
+  volume {
+    name = "documenso-cert"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
     }
   }
 }
@@ -862,19 +923,19 @@ resource "aws_lb_target_group" "documenso" {
 
 resource "aws_lb_target_group_attachment" "frontend" {
   target_group_arn = aws_lb_target_group.frontend.arn
-  target_id        = "i-0ded6293342aa51bf"  # Instance in zone B for main app
+  target_id        = "i-0ded6293342aa51bf" # Instance in zone B for main app
   port             = 5173
 }
 
 resource "aws_lb_target_group_attachment" "backend" {
   target_group_arn = aws_lb_target_group.backend.arn
-  target_id        = "i-0ded6293342aa51bf"  # Instance in zone B for main app
+  target_id        = "i-0ded6293342aa51bf" # Instance in zone B for main app
   port             = 8080
 }
 
 resource "aws_lb_target_group_attachment" "documenso" {
   target_group_arn = aws_lb_target_group.documenso.arn
-  target_id        = "i-07fc1015320b68724"  # Instance in zone A for documenso
+  target_id        = "i-07fc1015320b68724" # Instance in zone A for documenso
   port             = 3000
 }
 
