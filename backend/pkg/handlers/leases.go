@@ -249,9 +249,21 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate that lease is amendable
-	if string(existingLease.Status) != string(db.LeaseStatusActive) && string(existingLease.Status) != "draft" {
-		log.Printf("[LEASE_AMEND] Lease ID %d is not amendable. Status: %s", existingLease.ID, existingLease.Status)
-		http.Error(w, "Only active or draft leases can be amended", http.StatusBadRequest)
+	// Get the computed status that accounts for "expires_soon"
+	computedStatus := h.GetLeaseStatus(db.Lease{
+		ID:            existingLease.ID,
+		Status:        existingLease.Status,
+		LeaseEndDate:  existingLease.LeaseEndDate,
+		LeaseStartDate: existingLease.LeaseStartDate,
+	})
+	
+	// Allow amendments for active, expires_soon, or draft leases
+	if computedStatus != string(db.LeaseStatusActive) && 
+	   computedStatus != "expires_soon" && 
+	   string(existingLease.Status) != "draft" {
+		log.Printf("[LEASE_AMEND] Lease ID %d is not amendable. Status: %s, Computed Status: %s", 
+			existingLease.ID, existingLease.Status, computedStatus)
+		http.Error(w, "Only active, soon-to-expire, or draft leases can be amended", http.StatusBadRequest)
 		return
 	}
 	landlordID, _, _, err := h.GetLandlordInfo(r)
