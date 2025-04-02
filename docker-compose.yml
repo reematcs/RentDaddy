@@ -5,7 +5,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     container_name: rentdaddy-postgres
     restart: always
-    env_file: .env
+    env_file: backend/.env.development.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -37,7 +37,6 @@ services:
     env_file: backend/.env.development.local
     networks:
         - app-network
-        - documenso-rentdaddy
     command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
     
 
@@ -66,8 +65,6 @@ services:
 networks:
   app-network:
     driver: bridge
-  documenso-rentdaddy:
-    external: true
 
 volumes:
   postgres_data:

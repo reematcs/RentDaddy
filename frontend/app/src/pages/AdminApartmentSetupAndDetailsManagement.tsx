@@ -1,7 +1,8 @@
-import { Button, Form, Input } from "antd";
+import { Divider, Form, Input, message, Space, Typography, Card } from "antd";
 import React, { useState, useCallback } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
+import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
@@ -38,7 +39,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         user_seeding: { in_progress: boolean; last_error?: string; last_complete?: string };
         data_seeding: { in_progress: boolean; last_error?: string; last_complete?: string };
     } | null>(null);
-    
+
     // Define seedStatus upfront to avoid the "used before declaration" error
     const {
         mutate: triggerSeedUsers,
@@ -62,7 +63,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
         onSuccess: async () => {
             console.log("✅ Seeding process started");
-            
+
             // Immediately check status to get initial state
             try {
                 const res = await fetch(`${API_URL}/seed-users/status`);
@@ -78,7 +79,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             console.log("❌ Error seeding users:", e);
         },
     });
-    
+
     const checkTenants = useCallback(async () => {
         try {
             const res = await fetch(`${API_URL}/check-admin`);
@@ -88,20 +89,20 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             console.error("Failed to check tenants", err);
         }
     }, [API_URL]);
-    
+
     // Poll seeding status when needed
     React.useEffect(() => {
         let intervalId: number | undefined;
         let attempts = 0;
         const maxAttempts = 60; // 2 minutes max polling (60 * 2 sec)
-        
+
         // Start polling in these cases:
         // 1. Initial seeding request was successful
         // 2. Seeding is in progress according to status
-        const shouldPoll = 
-            seedStatus === 'success' || 
+        const shouldPoll =
+            seedStatus === 'success' ||
             (seedingStatus && seedingStatus.user_seeding.in_progress);
-            
+
         if (shouldPoll && (!seedingStatus || !seedingStatus.user_seeding.last_complete)) {
             intervalId = window.setInterval(async () => {
                 attempts++;
@@ -111,7 +112,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     if (res.ok) {
                         const data = await res.json();
                         setSeedingStatus(data);
-                        
+
                         // If seeding is complete or we've reached max attempts
                         if (!data.user_seeding.in_progress || attempts >= maxAttempts) {
                             clearInterval(intervalId);
@@ -127,12 +128,12 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                 }
             }, 2000); // Poll every 2 seconds
         }
-        
+
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
     }, [seedStatus, seedingStatus, API_URL, checkTenants]);
-    
+
     React.useEffect(() => {
         checkTenants();
     }, [checkTenants]);
@@ -149,6 +150,14 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         documensoApiKey: '',
         documensoWebhookSecret: '',
     });
+
+    // Separate state for Documenso configuration
+    const [documensoConfig, setDocumensoConfig] = useState({
+        apiKey: '',
+        webhookSecret: ''
+    });
+    
+    const [submitLoading, setSubmitLoading] = useState(false);
 
     console.log("adminSetupObject", adminSetupObject);
 
@@ -187,23 +196,120 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
     });
 
+    // Mutation for handling Documenso configuration
+    const { mutate: updateDocumensoConfig, status: documensoStatus } = useMutation({
+        mutationFn: async (configData: { apiKey: string, webhookSecret: string }) => {
+            console.log("Updating Documenso configuration");
+            
+            // Retry up to 3 times with increasing delay
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const token = await getToken();
+                    if (!token) {
+                        console.log(`[Attempt ${attempt + 1}] Waiting for auth token...`);
+                        // Wait before retry (exponential backoff)
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        continue;
+                    }
+
+                    console.log(`[Attempt ${attempt + 1}] Updating Documenso config`);
+                    const res = await fetch(`${API_URL}/admin/config/documenso`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(configData),
+                    });
+
+                    console.log(res);
+
+                    if (!res.ok) {
+                        // For auth failures, try again
+                        if (res.status === 401) {
+                            console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                            continue;
+                        }
+                        throw new Error(`Failed to update Documenso configuration: ${res.statusText}`);
+                    }
+
+                    return res;
+                } catch (err) {
+                    // If this is the last attempt, throw the error
+                    if (attempt === 2) throw err;
+                    console.log(`[Attempt ${attempt + 1}] Failed, retrying... Error: ${err}`);
+                    // Wait before retry (exponential backoff)
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                }
+            }
+            throw new Error("Failed to update Documenso configuration after multiple attempts");
+        },
+        onSuccess: () => {
+            console.log("✅ Documenso configuration updated successfully");
+            message.success('Documenso configuration updated successfully!');
+        },
+        onError: (e: any) => {
+            console.log("❌ Error updating Documenso configuration:", e);
+            message.error('Failed to update Documenso configuration');
+        },
+    });
+
     // console.log("Testing for Ryan, this is the adminApartmentSetup return from the Tanstack useMutation", adminApartmentSetup);
 
     const handleSendAdminSetup = () => {
         console.log("starting admin setup");
-        adminApartmentSetup(adminSetupObject);
+        setSubmitLoading(true);
+        
+        // Remove Documenso config from apartment setup object
+        const apartmentSetupOnly = {
+            parkingTotal: adminSetupObject.parkingTotal,
+            perUserParking: adminSetupObject.perUserParking,
+            lockerCount: adminSetupObject.lockerCount,
+            buildings: adminSetupObject.buildings
+        };
 
-        // Reset the state
-        setAdminSetupObject({
-            parkingTotal: 0,
-            perUserParking: 0,
-            lockerCount: 0,
-            buildings: [],
-            documensoApiKey: '',
-            documensoWebhookSecret: '',
-        });
+        try {
+            adminApartmentSetup(apartmentSetupOnly, {
+                onSuccess: () => {
+                    message.success('Apartment setup completed successfully!');
+                    
+                    // Reset the apartment setup state
+                    setAdminSetupObject({
+                        parkingTotal: 0,
+                        perUserParking: 0,
+                        lockerCount: 0,
+                        buildings: [],
+                        documensoApiKey: '',
+                        documensoWebhookSecret: '',
+                    });
+                    
+                    setLocations([]);
+                },
+                onError: (error: Error) => {
+                    message.error('Failed to complete apartment setup. Please try again.');
+                    console.error("Error in apartment setup:", error);
+                },
+                onSettled: () => {
+                    setSubmitLoading(false);
+                }
+            });
+        } catch (err) {
+            message.error('Failed to complete apartment setup. Please try again.');
+            console.error("Error in apartment setup:", err);
+            setSubmitLoading(false);
+        }
 
         console.log("adminSetupObject", adminSetupObject);
+    };
+
+    // New handler for Documenso configuration update
+    const handleUpdateDocumensoConfig = () => {
+        console.log("Updating Documenso configuration");
+        updateDocumensoConfig({
+            apiKey: documensoConfig.apiKey,
+            webhookSecret: documensoConfig.webhookSecret
+        });
     };
 
     // tanstack for editing locations that were put in
@@ -238,15 +344,22 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     };
 
     const handleFormValuesChange = (_: any, allValues: any) => {
+        // Update apartment setup object
         setAdminSetupObject((prev) => ({
             ...prev,
             parkingTotal: Number(allValues["parking-settings"][0]) || 0,
             perUserParking: Number(allValues["parking-settings"][1]) || 0,
             lockerCount: Number(allValues["mail-locker-settings"]) || 0,
-            documensoApiKey: allValues["documenso-settings"]?.apiKey || prev.documensoApiKey,
-            documensoWebhookSecret: allValues["documenso-settings"]?.webhookSecret || prev.documensoWebhookSecret,
             buildings: prev.buildings,
         }));
+
+        // Update Documenso config separately
+        if (allValues["documenso-settings"]) {
+            setDocumensoConfig({
+                apiKey: allValues["documenso-settings"]?.apiKey || '',
+                webhookSecret: allValues["documenso-settings"]?.webhookSecret || '',
+            });
+        }
     };
 
     // Handles adding the building to the locations state
@@ -348,27 +461,6 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         <div className="container">
             {/* <h1 className="mb-3">Admin Apartment Setup And Details Management</h1> */}
             <PageTitleComponent title="Admin Apartment Setup and Details Management" />
-            {!tenantsExist && (
-                <div className="mb-4">
-                    <Button
-                        type="dashed"
-                        onClick={() => triggerSeedUsers()}
-                        loading={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
-                        disabled={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}>
-                        {seedingStatus && seedingStatus.user_seeding.in_progress 
-                            ? "Seeding Users (This may take a minute)..." 
-                            : seedingStatus && seedingStatus.user_seeding.last_complete 
-                                ? "Users Seeded Successfully!" 
-                                : "Seed Demo Users"}
-                    </Button>
-                    
-                    {seedingStatus && seedingStatus.user_seeding.last_error && (
-                        <div className="text-red-500 mt-2">
-                            Error seeding users: {seedingStatus.user_seeding.last_error}
-                        </div>
-                    )}
-                </div>
-            )}
 
 
             <Form
@@ -427,6 +519,10 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         icon={<DeleteOutlined />}
                         onClick={() => {
                             setLocations([]);
+                            setAdminSetupObject(prev => ({
+                                ...prev,
+                                buildings: []
+                            }));
                         }}
                     />
                     {/* Add Location Button */}
@@ -467,97 +563,148 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         min={0}
                     />
                 </Form.Item>
-                
-                {/* Documenso Integration Settings */}
-                <div className="mb-4 mt-5">
-                    <h3 className="text-lg font-semibold mb-2">Document Signing Integration (Documenso)</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                        Configure the connection to your Documenso instance for digital document signing.
-                        These values can be found in your Documenso admin dashboard.
-                    </p>
-                </div>
-                
-                <Form.Item
-                    label="Documenso API Key"
-                    name={["documenso-settings", "apiKey"]}
-                    tooltip="The API key generated from your Documenso admin dashboard"
-                    rules={[{ required: false, message: "Please enter your Documenso API key" }]}>
-                    <Input.Password
-                        placeholder="Enter Documenso API key (e.g., api_xxxxxxxxxxxxxxxx)"
-                        visibilityToggle={{ visible: false }}
-                    />
-                </Form.Item>
-                
-                <Form.Item
-                    label="Documenso Webhook Secret"
-                    name={["documenso-settings", "webhookSecret"]}
-                    tooltip="The webhook secret for validating callbacks from Documenso"
-                    rules={[{ required: false, message: "Please enter your Documenso webhook secret" }]}>
-                    <Input.Password
-                        placeholder="Enter webhook secret"
-                        visibilityToggle={{ visible: false }}
-                    />
-                </Form.Item>
-                
-                <div className="bg-blue-50 p-4 rounded mb-4">
-                    <p className="text-sm">
-                        <strong>How to set up Documenso integration:</strong><br />
-                        <span className="font-semibold">For the API Key:</span><br />
-                        1. Log in to your Documenso admin dashboard<br />
-                        2. Navigate to Settings → API<br />
-                        3. Generate a new API key and copy it here<br />
-                        <br />
-                        <span className="font-semibold">For the Webhook Secret:</span><br />
-                        1. Generate a secure random secret by running this command:<br />
-                        <code className="bg-gray-100 px-2 py-1 rounded">openssl rand -hex 32</code><br />
-                        2. Copy the generated value into this field<br />
-                        3. In Documenso dashboard, go to Settings → Webhooks<br />
-                        4. Create a new webhook with URL: <code className="bg-gray-100 px-2 py-1 rounded">https://api.curiousdev.net/webhooks/documenso</code><br />
-                        5. Paste the same secret you entered here into Documenso's "Signing Secret" field<br />
-                        6. Select events: <code>document.completed</code>, <code>document.signed</code>
-                    </p>
-                </div>
-                
-                <div className="flex items-center mb-4">
-                    <div className="flex-grow border-t border-gray-300"></div>
-                    <span className="mx-4 text-sm text-gray-500">Or</span>
-                    <div className="flex-grow border-t border-gray-300"></div>
-                </div>
-                
-                <Form.Item>
-                    <Button 
-                        type="default" 
+
+                {/* Submit button for Apartment Setup */}
+                <Space className="flex justify-end mt-4 mb-8">
+                    <ButtonComponent
+                        type="default"
+                        title="Cancel"
                         onClick={() => {
-                            // Generate a random webhook secret
-                            const array = new Uint8Array(32);
-                            window.crypto.getRandomValues(array);
-                            const webhookSecret = Array.from(array)
-                                .map(b => b.toString(16).padStart(2, "0"))
-                                .join("");
-                            
-                            // Find the webhook secret input and set its value
-                            const secretInput = document.querySelector('input[placeholder="Enter webhook secret"]') as HTMLInputElement;
-                            if (secretInput) {
-                                secretInput.value = webhookSecret;
-                                // Trigger change event to update form state
-                                const event = new Event('input', { bubbles: true });
-                                secretInput.dispatchEvent(event);
-                            }
-                            
-                            // Also update our state
-                            setAdminSetupObject(prev => ({
-                                ...prev,
-                                documensoWebhookSecret: webhookSecret
-                            }));
-                            
-                            // Show a success message
-                            message.success('Webhook secret generated! Copy this to Documenso when setting up the webhook.');
+                            console.log("Cancel Apartment Setup");
+                            // Reset the apartment setup form
+                            setAdminSetupObject({
+                                parkingTotal: 0,
+                                perUserParking: 0,
+                                lockerCount: 0,
+                                buildings: [],
+                                documensoApiKey: '',
+                                documensoWebhookSecret: '',
+                            });
+                            setLocations([]);
                         }}
-                    >
-                        Generate Webhook Secret
-                    </Button>
-                </Form.Item>
+                    />
+                    <ButtonComponent
+                        type="primary"
+                        title="Submit Apartment Setup"
+                        onClick={handleSendAdminSetup}
+                        loading={submitLoading}
+                    />
+                </Space>
                 
+                <Divider orientation="left">User Management</Divider>
+                <div className="mb-4">
+                    <Space direction="vertical" className="w-full">
+                        <ButtonComponent
+                            type="primary"
+                            title={seedingStatus && seedingStatus.user_seeding.in_progress
+                                ? "Seeding Users (This may take a minute)..."
+                                : seedingStatus && seedingStatus.user_seeding.last_complete
+                                    ? "Seed More Users"
+                                    : tenantsExist 
+                                        ? "Seed More Users" 
+                                        : "Seed Demo Users"}
+                            onClick={() => triggerSeedUsers()}
+                            loading={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
+                            disabled={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
+                        />
+
+                        {seedingStatus && seedingStatus.user_seeding.last_error && (
+                            <div className="text-red-500">
+                                Error seeding users: {seedingStatus.user_seeding.last_error}
+                            </div>
+                        )}
+                        
+                        {seedingStatus && seedingStatus.user_seeding.last_complete && !seedingStatus.user_seeding.in_progress && (
+                            <div className="text-green-500">
+                                Last seeding completed at: {new Date(seedingStatus.user_seeding.last_complete).toLocaleString()}
+                            </div>
+                        )}
+                    </Space>
+                </div>
+                {/* Documenso Integration Settings */}
+                <Divider orientation="left">Document Signing Integration</Divider>
+
+                <Card className="mb-4">
+                    <Space direction="vertical" size="small" className="w-100">
+                        <Typography.Title level={5}>Documenso Configuration</Typography.Title>
+                        <Typography.Text type="secondary">Configure connection to Documenso for digital document signing.</Typography.Text>
+
+                        <Form.Item
+                            label="Documenso API Key"
+                            name={["documenso-settings", "apiKey"]}
+                            tooltip="The API key generated from your Documenso admin dashboard"
+                            rules={[{ required: false, message: "Please enter your Documenso API key" }]}>
+                            <Input.Password
+                                placeholder="Enter Documenso API key (e.g., api_xxxxxxxxxxxxxxxx)"
+                                visibilityToggle={{ visible: false }}
+                            />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Documenso Webhook Secret"
+                            name={["documenso-settings", "webhookSecret"]}
+                            tooltip="The webhook secret for validating callbacks from Documenso"
+                            rules={[{ required: false, message: "Please enter your Documenso webhook secret" }]}>
+                            <Input.Password
+                                placeholder="Enter webhook secret"
+                                visibilityToggle={{ visible: false }}
+                            />
+                        </Form.Item>
+
+                        <AlertComponent
+                            title="How to set up Documenso integration"
+                            message="Integration steps"
+                            description={
+                                "1. API Key: Login to Documenso dashboard → Settings → API → Generate key\n\n" +
+                                "2. Webhook Secret: Use 'Generate Webhook Secret' button below, then in Documenso go to Settings → Webhooks\n\n" +
+                                `3. Create webhook with URL: ${import.meta.env.VITE_ENV === "development" ? "http://rentdaddy-backend:8080" : "https://api.curiousdev.net"}/webhooks/documenso\n\n` +
+                                "4. Select events: document.completed, document.signed"
+                            }
+                            type="info"
+                        />
+
+                        <Space>
+                            <ButtonComponent
+                                type="default"
+                                title="Generate Webhook Secret"
+                                onClick={() => {
+                                    // Generate a random webhook secret
+                                    const array = new Uint8Array(32);
+                                    window.crypto.getRandomValues(array);
+                                    const webhookSecret = Array.from(array)
+                                        .map(b => b.toString(16).padStart(2, "0"))
+                                        .join("");
+
+                                    // Find the webhook secret input and set its value
+                                    const secretInput = document.querySelector('input[placeholder="Enter webhook secret"]') as HTMLInputElement;
+                                    if (secretInput) {
+                                        secretInput.value = webhookSecret;
+                                        // Trigger change event to update form state
+                                        const event = new Event('input', { bubbles: true });
+                                        secretInput.dispatchEvent(event);
+                                    }
+
+                                    // Also update our state
+                                    setDocumensoConfig(prev => ({
+                                        ...prev,
+                                        webhookSecret: webhookSecret
+                                    }));
+
+                                    // Show a success message
+                                    message.success('Webhook secret generated! Copy this to Documenso.');
+                                }}
+                            />
+
+                            <ButtonComponent
+                                type="primary"
+                                title="Update Documenso Configuration"
+                                onClick={handleUpdateDocumensoConfig}
+                                loading={documensoStatus === 'pending'}
+                            />
+                        </Space>
+                    </Space>
+                </Card>
+
                 {/* <Form.Item
                     name="smtp-settings"
                     label="SMTP Settings"
@@ -572,26 +719,6 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         <Input placeholder="Password" />
                     </div>
                 </Form.Item> */}
-                <div className="flex justify-content-end gap-2">
-                    {/* Cancel button */}
-                    <Form.Item name="cancel">
-                        <Button
-                            type="default"
-                            onClick={() => {
-                                console.log("Cancel");
-                            }}>
-                            Cancel
-                        </Button>
-                    </Form.Item>
-                    {/* Submit Button */}
-                    <Form.Item name="submit">
-                        <Button
-                            type="primary"
-                            htmlType="submit">
-                            Submit
-                        </Button>
-                    </Form.Item>
-                </div>
             </Form>
         </div>
     );

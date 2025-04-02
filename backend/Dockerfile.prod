@@ -1,0 +1,63 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+RUN apk update && apk add --no-cache git make openssh-client
+
+WORKDIR /app
+
+# Copy go module files first for better layer caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy the rest of the application
+COPY . .
+
+# Generate database code
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+RUN sqlc generate
+
+# Build the Go application
+RUN CGO_ENABLED=0 GOOS=linux go build -o server -ldflags="-s -w" ./server.go
+
+# Final stage
+FROM golang:1.23-alpine
+
+RUN apk --no-cache add ca-certificates tzdata postgresql-client wget
+
+# Install golang-migrate
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz \
+    && tar -xvf migrate.tar.gz \
+    && mv migrate /usr/local/bin/migrate \
+    && chmod +x /usr/local/bin/migrate \
+    && rm migrate.tar.gz
+
+WORKDIR /app
+
+# Create directories for app files
+RUN mkdir -p /app/temp
+RUN mkdir -p /app/config
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/server .
+COPY --from=builder /app/entrypoint-prod.sh .
+COPY --from=builder /app/internal/db/migrations /app/internal/db/migrations
+
+# Note: In production, environment variables should be passed at runtime
+# We don't copy .env files into the Docker image for security
+
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint-prod.sh
+
+# Use environment variables for configuration
+ENV PORT=8080
+ENV PG_URL=''
+ENV DOCUMENSO_API_URL='https://api.documenso.com/api/v1'
+ENV TEMP_DIR=/app/temp
+
+# Expose the server port
+EXPOSE 8080
+
+# Start the application
+ENTRYPOINT ["/app/entrypoint-prod.sh"]

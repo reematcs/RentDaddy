@@ -72,7 +72,8 @@ SELECT id, lease_number,
 FROM leases ORDER BY created_at DESC;
 
 -- name: GetLeaseByID :one
-SELECT lease_number,
+SELECT id,
+    lease_number,
     external_doc_id,
     lease_pdf_s3,
     tenant_id,
@@ -84,7 +85,9 @@ SELECT lease_number,
     status,
     created_by,
     updated_by,
-    previous_lease_id
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
 FROM leases
 WHERE id = $1;
 

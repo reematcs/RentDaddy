@@ -103,7 +103,27 @@ createRoot(document.getElementById("root")!).render(
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
-                        signInFallbackRedirectUrl="/">
+                        signInFallbackRedirectUrl="/"
+                        appearance={{
+                            layout: {
+                                socialButtonsVariant: "iconButton",
+                                showOptionalFields: false,
+                                shimmer: true,
+                            },
+                            variables: {
+                                colorPrimary: "#00674f",
+                                colorText: "#333",
+                                colorBackground: "#fff",
+                                borderRadius: "0.5rem"
+                            },
+                            elements: {
+                                formButtonPrimary: "bg-primary hover:bg-primary focus:shadow-outline",
+                                card: "rounded-lg shadow-md",
+                                providerIcon: {
+                                    filter: "invert(0%)",
+                                }
+                            }
+                        }}>
                         <Routes>
                             <Route element={<PreAuthedLayout />}>
                                 <Route path="/healthz" element={<div>ok</div>} />
@@ -123,17 +143,22 @@ createRoot(document.getElementById("root")!).render(
                                 <Route path="auth">
                                     <Route
                                         path="sign-in/*"
-                                        element={<SignIn />}
+                                        element={
+                                            <div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                                <SignIn 
+                                                    appearance={{
+                                                        elements: {
+                                                            rootBox: "mx-auto",
+                                                            card: "shadow-sm rounded-lg border border-gray-200",
+                                                            header: "text-center",
+                                                            footer: "text-center",
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        }
                                     />
                                 </Route>
-
-                                <Route
-                                    path="/auth/sign-in/"
-                                    element={
-                                        <div className="d-flex justify-content-center align-items-center h-100 py-5">
-                                            <SignIn />
-                                        </div>
-                                    }></Route>
 
                             </Route>
                             {/* End of Pre-authentication Layout Group */}

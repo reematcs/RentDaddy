@@ -793,8 +793,7 @@ var (
 )
 
 func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
-	log.Println("[SEED_USERS] Admin login detected, no tenants found. Auto-seeding.")
-	log.Println("[SEED_USERS] Triggered by admin")
+	log.Println("[SEED_USERS] User seeding process initiated by admin")
 
 	// Set CORS headers immediately to ensure they're sent even if the operation times out
 	w.Header().Set("Access-Control-Allow-Origin", "*")

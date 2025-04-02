@@ -111,6 +111,9 @@ func main() {
 					return
 				}
 			})
+			
+			// Documenso Configuration
+			r.Post("/config/documenso", leaseHandler.UpdateDocumensoConfig)
 
 			// Tenants
 			r.Route("/tenants", func(r chi.Router) {

@@ -126,22 +126,45 @@ export const LeaseModalComponent = ({
     } = useQuery<Apartment[]>({
         queryKey: ['apartments', 'available'],
         queryFn: async () => {
-            const token = await getToken();
-            if (!token) throw new Error("Authentication token required");
+            // Retry up to 3 times with increasing delay
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const token = await getToken();
+                    if (!token) {
+                        console.log(`[Attempt ${attempt + 1}] Waiting for auth token...`);
+                        // Wait before retry (exponential backoff)
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        continue;
+                    }
+                    
+                    const response = await fetch(`${API_URL}/admin/leases/apartments-available`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-            const response = await fetch(`${API_URL}/admin/leases/apartments-available`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    if (!response.ok) {
+                        // For auth failures, try again
+                        if (response.status === 401) {
+                            console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                            continue;
+                        }
+                        throw new Error(`Failed to fetch apartments: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    return data || [];
+                } catch (err) {
+                    // If this is the last attempt, throw the error
+                    if (attempt === 2) throw err;
+                    console.log(`[Attempt ${attempt + 1}] Failed, retrying... Error: ${err}`);
+                    // Wait before retry (exponential backoff)
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                 }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch apartments: ${response.statusText}`);
             }
-
-            const data = await response.json();
-            return data || [];
+            throw new Error("Failed to fetch apartments after multiple attempts");
         },
         enabled: visible && (mode === "add" || mode === "amend"), // Enable for both modes
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -232,8 +255,8 @@ export const LeaseModalComponent = ({
             const addPayload = {
                 tenant_id: values.tenant_id,
                 apartment_id: values.apartment_id,
-                tenant_name: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
-                tenant_email: selectedTenant.email,
+                tenant_name: `${selectedTenant.firstName} ${selectedTenant.lastName}`, // Just for display, backend will use from DB
+                // tenant_email removed - backend will get it from database
                 property_address: String(propertyAddress),
                 rent_amount: values.rent_amount || (selectedApartment ? selectedApartment.price : 0),
                 start_date: startDateStr,
@@ -343,7 +366,7 @@ export const LeaseModalComponent = ({
                 tenant_id: selectedLease?.tenantId || selectedLease?.id,
                 apartment_id: selectedLease?.apartmentId || selectedLease?.id,
                 tenant_name: values.tenant_name,
-                tenant_email: selectedLease?.tenantEmail || `${values.tenant_name.replace(/\s+/g, '.')}@example.com`,
+                // tenant_email removed - backend will get it from database
                 property_address: String(values.property_address),
                 rent_amount: parseFloat(values.rent_amount),
                 start_date: renewStartDateStr,
@@ -417,7 +440,7 @@ export const LeaseModalComponent = ({
                 tenant_id: selectedLease?.tenantId || selectedLease?.id,
                 apartment_id: apartmentId,
                 tenant_name: values.tenant_name,
-                tenant_email: selectedLease?.tenantEmail || `${values.tenant_name.replace(/\s+/g, '.')}@example.com`,
+                // tenant_email removed - backend will get it from database
                 property_address: String(propertyAddress),
                 rent_amount: parseFloat(values.rent_amount),
                 start_date: amendStartDateStr,

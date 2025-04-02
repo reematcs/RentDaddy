@@ -115,34 +115,65 @@ export default function AdminViewEditLeases() {
                 throw new Error('API URL is not configured');
             }
 
-            // Get the authentication token
-            const token = await getToken();
-            if (!token) {
-                throw new Error('Authentication token is required');
-            }
+            // Retry up to 3 times with increasing delay
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    // Get the authentication token
+                    const token = await getToken();
+                    if (!token) {
+                        console.log(`[Attempt ${attempt + 1}] Waiting for auth token...`);
+                        // Wait before retry (exponential backoff)
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        continue;
+                    }
 
-            console.log(`Fetching leases from: ${API_URL}/admin/leases/`);
-            console.log('Using auth token:', token ? 'Token available' : 'No token');
+                    console.log(`[Attempt ${attempt + 1}] Fetching leases from: ${API_URL}/admin/leases/`);
+                    console.log('Using auth token:', token ? 'Token available' : 'No token');
 
-            const response = await fetch(`${API_URL}/admin/leases/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    const response = await fetch(`${API_URL}/admin/leases/`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        // Check for Documenso configuration error (412 Precondition Failed)
+                        if (response.status === 412) {
+                            const errorData = await response.json();
+                            if (errorData.error === 'documenso_not_configured') {
+                                // Throw a specific error that we can handle in the UI
+                                throw new Error('DOCUMENSO_NOT_CONFIGURED');
+                            }
+                        }
+                        
+                        // For auth failures, try again
+                        if (response.status === 401) {
+                            console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                            continue;
+                        }
+                        
+                        throw new Error(`Failed to fetch leases: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log("Raw API response:", data);
+                    console.log("Sample lease data:", data[0]);
+                    extractStatusFilters(data);
+                    return data || [];
+                    
+                } catch (err) {
+                    // If this is the last attempt or it's a Documenso configuration error, throw the error
+                    if (attempt === 2 || (err instanceof Error && err.message === 'DOCUMENSO_NOT_CONFIGURED')) {
+                        throw err;
+                    }
+                    console.log(`[Attempt ${attempt + 1}] Failed, retrying... Error: ${err}`);
+                    // Wait before retry (exponential backoff)
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                 }
-            });
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Authentication failed. Please sign in again.');
-                }
-                throw new Error(`Failed to fetch leases: ${response.statusText}`);
             }
-
-            const data = await response.json();
-            console.log("Raw API response:", data);
-            console.log("Sample lease data:", data[0]);
-            extractStatusFilters(data);
-            return data || [];
+            throw new Error("Failed to fetch leases after multiple attempts");
         },
         // Only run query if authentication is loaded and user is signed in
         enabled: authLoaded && isSignedIn && !authError,
@@ -563,12 +594,31 @@ export default function AdminViewEditLeases() {
                 isLoading ? (
                     <Spin size="large" />
                 ) : isError ? (
-                    <Alert
-                        message="Error Loading Leases"
-                        description={(error as Error)?.message || "Failed to fetch leases"}
-                        type="error"
-                        showIcon
-                    />
+                    // Check for Documenso configuration error
+                    (error instanceof Error && error.message === 'DOCUMENSO_NOT_CONFIGURED') ? (
+                        <div className="mb-4">
+                            <AlertComponent
+                                type="warning"
+                                title="Documenso Configuration Required"
+                                message="Please configure your Documenso API key and webhook before accessing leases"
+                                description="Digital lease signing requires Documenso integration. Go to the Admin Setup page to configure your Documenso API key and webhook."
+                            />
+                            <div className="mt-4 text-center">
+                                <ButtonComponent
+                                    type="primary"
+                                    title="Go to Admin Setup"
+                                    onClick={() => window.location.href = '/admin/init-apartment-complex'}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <Alert
+                            message="Error Loading Leases"
+                            description={(error as Error)?.message || "Failed to fetch leases"}
+                            type="error"
+                            showIcon
+                        />
+                    )
                 ) : (
                     <TableComponent<LeaseData>
                         columns={leaseColumns}
