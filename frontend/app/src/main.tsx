@@ -20,7 +20,7 @@ import ErrorNotFound from "./pages/Error404.tsx";
 import { ConfigProvider } from "antd";
 
 // Clerk
-import { ClerkProvider, SignIn } from "@clerk/react-router";
+import { ClerkProvider, SignedOut, SignIn } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
 
 // Pages
@@ -56,7 +56,6 @@ createRoot(document.getElementById("root")!).render(
                     colorLink: "#00674f",
                     colorFillSecondary: "#7789f4",
                     colorFillTertiary: "#d86364",
-                    fontFamily: `"Poppins"`,
                 },
                 components: {
                     Card: {
@@ -102,7 +101,10 @@ createRoot(document.getElementById("root")!).render(
                             {/* Main Route (Landing Page) */}
                             {/* Pre-authentication Layout Group */}
                             <Route element={<PreAuthedLayout />}>
-                                <Route path="/healthz" element={<div>ok</div>} />
+                                <Route
+                                    path="/healthz"
+                                    element={<div>ok</div>}
+                                />
                                 {/* Landing Page */}
                                 <Route
                                     index
@@ -114,20 +116,20 @@ createRoot(document.getElementById("root")!).render(
                                     path="reusable-components"
                                     element={<ReusableComponents />}
                                 />
-
-                                {/* Authentication Routes */}
-                                <Route path="auth">
-                                    <Route
-                                        path="sign-in/*"
-                                        element={<SignIn />}
-                                    />
-                                </Route>
-
                                 <Route
-                                    path="/auth/sign-in/"
+                                    path="/auth/sign-in/*"
                                     element={
-                                        <div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                        <div
+                                            style={{ height: "calc(100vh - 5rem)" }}
+                                            className="d-flex justify-content-center mt-5">
                                             <SignIn />
+                                        </div>
+                                    }></Route>
+                                <Route
+                                    path="/auth/sign-out/"
+                                    element={
+                                        <div className="d-flex justify-content-center align-items-start min-vh-100 my-5">
+                                            <SignedOut />
                                         </div>
                                     }></Route>
 

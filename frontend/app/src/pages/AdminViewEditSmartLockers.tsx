@@ -8,11 +8,10 @@ import ModalComponent, { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { ArrowRightOutlined } from "@ant-design/icons";
-import { Button, Dropdown, MenuProps, Modal } from "antd";
+import { Button, Dropdown, MenuProps } from "antd";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 
 type Locker = {
     id: number;
@@ -45,7 +44,19 @@ const AdminViewEditSmartLockers = () => {
 
     // Update the type to match clerk_id which is a string
     const [selectedUserId, setSelectedUserId] = useState<string>();
-    const [accessCode, setAccessCode] = useState<string>("");
+    const [accessCode, setAccessCode] = useState<string>(generateAccessCode());
+
+    function generateAccessCode(length = 15) {
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        let accessCode = "";
+
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * characters.length);
+            accessCode += characters[randomIndex];
+        }
+
+        return accessCode;
+    }
 
     const { mutate: updatePassword } = useMutation({
         mutationFn: async () => {
@@ -54,7 +65,7 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/${selectedUserId}`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${selectedUserId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -81,7 +92,7 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/${lockerID}`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -113,9 +124,7 @@ const AdminViewEditSmartLockers = () => {
                 locker={lockerId}
                 // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
-                handleOkay={async () => {
-                    await handleOkay();
-                }}
+                handleOkay={async () => handleOkay()}
             />
         );
     };
@@ -131,9 +140,7 @@ const AdminViewEditSmartLockers = () => {
                 // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 locker={lockerId}
-                handleOkay={async () => {
-                    await handleOkay();
-                }}
+                handleOkay={async () => handleOkay()}
             />
         );
     };
@@ -188,7 +195,7 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/tenants`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/tenants`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -221,7 +228,7 @@ const AdminViewEditSmartLockers = () => {
                     throw new Error("No authentication token available");
                 }
 
-                const res = await fetch(`${API_URL}/admin/lockers`, {
+                const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -252,14 +259,14 @@ const AdminViewEditSmartLockers = () => {
         mutationFn: async ({ lockerId, updates }: { lockerId: number; updates: { user_id?: string; in_use?: boolean; access_code?: string } }) => {
             console.log("Original updates:", updates);
             console.log("lockerId:", lockerId);
-            console.log("API URL:", `${API_URL}/admin/lockers/${lockerId}`);
+            console.log("API URL:", `${absoluteServerUrl}/admin/lockers/${lockerId}`);
 
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const response = await fetch(`${API_URL}/admin/lockers/${lockerId}`, {
+            const response = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -421,8 +428,8 @@ const AdminViewEditSmartLockers = () => {
                     content=""
                     tenant={tenants ?? []}
                     type="Smart Locker"
+                    accessCode={accessCode}
                     setUserId={setSelectedUserId}
-                    setAccessCode={setAccessCode}
                     handleOkay={async () => {
                         await handleAddPackage();
                     }}

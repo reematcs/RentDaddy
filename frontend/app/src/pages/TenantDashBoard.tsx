@@ -1,5 +1,4 @@
-import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
-import { Link } from "react-router";
+import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
 import ModalComponent from "../components/ModalComponent";
@@ -36,7 +35,6 @@ export const TenantDashBoard = () => {
         if (!res.ok) {
             throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
         }
-
 
         const permits = (await res.json()) as Parking[];
         console.log("Parking permits:", permits);
@@ -109,8 +107,12 @@ export const TenantDashBoard = () => {
         ],
     });
 
-      // Fetch lease status using TanStack Query
-      const { data: leaseData, isLoading, isError } = useQuery({
+    // Fetch lease status using TanStack Query
+    const {
+        data: leaseData,
+        isLoading,
+        isError,
+    } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             if (!userId) {
@@ -180,15 +182,6 @@ export const TenantDashBoard = () => {
                     description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View All"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     button={<TenantCreateComplaintsModal />}
                 />
                 <CardComponent
@@ -201,19 +194,10 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Guest Parking"
-                    value={parking.data?.length ?? `0/2`}
+                    value={parking.data?.length ?? 0}
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={
-                        <ModalComponent
-                            type="Guest Parking"
-                            buttonTitle="Add Guest"
-                            content="Add guest to be able to park in the complex"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
                     button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
@@ -231,7 +215,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="View Lease"
                             content="Lease should go here"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => {}}
                         />
                     }
                 />
@@ -239,15 +223,6 @@ export const TenantDashBoard = () => {
                     title="Work Orders"
                     description={"View your work orders here."}
                     hoverable={true}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View all workorders"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     value={workOrders.data?.length}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
@@ -255,15 +230,6 @@ export const TenantDashBoard = () => {
                     title="Complaints"
                     description={"View your complaints here."}
                     hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all complaints"
-                            content="Complaint should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
                     value={complaints.data?.length}
                     button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
@@ -276,7 +242,7 @@ export const TenantDashBoard = () => {
                 title="Action Required: Lease Signing"
                 open={isSigningModalVisible}
                 onOk={handleOk}
-                onCancel={() => { }} // Empty function prevents closing
+                onCancel={() => {}} // Empty function prevents closing
                 maskClosable={false} // Prevents closing when clicking outside
                 keyboard={false} // Prevents closing with ESC key
                 closable={false} // Removes the X button
@@ -428,15 +394,15 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
     return (
         <>
             <ButtonComponent
-                title="View Complaints"
+                title="View Work Orders"
                 type="primary"
                 onClick={showModal}
             />
             <Modal
                 className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
+                title={<h3>Work Orders</h3>}
                 open={internalModalOpen}
-                onOk={() => { }}
+                onOk={() => {}}
                 onCancel={handleCancel}
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>

@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"log"
+	"os"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
-	"os"
 )
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 	users, err := queries.ListUsersByRole(ctx, db.RoleTenant)
 	if err != nil {
 		log.Println("[DB_Seeder] error counting users: ", err)
+		return
 	}
 	if len(users) > 0 {
 		log.Println("[DB_Seeder] tenant users found")
@@ -31,8 +33,8 @@ func main() {
 
 	if run(ctx, pool) != nil {
 		log.Printf("[DB_Seeder] Error running scripts: %v", err)
+		return
 	}
-
 }
 
 func run(ctx context.Context, pool *pgxpool.Pool) error {

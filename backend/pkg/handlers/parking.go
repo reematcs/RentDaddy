@@ -121,7 +121,6 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 			Time: time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 		},
 	})
-
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed creating parking permit: %v", err)
 		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
@@ -298,20 +297,16 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 	err := json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed parsing user Clerk metadata: %v", err)
-		http.Error(w, "Error parsing user clerk metadata", http.StatusBadRequest)
-		return
-	}
-
-	permitNumberStr := chi.URLParam(r, "permit_number")
-	permitNumber, err := strconv.Atoi(permitNumberStr)
-	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
-		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
+		http.Error(w, "Error parsing user Clerk metadata", http.StatusBadRequest)
 		return
 	}
 
 	var parkingPermitReq UpdateParkingPermitRequest
-	_ = json.NewDecoder(r.Body).Decode(&parkingPermitReq)
+	if err = json.NewDecoder(r.Body).Decode(&parkingPermitReq); err != nil {
+		log.Printf("[PARKING_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
 
 	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true})
 	if err != nil {
@@ -326,9 +321,9 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		for _, permit := range tenantParkingPermits {
 			if permit.ExpiresAt.Valid && permit.ExpiresAt.Time.Before(today) {
 				log.Printf("Parking permit expired deleting: %d", permit.ID)
-				if err := p.queries.ClearParkingPermit(r.Context(), int64(permitNumber)); err != nil {
-					log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(tenantParkingPermits), err)
-					http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
+				if err := p.queries.ClearParkingPermit(r.Context(), int64(permit.ID)); err != nil {
+					log.Printf("[PARKING_HANDLER] Failed deleting expired tenant parking permit: %s", err)
+					http.Error(w, "Error creating new parking permit", http.StatusInternalServerError)
 					return
 				}
 			} else {
@@ -351,6 +346,11 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		return
 	}
 
+	if newPermit.ID == 0 {
+		http.Error(w, "Error no available parking permits", http.StatusNotFound)
+		return
+	}
+
 	err = p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
 		ID:           newPermit.ID,
 		LicensePlate: pgtype.Text{String: parkingPermitReq.LicensePlate, Valid: true},
@@ -363,8 +363,8 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		},
 	})
 	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed up parking permit: %v", err)
-		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
+		log.Printf("[PARKING_HANDLER] Failed crating parking permit for tenant: %v", err)
+		http.Error(w, "Error creating parking permit for tenant", http.StatusInternalServerError)
 		return
 	}
 

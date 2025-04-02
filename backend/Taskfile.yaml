@@ -10,20 +10,18 @@ tasks:
   seed-users:
     desc: "Seed users into the database and syncs with Clerk"
     cmds:
-      - go run scripts/seed_users.go
-      # - docker compose exec backend go run scripts/seed_users.go
+      - go run cmd/seed_users/main.go
     silent: false
 
   seed-users:data:
-    desc: "Seed users into the database"
+    desc: "Seed users complaints and work orders to the database"
     cmds:
-      - go run scripts/complaintsAndWork.go
+      - go run cmd/seed_users_data/main.go
     silent: false
 
   build:
     cmds:
       - go build -v -i server.go
-
   run:
     desc: "Run Go app with Air reloading"
     cmds:

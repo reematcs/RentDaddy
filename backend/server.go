@@ -72,23 +72,22 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	// Webhooks
-	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ClerkWebhookHandler(w, r, pool, queries)
-	})
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
-
-	// Locker Handler
 	lockerHandler := handlers.NewLockerHandler(pool, queries)
-
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
+
+	// Webhooks
+	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ClerkWebhookHandler(w, r, pool, queries)
+	})
+	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -99,6 +98,7 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
 				if err != nil {
@@ -192,7 +192,6 @@ func main() {
 				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
 				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
-				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 				r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
 			})
 		})

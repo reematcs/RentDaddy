@@ -5,12 +5,13 @@ import (
 	_ "database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"math/rand"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-faker/faker/v4"
 	_ "github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
-	"math/rand"
 )
 
 func RandomWorkCategory() db.WorkCategory {
@@ -46,8 +47,7 @@ func RandomStatus() db.Status {
 	return statuses[rand.Intn(len(statuses))]
 }
 
-func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) error {
-
+func createWorkOrders(queries *db.Queries, user db.User) error {
 	for i := 0; i < 12; i++ {
 		order, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
 			CreatedBy:   user.ID,
@@ -121,7 +121,7 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			return errors.New("[SEEDER] error seeding user: " + err.Error())
 		}
 
-		err := createWorkOrders(queries, u, ctx)
+		err := createWorkOrders(queries, u)
 		if err != nil {
 			return errors.New("[SEEDER] error creating work orders: " + err.Error())
 		}

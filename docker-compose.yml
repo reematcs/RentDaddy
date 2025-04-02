@@ -9,10 +9,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}"]
-       interval: 5s
-       timeout: 5s
-       retries: 5
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
   backend:
@@ -21,7 +25,7 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
-      - "2345:2345" 
+      - "2345:2345"
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,10 +40,14 @@ services:
       - go-mod-cache:/go/pkg/mod
     env_file: .env
     networks:
-        - app-network
-        - documenso-rentdaddy
-    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
-    
+      - app-network
+      # - documenso-rentdaddy
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh",
+      ]
 
   frontend:
     build:
@@ -53,7 +61,7 @@ services:
     networks:
       - app-network
     env_file:
-      - .env  # Load .env file
+      - .env # Load .env file
 
 networks:
   app-network:

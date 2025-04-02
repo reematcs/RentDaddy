@@ -2,14 +2,8 @@ import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-
-type InviteTenant = {
-    email: string;
-    unitNumber: number;
-    management_id: string;
-};
-
 import { useUser } from "@clerk/react-router";
+import { RuleObject } from "antd/es/form";
 
 interface Lease {
     id: string | number;
@@ -126,20 +120,17 @@ const ModalComponent = (props: ModalComponentProps) => {
                     open={internalModalOpen}
                     onOk={async () => {
                         try {
-                                props.setUserId(props.selectedUserId);
-                                props.setAccessCode(props.accessCode);
-                                console.log("props: ", props);
-                                await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
-                                setInternalModalOpen(false);
-                                handleCancel();
-
+                            props.setUserId(props.selectedUserId);
+                            console.log("props: ", props);
+                            await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
+                            setInternalModalOpen(false);
+                            handleCancel();
                         } catch (error) {
                             console.error("Error in modal onOk:", error);
                             // Keep modal open if there's an error
                         }
                     }}
                     onCancel={handleCancel}>
-
                     <Divider />
                     <Form layout="vertical">
                         <Form.Item
@@ -162,10 +153,11 @@ const ModalComponent = (props: ModalComponentProps) => {
                             name="accessCode"
                             label="Access Code"
                             rules={[{ required: true, message: "Please enter an access code" }]}>
-                            <Input.Password
-                                placeholder="Enter access code"
-                                maxLength={8}
-                                onChange={(e) => props.setAccessCode(e.target.value)}
+                            <Input
+                                value={props.accessCode}
+                                placeholder={props.accessCode}
+                                disabled={true}
+                                className="bg-white"
                             />
                         </Form.Item>
                         <Divider />

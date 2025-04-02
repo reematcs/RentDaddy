@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/careecodes/RentDaddy/middleware"
 	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 type Building struct {

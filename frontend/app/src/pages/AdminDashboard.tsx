@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from "react";
 import { CalendarOutlined, InboxOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -13,9 +12,8 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 
 interface Locker {
     id: number;
@@ -81,7 +79,7 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/tenants`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/tenants`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -108,9 +106,9 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
             console.log("Fetching work orders...");
-            console.log("API URL:", `${API_URL}/admin/work_orders`);
+            console.log("API URL:", `${absoluteServerUrl}/admin/work_orders`);
 
-            const res = await fetch(`${API_URL}/admin/work_orders`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/work_orders`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -141,8 +139,8 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
             console.log("Fetching complaints...");
-            console.log("API URL:", `${API_URL}/admin/complaints`);
-            const res = await fetch(`${API_URL}/admin/complaints`, {
+            console.log("API URL:", `${absoluteServerUrl}/admin/complaints`);
+            const res = await fetch(`${absoluteServerUrl}/admin/complaints`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             });
@@ -151,7 +149,7 @@ const AdminDashboard = () => {
                 throw new Error(`Failed to fetch complaints: ${res.status}`);
             }
 
-            const data = await res.json() as Complaint[];
+            const data = (await res.json()) as Complaint[];
             return data;
         },
     });
@@ -174,7 +172,7 @@ const AdminDashboard = () => {
                     throw new Error("No authentication token available");
                 }
 
-                const res = await fetch(`${API_URL}/admin/lockers`, {
+                const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -210,7 +208,7 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/in-use/count`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/in-use/count`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -230,14 +228,14 @@ const AdminDashboard = () => {
         mutationFn: async ({ lockerId, updates }: { lockerId: number; updates: { user_id?: string; in_use?: boolean; access_code?: string } }) => {
             console.log("Original updates:", updates);
             console.log("lockerId:", lockerId);
-            console.log("API URL:", `${API_URL}/admin/lockers/${lockerId}`);
+            console.log("API URL:", `${absoluteServerUrl}/admin/lockers/${lockerId}`);
 
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const response = await fetch(`${API_URL}/admin/lockers/${lockerId}`, {
+            const response = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -269,10 +267,10 @@ const AdminDashboard = () => {
     // Update the handleAddPackage function
     const handleAddPackage = async () => {
         try {
-            console.log("handleAddPackage called");
-            console.log("selectedUserId:", selectedUserId);
-            console.log("accessCode:", accessCode);
-            console.log("lockers:", lockers);
+            // console.log("handleAddPackage called");
+            // console.log("selectedUserId:", selectedUserId);
+            // console.log("accessCode:", accessCode);
+            // console.log("lockers:", lockers);
 
             if (isLoadingLockers) {
                 console.error("Please wait while lockers are being loaded...");
@@ -305,8 +303,8 @@ const AdminDashboard = () => {
                 return;
             }
 
-            console.log("Available locker:", availableLocker);
-            console.log("Starting update locker mutation");
+            // console.log("Available locker:", availableLocker);
+            // console.log("Starting update locker mutation");
 
             await updateLockerMutation.mutateAsync({
                 lockerId: availableLocker.id,
@@ -340,18 +338,18 @@ const AdminDashboard = () => {
         {
             title: "Lease Start",
             dataIndex: "lease_start",
-            render: (lease_start: string) => (lease_start ? new Date(lease_start).toLocaleDateString() : "N/A"),
+            render: (lease_start: string) => (lease_start ? new Date(lease_start).toLocaleDateString() : "April 1, 2025"),
         },
         {
             title: "Lease End",
             dataIndex: "lease_end",
-            render: (lease_end: string) => (lease_end ? new Date(lease_end).toLocaleDateString() : "N/A"),
+            render: (lease_end: string) => (lease_end ? new Date(lease_end).toLocaleDateString() : "March 31, 2026"),
         },
-        {
-            title: "Unit",
-            dataIndex: "unit_number",
-            render: (unit: number) => unit || "N/A",
-        },
+        // {
+        //     title: "Unit",
+        //     dataIndex: "unit_number",
+        //     render: (unit: number) => unit || "N/A",
+        // },
         {
             title: "Status",
             dataIndex: "status",
@@ -455,6 +453,7 @@ const AdminDashboard = () => {
             <PageTitleComponent title="Admin Dashboard" />
             <AlertComponent
                 title="Welcome to the Admin Dashboard"
+                message=""
                 description="This is the Admin Dashboard. Here's a demo alert component."
                 type="success"
             />
@@ -478,7 +477,7 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT ?? 0}
+                    value={COMPLAINTS_COUNT ?? 0}
                     description="Pending tenant issues"
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}

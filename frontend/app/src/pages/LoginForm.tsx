@@ -1,16 +1,9 @@
 import "../styles/styles.scss";
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { SignIn } from "@clerk/react-router";
 
 export default function LoginForm() {
-    const navigate = useNavigate();
     const isMobile = useIsMobile();
-
-    // Dummy data
-    const isAdmin = false;
-    const doesUserExists = { userName: "bobby123", password: "password" };
 
     return (
         <div style={{ position: "relative" }}>

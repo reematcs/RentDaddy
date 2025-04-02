@@ -5,6 +5,7 @@
 import { useUser } from "@clerk/react-router";
 import { Spin } from "antd";
 import { Navigate, Outlet, useLocation } from "react-router";
+import { ClerkPublicMetadata } from "../types/types";
 
 const ProtectedRoutes = () => {
     // Get Clerk User to get the user's role
@@ -54,12 +55,12 @@ const ProtectedRoutes = () => {
 
     // If user is not signed in, redirect to login
     if (!isSignedIn) {
-        return <Navigate to="/auth/login" />;
+        return <Navigate to="/auth/sign-in/" />;
     }
 
     // Get user role from metadata
     // TODO: We need to make sure that this is set up sometime during the Clerk user creation process, or our own DB User object creation process
-    const userRole = user?.publicMetadata?.role as string;
+    const { role: userRole } = user?.publicMetadata as ClerkPublicMetadata;
 
     // More strict role-based access control
     if (userRole === "tenant") {

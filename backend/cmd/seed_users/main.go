@@ -7,16 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/careecodes/RentDaddy/internal/utils"
-
-	//"github.com/careecodes/RentDaddy/internal/utils"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-faker/faker/v4"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Role string
@@ -73,7 +69,6 @@ func main() {
 	log.Printf("[SEED_USERS] Starting %d users", userCount)
 
 	aUsers, err := queries.ListUsersByRole(ctx, db.RoleAdmin)
-
 	var adminUser *clerk.User
 	var aID int
 	if len(aUsers) == 0 {
