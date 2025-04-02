@@ -257,6 +257,15 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		LeaseStartDate: existingLease.LeaseStartDate,
 	})
 	
+	// Add detailed logging about status checks
+	log.Printf("[LEASE_AMEND_DEBUG] Lease ID: %d", existingLease.ID)
+	log.Printf("[LEASE_AMEND_DEBUG] Database Status: %s", existingLease.Status)
+	log.Printf("[LEASE_AMEND_DEBUG] Computed Status: %s", computedStatus)
+	log.Printf("[LEASE_AMEND_DEBUG] LeaseEndDate: %+v", existingLease.LeaseEndDate)
+	log.Printf("[LEASE_AMEND_DEBUG] Is db.LeaseStatusActive? %v", computedStatus == string(db.LeaseStatusActive))
+	log.Printf("[LEASE_AMEND_DEBUG] Is expires_soon? %v", computedStatus == "expires_soon")
+	log.Printf("[LEASE_AMEND_DEBUG] Is draft? %v", string(existingLease.Status) == "draft")
+	
 	// Allow amendments for active, expires_soon, or draft leases
 	if computedStatus != string(db.LeaseStatusActive) && 
 	   computedStatus != "expires_soon" && 
