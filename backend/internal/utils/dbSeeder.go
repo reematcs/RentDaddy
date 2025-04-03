@@ -2,15 +2,13 @@ package utils
 
 import (
 	"context"
-	_ "database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-faker/faker/v4"
-	_ "github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -56,7 +54,7 @@ func createWorkOrders(queries *db.Queries, user db.User) error {
 			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %v", err.Error()))
+			return err
 		}
 		log.Println("[SEEDER] work order created", order.ID)
 	}
@@ -74,12 +72,28 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %v", err.Error()))
+			return err
 		}
 		log.Println("[SEEDER] complaint created successfully", complaint.ID)
 	}
 
 	log.Println("[SEEDER] complaints seeded successfully")
+	return nil
+}
+
+func createLockers(queries *db.Queries, tenants []db.ListUsersByRoleRow, ctx context.Context) error {
+	for tenant := range tenants {
+		// create 2 lockers for each tenant
+		for i := 0; i < 2; i++ {
+			if err := queries.CreateLocker(ctx, db.CreateLockerParams{
+				UserID:     pgtype.Int8{Int64: tenants[tenant].ID, Valid: true},
+				AccessCode: pgtype.Text{String: string(tenants[tenant].ID + int64(i)), Valid: true},
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -95,7 +109,10 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 		log.Println("[SEEDER] tenant users found")
 	}
 
-	// err = createLockers(queries, users, ctx)
+	// Create lockers
+	if err = createLockers(queries, users, ctx); err != nil {
+		return errors.New("[SEEDER] error creating lockers: " + err.Error())
+	}
 
 	// get random users from the database
 	row, err := pool.Query(ctx, "SELECT id, clerk_id, first_name, last_name, email, phone,role, created_at FROM users ORDER BY RANDOM() LIMIT 3")

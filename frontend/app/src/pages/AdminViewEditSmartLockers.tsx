@@ -1,14 +1,14 @@
 // TODO: I was last working on setting up the tanstack mutations for updatePassword and unlockLocker between the action menu and the modals. I need to make sure I am passing the right states that are needed. For the Unlock, I need to unlock the locker using the access code, that belongs to a user. For the update locker, I need to update the access code, that belongs to a user
-import { useMutation, useQuery, UseMutateFunction } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { useAuth } from "@clerk/react-router";
 import { ColumnsType } from "antd/es/table";
-import ModalComponent, { Tenant } from "../components/ModalComponent";
+import { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
-import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { Button, Dropdown, MenuProps } from "antd";
+import { NumberOutlined, SyncOutlined, UnlockOutlined, UserAddOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Form, InputNumber, MenuProps, Modal, Select } from "antd";
+import { generateAccessCode } from "../lib/utils";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -25,48 +25,27 @@ interface ActionsDropdownProps {
     password: string;
 }
 
-interface UpdatePasswordModalProps {
-    lockerId: number;
-    password: string;
-    handleOkay: UseMutateFunction<Locker, Error, void, unknown>;
-    setLockerId: (id: number) => void;
-    setAccessCode: (code: string) => void;
-}
-
-interface UnlockLockerModalProps {
-    lockerId: number;
-    handleOkay: UseMutateFunction<Locker, Error, void, unknown>;
-    setAccessCode: (code: string) => void;
-}
-
 const AdminViewEditSmartLockers = () => {
     const { getToken } = useAuth();
-
     // Update the type to match clerk_id which is a string
-    const [selectedUserId, setSelectedUserId] = useState<string>();
-    const [accessCode, setAccessCode] = useState<string>(generateAccessCode());
-
-    function generateAccessCode(length = 15) {
-        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        let accessCode = "";
-
-        for (let i = 0; i < length; i++) {
-            const randomIndex = Math.floor(Math.random() * characters.length);
-            accessCode += characters[randomIndex];
-        }
-
-        return accessCode;
-    }
+    const queryClient = useQueryClient();
 
     const { mutate: updatePassword } = useMutation({
-        mutationFn: async () => {
+        mutationFn: async ({ lockerID, accessCode }: { lockerID: number; accessCode: string }) => {
+            if (!lockerID) {
+                throw new Error("Invalid locker ID");
+            }
+            if (!accessCode) {
+                throw new Error("Invalid access code");
+            }
+
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${selectedUserId}`, {
-                method: "PUT",
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}`, {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
@@ -80,12 +59,15 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error(`Failed to update password: ${res.status}`);
             }
 
-            return res.json();
+            return (await res.json()) as { message: string };
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["lockers", "numberOfLockersInUse"] });
         },
     });
 
     const { mutate: unlockLocker } = useMutation({
-        mutationFn: async (lockerID: number) => {
+        mutationFn: async ({ lockerID, accessCode }: { lockerID: number; accessCode: string }) => {
             const token = await getToken();
 
             if (!token) {
@@ -93,13 +75,12 @@ const AdminViewEditSmartLockers = () => {
             }
 
             const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    locker_id: lockerID,
                     access_code: accessCode,
                     in_use: false,
                 }),
@@ -109,65 +90,40 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error(`Failed to unlock locker: ${res.status}`);
             }
 
-            return res.json();
+            return (await res.json()) as { message: string };
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["lockers", "numberOfLockersInUse"] });
         },
     });
-
-    const UpdatePasswordLockerModal = ({ lockerId, password, handleOkay }: UpdatePasswordModalProps) => {
-        return (
-            <ModalComponent
-                buttonTitle="Update Password"
-                buttonType="primary"
-                modalTitle="Update Password"
-                content={`Current password: ${password}`}
-                type="Update Password Locker"
-                locker={lockerId}
-                // setLockerId={setLockerId}
-                setAccessCode={setAccessCode}
-                handleOkay={async () => handleOkay()}
-            />
-        );
-    };
-
-    const UnlockLockerModal = ({ lockerId, handleOkay, setAccessCode }: UnlockLockerModalProps) => {
-        return (
-            <ModalComponent
-                buttonTitle="Unlock Locker"
-                buttonType="primary"
-                modalTitle="Unlock Locker"
-                content="Are you sure that you would like to unlock the locker?"
-                type="Admin Unlock Locker"
-                // setLockerId={setLockerId}
-                setAccessCode={setAccessCode}
-                locker={lockerId}
-                handleOkay={async () => handleOkay()}
-            />
-        );
-    };
 
     function ActionMenu(props: ActionsDropdownProps) {
         const items: MenuProps["items"] = [
             {
                 key: "1",
                 label: (
-                    <UpdatePasswordLockerModal
-                        lockerId={props.lockerId}
-                        password={props.password}
-                        handleOkay={updatePassword}
-                        setLockerId={(id: number) => setSelectedUserId(id.toString())}
-                        setAccessCode={setAccessCode}
-                    />
+                    <div onClick={() => updatePassword({ lockerID: props.lockerId, accessCode: props.password })}>
+                        <UserAddOutlined className="me-1" />
+                        Assign
+                    </div>
                 ),
             },
             {
                 key: "2",
                 label: (
-                    <UnlockLockerModal
-                        lockerId={props.lockerId}
-                        handleOkay={() => unlockLocker(props.lockerId)}
-                        // setLockerId={setSelectedUserId}
-                        setAccessCode={setAccessCode}
-                    />
+                    <div onClick={() => updatePassword({ lockerID: props.lockerId, accessCode: props.password })}>
+                        <SyncOutlined className="me-1" />
+                        Update Password
+                    </div>
+                ),
+            },
+            {
+                key: "3",
+                label: (
+                    <div onClick={() => unlockLocker({ lockerID: props.lockerId, accessCode: props.password })}>
+                        <UnlockOutlined className="me-1" />
+                        Unlock
+                    </div>
                 ),
             },
         ];
@@ -214,156 +170,43 @@ const AdminViewEditSmartLockers = () => {
     });
 
     // Query for fetching lockers
-    const {
-        data: lockers,
-        isLoading: isLoadingLockers,
-        isError: isErrorLockers,
-    } = useQuery<Locker[]>({
+    const { data: lockers, isLoading: isLoadingLockers } = useQuery<Locker[]>({
         queryKey: ["lockers"],
         queryFn: async () => {
-            console.log("Fetching lockers...");
-            try {
-                const token = await getToken();
-                if (!token) {
-                    throw new Error("No authentication token available");
-                }
-
-                const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                console.log("Locker response status:", res.status);
-
-                if (!res.ok) {
-                    throw new Error(`Failed to fetch lockers: ${res.status}`);
-                }
-
-                const data = await res.json();
-                console.log("Locker response data:", data);
-                return data;
-            } catch (error) {
-                console.error("Error fetching lockers:", error);
-                throw error;
-            }
-        },
-        retry: 3, // Retry failed requests 3 times
-        staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-    });
-
-    // Mutation for updating locker
-    const updateLockerMutation = useMutation({
-        mutationFn: async ({ lockerId, updates }: { lockerId: number; updates: { user_id?: string; in_use?: boolean; access_code?: string } }) => {
-            console.log("Original updates:", updates);
-            console.log("lockerId:", lockerId);
-            console.log("API URL:", `${absoluteServerUrl}/admin/lockers/${lockerId}`);
-
+            // console.log("Fetching lockers...");
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const response = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerId}`, {
-                method: "PATCH",
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
+                method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(updates),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Error response:", errorText);
-                throw new Error(`Failed to update locker: ${errorText}`);
+            // console.log("Locker response status:", res.status);
+
+            if (!res.ok) {
+                throw new Error(`Failed to fetch lockers: ${res.status}`);
             }
 
-            const data = await response.json();
+            const data = await res.json();
+            // console.log("Locker response data:", data);
             return data;
         },
-        onSuccess: () => {
-            // Invalidate and refetch queries
-            console.log("Locker updated successfully");
-        },
-        onError: (error) => {
-            console.error("Error updating locker:", error);
-        },
+        // retry: 3, // Retry failed requests 3 times
+        staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     });
 
-    // Update the handleAddPackage function
-    const handleAddPackage = async () => {
-        try {
-            console.log("handleAddPackage called");
-            console.log("selectedUserId:", selectedUserId);
-            console.log("accessCode:", accessCode);
-            console.log("lockers:", lockers);
-
-            if (isLoadingLockers) {
-                console.error("Please wait while lockers are being loaded...");
-                return;
-            }
-
-            if (isErrorLockers) {
-                console.error("Failed to load lockers. Please try again.");
-                return;
-            }
-
-            if (!lockers || lockers.length === 0) {
-                console.error("No lockers available in the system");
-                return;
-            }
-
-            if (!selectedUserId) {
-                console.error("Please select a tenant");
-                return;
-            }
-
-            if (!accessCode) {
-                console.error("Please enter an access code");
-                return;
-            }
-
-            const availableLocker = lockers.find((locker) => !locker.in_use);
-            if (!availableLocker) {
-                console.error("No available lockers");
-                return;
-            }
-
-            console.log("Available locker:", availableLocker);
-            console.log("Starting update locker mutation");
-
-            await updateLockerMutation.mutateAsync({
-                lockerId: availableLocker.id,
-                updates: {
-                    user_id: selectedUserId,
-                    access_code: accessCode,
-                    in_use: true,
-                },
-            });
-
-            // Reset form values after successful addition
-            setSelectedUserId(undefined);
-            setAccessCode("");
-        } catch (error) {
-            console.error("Error adding package:", error);
-            throw error; // Re-throw to be caught by modal error handler
-        }
-    };
-
     const columns: ColumnsType<Locker> = [
-        // {
-        //     title: "ID",
-        //     dataIndex: "id",
-        //     key: "id",
-        // },
         {
-            title: "User ID",
-            dataIndex: "user_id",
-            key: "user_id",
-            render: (userId: string | null) => <span>{userId ?? "N/A"}</span>,
+            title: "Id",
+            dataIndex: "id",
+            key: "Id",
+            render: (lockerId: number) => <span>{lockerId}</span>,
         },
         {
             title: "Access Code",
@@ -421,28 +264,8 @@ const AdminViewEditSmartLockers = () => {
             <PageTitleComponent title="Admin View Edit Smart Lockers" />
             <p className="text-muted mb-4 text-center">View and manage all smart lockers in the system</p>
             <div className="d-flex mb-4 gap-2">
-                <ModalComponent
-                    buttonTitle="Add Package"
-                    buttonType="default"
-                    modalTitle="Add Package"
-                    content=""
-                    tenant={tenants ?? []}
-                    type="Smart Locker"
-                    accessCode={accessCode}
-                    setUserId={setSelectedUserId}
-                    handleOkay={async () => {
-                        await handleAddPackage();
-                    }}
-                />
-                {/* Refresh button */}
-                <ButtonComponent
-                    title="Refresh"
-                    type="default"
-                    icon={<ArrowRightOutlined />}
-                    onClick={() => {
-                        window.location.reload();
-                    }}
-                />
+                <AddPackageModal tenants={tenants ?? []} />
+                <AddLockersModal />
             </div>
             <TableComponent
                 columns={columns}
@@ -454,3 +277,248 @@ const AdminViewEditSmartLockers = () => {
 };
 
 export default AdminViewEditSmartLockers;
+
+interface AddPackageModalProps {
+    tenants: Tenant[];
+}
+
+interface AddPackageFormShcema {
+    selectedUserId: string;
+    accessCode: string;
+}
+
+function AddPackageModal(props: AddPackageModalProps) {
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const [accessCode, setAccessCode] = useState(generateAccessCode());
+    const [addPackageForm] = Form.useForm<AddPackageFormShcema>();
+    const queryClient = useQueryClient();
+    const { getToken } = useAuth();
+
+    const { mutate: addPackage, isPending: addPackageIsPending } = useMutation({
+        mutationKey: ["admin-add-package"],
+        mutationFn: async ({ selectedUserId, accessCode }: { selectedUserId: string; accessCode: string }) => {
+            if (!selectedUserId) {
+                console.error("Please select a tenant");
+                return;
+            }
+
+            if (!accessCode) {
+                console.error("Please enter an access code");
+                return;
+            }
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ user_clerk_id: selectedUserId, access_code: accessCode }),
+            });
+            if (!res.ok) {
+                throw new Error(`Failed creating new locker`);
+            }
+        },
+        onSuccess: () => {
+            // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            setAccessCode(generateAccessCode());
+            addPackageForm.resetFields();
+            handleCancel();
+        },
+    });
+
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+    return (
+        <>
+            <Button
+                type="primary"
+                onClick={() => showModal()}>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="lucide lucide-package-plus-icon lucide-package-plus">
+                    <path d="M16 16h6" />
+                    <path d="M19 13v6" />
+                    <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14" />
+                    <path d="m7.5 4.27 9 5.15" />
+                    <polyline points="3.29 7 12 12 20.71 7" />
+                    <line
+                        x1="12"
+                        x2="12"
+                        y1="22"
+                        y2="12"
+                    />
+                </svg>
+                Add Package
+            </Button>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3 style={{ fontWeight: "bold" }}>Add Package</h3>}
+                open={internalModalOpen}
+                onCancel={handleCancel}
+                onOk={() => {
+                    addPackageForm.setFieldValue("accessCode", accessCode);
+                    addPackage({ selectedUserId: addPackageForm.getFieldValue("selectedUserId"), accessCode: addPackageForm.getFieldValue("accessCode") });
+                }}
+                okButtonProps={{ hidden: false, disabled: addPackageIsPending ? true : false }}
+                // cancelButtonProps={{ hidden: true, disabled: true }}>
+            >
+                <div>
+                    <Form
+                        form={addPackageForm}
+                        layout="vertical">
+                        <p className="fs-6">User</p>
+                        <Form.Item
+                            name="selectedUserId"
+                            rules={[{ required: true, message: "Please select a user" }]}>
+                            <Select
+                                onChange={(v) => addPackageForm.setFieldValue("selectedUserId", v)}
+                                placeholder="Select a user">
+                                {props.tenants.map((user) => (
+                                    <Select.Option
+                                        key={user.id}
+                                        value={user.clerk_id}>
+                                        {user.first_name} {user.last_name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                        <p className="fs-6">Access Code</p>
+                        <Form.Item name="accessCode">
+                            <p style={{ color: "black" }}>{accessCode}</p>
+                        </Form.Item>
+                    </Form>
+                </div>
+            </Modal>
+        </>
+    );
+}
+
+interface LockerFormSchema {
+    numberOfLockers: number;
+}
+
+function AddLockersModal() {
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const [lockerForm] = Form.useForm<LockerFormSchema>();
+    const queryClient = useQueryClient();
+    const { getToken } = useAuth();
+
+    const { mutate: addLockers, isPending } = useMutation({
+        mutationKey: ["admin-add-lockers"],
+        mutationFn: async (amount: number) => {
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/many`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ count: amount }),
+            });
+            if (!res.ok) {
+                throw new Error(`Failed creating new locker`);
+            }
+        },
+        onSuccess: () => {
+            // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            lockerForm.resetFields();
+            handleCancel();
+        },
+    });
+
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+    return (
+        <>
+            <Button
+                type="primary"
+                onClick={() => showModal()}>
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="lucide lucide-square-plus-icon lucide-square-plus">
+                    <rect
+                        width="18"
+                        height="18"
+                        x="3"
+                        y="3"
+                        rx="2"
+                    />
+                    <path d="M8 12h8" />
+                    <path d="M12 8v8" />
+                </svg>
+                Add Lockers
+            </Button>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3 style={{ fontWeight: "bold" }}>Create New Lockers</h3>}
+                open={internalModalOpen}
+                onCancel={handleCancel}
+                onOk={() => addLockers(lockerForm.getFieldValue("numberOfLockers"))}
+                okButtonProps={{ hidden: false, disabled: isPending ? true : false }}
+                // cancelButtonProps={{ hidden: true, disabled: true }}>
+            >
+                <div>
+                    <Form
+                        form={lockerForm}
+                        layout="vertical">
+                        <p className="fs-6">Locker Amount</p>
+                        <Form.Item
+                            name="numberOfLockers"
+                            rules={[{ required: true, message: "Please select an amount of lockers you wish to create", type: "number", min: 1, max: 100 }]}>
+                            <InputNumber prefix={<NumberOutlined />} />
+                        </Form.Item>
+                    </Form>
+                </div>
+            </Modal>
+        </>
+    );
+}

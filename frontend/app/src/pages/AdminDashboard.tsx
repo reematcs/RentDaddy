@@ -11,6 +11,7 @@ import { Link } from "react-router";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
+import { generateAccessCode } from "../lib/utils";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -68,7 +69,7 @@ const AdminDashboard = () => {
     const queryClient = useQueryClient();
 
     const [selectedUserId, setSelectedUserId] = useState<string>();
-    const [accessCode, setAccessCode] = useState<string>("");
+    const [accessCode, setAccessCode] = useState<string>(generateAccessCode());
 
     // Query for fetching tenants
     const { data: tenants, isLoading: isLoadingTenants } = useQuery<Tenant[]>({
@@ -105,8 +106,8 @@ const AdminDashboard = () => {
             if (!token) {
                 throw new Error("No authentication token available");
             }
-            console.log("Fetching work orders...");
-            console.log("API URL:", `${absoluteServerUrl}/admin/work_orders`);
+            // console.log("Fetching work orders...");
+            // console.log("API URL:", `${absoluteServerUrl}/admin/work_orders`);
 
             const res = await fetch(`${absoluteServerUrl}/admin/work_orders`, {
                 method: "GET",
@@ -116,19 +117,19 @@ const AdminDashboard = () => {
                 },
             });
 
-            console.log("Response status:", res.status);
+            // console.log("Response status:", res.status);
 
             if (!res.ok) {
                 throw new Error(`Failed to fetch work orders: ${res.status}`);
             }
 
             const data = await res.json();
-            console.log("Response data:", data);
+            // console.log("Response data:", data);
             return data;
         },
     });
 
-    console.log("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
+    // console.log("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
 
     // Query for fetching complaints
     const { data: complaints, isLoading: isLoadingComplaints } = useQuery({
@@ -138,8 +139,8 @@ const AdminDashboard = () => {
             if (!token) {
                 throw new Error("No authentication token available");
             }
-            console.log("Fetching complaints...");
-            console.log("API URL:", `${absoluteServerUrl}/admin/complaints`);
+            // console.log("Fetching complaints...");
+            // console.log("API URL:", `${absoluteServerUrl}/admin/complaints`);
             const res = await fetch(`${absoluteServerUrl}/admin/complaints`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -154,8 +155,8 @@ const AdminDashboard = () => {
         },
     });
 
-    console.log("complaints:", complaints);
-    console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
+    // console.log("complaints:", complaints);
+    // console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
 
     // Query for fetching lockers
     const {
@@ -223,70 +224,58 @@ const AdminDashboard = () => {
         },
     });
 
-    // Mutation for updating locker
-    const updateLockerMutation = useMutation({
-        mutationFn: async ({ lockerId, updates }: { lockerId: number; updates: { user_id?: string; in_use?: boolean; access_code?: string } }) => {
-            console.log("Original updates:", updates);
-            console.log("lockerId:", lockerId);
-            console.log("API URL:", `${absoluteServerUrl}/admin/lockers/${lockerId}`);
-
+    const { mutate: addPackage } = useMutation({
+        mutationKey: ["admin-add-package"],
+        mutationFn: async () => {
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const response = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerId}`, {
-                method: "PATCH",
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(updates),
+                body: JSON.stringify({ user_clerk_id: selectedUserId, access_code: accessCode }),
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Error response:", errorText);
-                throw new Error(`Failed to update locker: ${errorText}`);
+            if (!res.ok) {
+                throw new Error(`Failed creating new locker`);
             }
-
-            const data = await response.json();
-            return data;
         },
         onSuccess: () => {
-            // Invalidate and refetch queries
+            // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
-            console.log("Locker updated successfully");
-        },
-        onError: (error) => {
-            console.error("Error updating locker:", error);
+            setAccessCode(generateAccessCode());
+            setSelectedUserId(undefined);
         },
     });
 
     // Update the handleAddPackage function
     const handleAddPackage = async () => {
         try {
-            // console.log("handleAddPackage called");
-            // console.log("selectedUserId:", selectedUserId);
-            // console.log("accessCode:", accessCode);
-            // console.log("lockers:", lockers);
+            console.log("handleAddPackage called");
+            console.log("selectedUserId:", selectedUserId);
+            console.log("accessCode:", accessCode);
+            console.log("lockers:", lockers);
 
-            if (isLoadingLockers) {
-                console.error("Please wait while lockers are being loaded...");
-                return;
-            }
-
-            if (isErrorLockers) {
-                console.error("Failed to load lockers. Please try again.");
-                return;
-            }
-
-            if (!lockers || lockers.length === 0) {
-                console.error("No lockers available in the system");
-                return;
-            }
-
+            // if (isLoadingLockers) {
+            //     console.error("Please wait while lockers are being loaded...");
+            //     return;
+            // }
+            //
+            // if (isErrorLockers) {
+            //     console.error("Failed to load lockers. Please try again.");
+            //     return;
+            // }
+            //
+            // if (!lockers || lockers.length === 0) {
+            //     console.error("No lockers available in the system");
+            //     return;
+            // }
+            //
             if (!selectedUserId) {
                 console.error("Please select a tenant");
                 return;
@@ -297,27 +286,24 @@ const AdminDashboard = () => {
                 return;
             }
 
-            const availableLocker = lockers.find((locker) => !locker.in_use);
-            if (!availableLocker) {
-                console.error("No available lockers");
-                return;
-            }
+            // const availableLocker = lockers.find((locker) => !locker.in_use);
+            // if (!availableLocker) {
+            //     console.error("No available lockers");
+            //     return;
+            // }
 
             // console.log("Available locker:", availableLocker);
             // console.log("Starting update locker mutation");
 
-            await updateLockerMutation.mutateAsync({
-                lockerId: availableLocker.id,
-                updates: {
-                    user_id: selectedUserId,
-                    access_code: accessCode,
-                    in_use: true,
-                },
-            });
-
-            // Reset form values after successful addition
-            setSelectedUserId(undefined);
-            setAccessCode("");
+            addPackage();
+            // await updateLockerMutation.mutateAsync({
+            //     lockerId: availableLocker.id,
+            //     updates: {
+            //         user_id: selectedUserId,
+            //         access_code: accessCode,
+            //         in_use: true,
+            //     },
+            // });
         } catch (error) {
             console.error("Error adding package:", error);
             throw error;
