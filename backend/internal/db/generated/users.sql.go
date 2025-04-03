@@ -232,6 +232,17 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 	return i, err
 }
 
+const getUserCount = `-- name: GetUserCount :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) GetUserCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertAdminWithID = `-- name: InsertAdminWithID :one
 INSERT INTO users (id, clerk_id, first_name, last_name, email, role)
 OVERRIDING SYSTEM VALUE

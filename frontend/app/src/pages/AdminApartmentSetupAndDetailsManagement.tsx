@@ -8,6 +8,7 @@ import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useAuth } from "@clerk/clerk-react";
+import { useApiAuth } from "../utils/apiContext";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -40,11 +41,8 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         data_seeding: { in_progress: boolean; last_error?: string; last_complete?: string };
     } | null>(null);
 
-    // Define seedStatus upfront to avoid the "used before declaration" error
-    const {
-        mutate: triggerSeedUsers,
-        status: seedStatus
-    } = useMutation({
+    // Store the entire mutation object so we can access reset() later
+    const seedUsersMutation = useMutation({
         mutationFn: async () => {
             const token = await getToken();
             const res = await fetch(`${API_URL}/seed-users`, {
@@ -80,15 +78,112 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
     });
 
+    // Extract commonly used properties for convenience
+
+    const seedStatus = seedUsersMutation.status;
+
     const checkTenants = useCallback(async () => {
+        console.log("🔎 Starting tenant existence check");
+
+        // Check session storage for cached tenant existence
         try {
-            const res = await fetch(`${API_URL}/check-admin`);
-            const data = await res.json();
-            setTenantsExist(data.tenants_exist);
+            const cachedTenantStatus = sessionStorage.getItem('tenants_exist');
+            const lastChecked = sessionStorage.getItem('tenants_checked_time');
+            const now = Date.now();
+
+            // Use cached status if it's less than 5 minutes old
+            if (cachedTenantStatus && lastChecked && (now - parseInt(lastChecked, 10)) < 5 * 60 * 1000) {
+                console.log('📁 Using cached tenant existence status:', cachedTenantStatus);
+                setTenantsExist(cachedTenantStatus === 'true');
+                return;
+            }
         } catch (err) {
-            console.error("Failed to check tenants", err);
+            // If there's an error reading from storage, continue with the API check
+            console.warn('Failed to read cached tenant status', err);
         }
-    }, [API_URL]);
+
+        try {
+            // Use the server's seeding status as the primary source of truth
+            // This is the most reliable way to know if we have demo data
+            const seedStatusResponse = await fetch(`${API_URL}/seed-users/status`);
+
+            if (seedStatusResponse.ok) {
+                try {
+                    const seedStatus = await seedStatusResponse.json();
+                    console.log('📊 Seed status response:', seedStatus);
+
+                    // If seeding has been completed before, we definitely have data
+                    if (seedStatus && seedStatus.user_seeding && seedStatus.user_seeding.last_complete) {
+                        console.log('✅ Found completed seeding record, marking tenants as existing');
+
+                        // Cache this result for 5 minutes
+                        sessionStorage.setItem('tenants_exist', 'true');
+                        sessionStorage.setItem('tenants_checked_time', Date.now().toString());
+                        setTenantsExist(true);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Failed to parse seed status response:', error);
+                }
+            }
+
+            // If we get here, try the authenticated check-admin endpoint (fallback)
+            const token = await getToken();
+            const adminCheckResponse = await fetch(`${API_URL}/auth/check-admin`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (adminCheckResponse.ok) {
+                try {
+                    const adminData = await adminCheckResponse.json();
+                    console.log("📋 Admin check response:", adminData);
+
+                    // Explicitly check for tenant existence flag
+                    if (adminData.tenants_exist) {
+                        console.log("✅ Admin check confirms tenants exist");
+
+                        // Cache this result for 5 minutes
+                        sessionStorage.setItem('tenants_exist', 'true');
+                        sessionStorage.setItem('tenants_checked_time', Date.now().toString());
+                        setTenantsExist(true);
+                        return;
+                    }
+
+                    // Also check if we have any admin_exists info
+                    if (adminData.admin_exists) {
+                        console.log("✅ Admin exists, likely tenants exist too");
+
+                        // Cache this result for 5 minutes
+                        sessionStorage.setItem('tenants_exist', 'true');
+                        sessionStorage.setItem('tenants_checked_time', Date.now().toString());
+                        setTenantsExist(true);
+                        return;
+                    }
+                } catch (parseErr) {
+                    console.warn("⚠️ Failed to parse admin check response:", parseErr);
+                }
+            }
+
+            // If we get here, we know there are no tenants
+            console.log("❓ No tenants found based on API checks");
+
+            // Cache this result for 1 minute (shorter time since this can change when users are added)
+            sessionStorage.setItem('tenants_exist', 'false');
+            sessionStorage.setItem('tenants_checked_time', Date.now().toString());
+            setTenantsExist(false);
+
+        } catch (err) {
+            console.error("❌ Error checking for tenants:", err);
+            // Default to true on error - safer to assume data exists than wipe it out
+
+            // Cache the fallback status, but only for a short time
+            sessionStorage.setItem('tenants_exist', 'true');
+            sessionStorage.setItem('tenants_checked_time', Date.now().toString());
+            setTenantsExist(true);
+        }
+    }, [API_URL, getToken]);
 
     // Poll seeding status when needed
     React.useEffect(() => {
@@ -103,7 +198,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             seedStatus === 'success' ||
             (seedingStatus && seedingStatus.user_seeding.in_progress);
 
-        if (shouldPoll && (!seedingStatus || !seedingStatus.user_seeding.last_complete)) {
+        if (shouldPoll && (!seedingStatus || !seedingStatus.user_seeding.last_complete || seedingStatus.user_seeding.in_progress)) {
             intervalId = window.setInterval(async () => {
                 attempts++;
                 try {
@@ -118,6 +213,18 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             clearInterval(intervalId);
                             // Refresh tenant status
                             checkTenants();
+
+                            // If seeding just completed, automatically hide the success message after 3 seconds
+                            if (!data.user_seeding.in_progress && data.user_seeding.last_complete) {
+                                setTimeout(() => {
+                                    // This will remove the success status, which hides the alert
+                                    // while keeping the button in "Add More Demo Users" state
+                                    if (seedStatus === 'success') {
+                                        // Reset the seed mutation status to hide the success message
+                                        seedUsersMutation.reset();
+                                    }
+                                }, 3000);
+                            }
                         }
                     }
                 } catch (err) {
@@ -132,11 +239,65 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [seedStatus, seedingStatus, API_URL, checkTenants]);
+    }, [seedStatus, seedingStatus, API_URL, checkTenants, seedUsersMutation]);
+
+    // Check for tenants on initial load and when authenticated
+    const { isAuthenticated } = useApiAuth();
+
+    // Add debug output to track tenant existence state
+    React.useEffect(() => {
+        console.log('🧪 CURRENT TENANT EXISTENCE STATE:', tenantsExist);
+    }, [tenantsExist]);
+
+    // Check for completed seeding status
+    React.useEffect(() => {
+        // Check on initial load and whenever seedingStatus changes
+        console.log('🧪 Current seeding status:', seedingStatus);
+
+        // If we have a completed seed operation, force tenants to exist
+        if (seedingStatus && seedingStatus.user_seeding.last_complete && !seedingStatus.user_seeding.in_progress) {
+            console.log('✅ Previous seeding detected, marking tenants as existing');
+            setTenantsExist(true);
+        }
+    }, [seedingStatus]);
+
+    // Fetch seeding status on page load to ensure we have accurate state
+    React.useEffect(() => {
+        const checkSeedingStatus = async () => {
+            if (isAuthenticated) {
+                try {
+                    console.log('🔍 Checking seeding status on page load');
+                    const res = await fetch(`${API_URL}/seed-users/status`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log('📊 Seeding status from server:', data);
+                        setSeedingStatus(data);
+
+                        // If seeding has completed before, tenants exist
+                        if (data.user_seeding.last_complete) {
+                            console.log('✅ Found previous seeding record, tenants must exist');
+                            setTenantsExist(true);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to check seeding status:', error);
+                }
+            }
+        };
+
+        checkSeedingStatus();
+    }, [API_URL, isAuthenticated]);
 
     React.useEffect(() => {
-        checkTenants();
-    }, [checkTenants]);
+        // Only run the check when authentication is ready, which 
+        // ensures API requests will have proper auth headers
+        if (isAuthenticated) {
+            console.log("🔍 Checking for tenants on authenticated load");
+            // Force reset tenant existence state to ensure fresh check
+            setTenantsExist(false);
+            checkTenants();
+        }
+    }, [checkTenants, isAuthenticated]);
 
     console.log("locations on load", locations);
 
@@ -156,7 +317,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         apiKey: '',
         webhookSecret: ''
     });
-    
+
     const [submitLoading, setSubmitLoading] = useState(false);
 
     console.log("adminSetupObject", adminSetupObject);
@@ -200,7 +361,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     const { mutate: updateDocumensoConfig, status: documensoStatus } = useMutation({
         mutationFn: async (configData: { apiKey: string, webhookSecret: string }) => {
             console.log("Updating Documenso configuration");
-            
+
             // Retry up to 3 times with increasing delay
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
@@ -260,7 +421,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     const handleSendAdminSetup = () => {
         console.log("starting admin setup");
         setSubmitLoading(true);
-        
+
         // Remove Documenso config from apartment setup object
         const apartmentSetupOnly = {
             parkingTotal: adminSetupObject.parkingTotal,
@@ -273,7 +434,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             adminApartmentSetup(apartmentSetupOnly, {
                 onSuccess: () => {
                     message.success('Apartment setup completed successfully!');
-                    
+
                     // Reset the apartment setup state
                     setAdminSetupObject({
                         parkingTotal: 0,
@@ -283,7 +444,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         documensoApiKey: '',
                         documensoWebhookSecret: '',
                     });
-                    
+
                     setLocations([]);
                 },
                 onError: (error: Error) => {
@@ -590,20 +751,21 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         loading={submitLoading}
                     />
                 </Space>
-                
+
                 <Divider orientation="left">User Management</Divider>
                 <div className="mb-4">
                     <Space direction="vertical" className="w-full">
                         <ButtonComponent
                             type="primary"
                             title={seedingStatus && seedingStatus.user_seeding.in_progress
-                                ? "Seeding Users (This may take a minute)..."
-                                : !tenantsExist 
-                                    ? "Initialize Database with Demo Users"
-                                    : seedingStatus && seedingStatus.user_seeding.last_complete
-                                        ? "Seed Additional Users"
-                                        : "Seed More Users"}
-                            onClick={() => triggerSeedUsers()}
+                                // If actively seeding
+                                ? "Seeding Demo Data (This may take a minute)..."
+                                // If we have a record of previous seeding OR tenants exist
+                                : (seedingStatus && seedingStatus.user_seeding.last_complete) || tenantsExist
+                                    ? "Add More Demo Users & Data"
+                                    // Otherwise, no data exists yet
+                                    : "Initialize Full Demo Environment (Tenants, Complaints, Work Orders)"}
+                            onClick={() => seedUsersMutation.mutate()}
                             loading={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
                             disabled={seedStatus === "pending" || (seedingStatus ? seedingStatus.user_seeding.in_progress : false)}
                         />
@@ -616,15 +778,19 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                                 description=""
                             />
                         )}
-                        
-                        {seedingStatus && seedingStatus.user_seeding.last_complete && !seedingStatus.user_seeding.in_progress && (
-                            <AlertComponent
-                                type="success"
-                                title="Seeding Complete"
-                                message={`Last seeding completed at: ${new Date(seedingStatus.user_seeding.last_complete).toLocaleString()}`}
-                                description=""
-                            />
-                        )}
+
+                        {/* Only show success alert during the transition right after completion */}
+                        {seedingStatus &&
+                            seedingStatus.user_seeding.last_complete &&
+                            !seedingStatus.user_seeding.in_progress &&
+                            seedUsersMutation.isSuccess && (
+                                <AlertComponent
+                                    type="success"
+                                    title="Seeding Complete"
+                                    message={`Last seeding completed at: ${new Date(seedingStatus.user_seeding.last_complete).toLocaleString()}`}
+                                    description=""
+                                />
+                            )}
                     </Space>
                 </div>
                 {/* Documenso Integration Settings */}

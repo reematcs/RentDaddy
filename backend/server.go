@@ -80,7 +80,7 @@ func main() {
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
 	r.Post("/setup/admin", userHandler.SetupAdminUser)
-	r.Get("/check-admin", userHandler.CheckAdminExists)
+	r.Get("/check-admin", userHandler.CheckAdminExists) // Keep for unauthenticated access
 	r.Post("/seed-users", userHandler.AdminSeedUsers)
 	r.Get("/seed-users/status", userHandler.GetSeedingStatus)
 	r.Post("/seed-demo-data", userHandler.AdminSeedData)
@@ -99,6 +99,9 @@ func main() {
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
 		r.Use(clerkhttp.WithHeaderAuthorization(), middleware.ClerkAuthMiddleware)
+
+		// Add authenticated version of check-admin endpoint
+		r.Get("/auth/check-admin", userHandler.AuthenticatedCheckAdminExists)
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {

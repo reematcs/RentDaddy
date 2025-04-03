@@ -45,5 +45,21 @@ echo "Database migrations complete."
 mkdir -p /app/config
 
 # Execute the Go application
+# Ensure the environment is set up for Go scripts if Go is available
+if command -v go >/dev/null 2>&1; then
+  echo "Setting up Go environment..."
+  export GO111MODULE=on
+  export GOPATH="/go"
+  export PATH=$PATH:$GOPATH/bin
+  
+  # Install necessary packages for scripts
+  echo "Installing dependencies for scripts..."
+  go mod download github.com/bxcodec/faker/v4
+  go mod download github.com/clerk/clerk-sdk-go/v2
+  go mod download github.com/clerk/clerk-sdk-go/v2/user
+else
+  echo "Go not found, skipping module dependencies - continuing with server startup..."
+fi
+
 echo "Starting Go server..."
 exec /app/server

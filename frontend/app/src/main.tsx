@@ -22,6 +22,9 @@ import { ConfigProvider } from "antd";
 // Clerk
 import { ClerkProvider, SignIn } from "@clerk/react-router";
 
+// API Provider
+import { ApiProvider } from "./utils/apiContext";
+
 // Pages
 import App from "./App.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
@@ -124,6 +127,7 @@ createRoot(document.getElementById("root")!).render(
                                 }
                             }
                         }}>
+                        <ApiProvider>
                         <Routes>
                             <Route element={<PreAuthedLayout />}>
                                 <Route path="/healthz" element={<div>ok</div>} />
@@ -228,6 +232,7 @@ createRoot(document.getElementById("root")!).render(
                                 element={<ErrorNotFound />}
                             />
                         </Routes>
+                        </ApiProvider>
                     </ClerkProvider>
                 </BrowserRouter>
             </QueryClientProvider>

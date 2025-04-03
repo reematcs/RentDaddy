@@ -456,7 +456,7 @@ resource "aws_ecs_task_definition" "documenso" {
   container_definitions = jsonencode([
     {
       name      = "documenso"
-      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:debug-amd64"
+      image     = "documenso/documenso:latest"
       essential = true
       portMappings = [
         {
@@ -473,15 +473,14 @@ resource "aws_ecs_task_definition" "documenso" {
         }
       ]
       links = ["documenso-postgres"],
-      links = ["documenso"],
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "POSTGRES_USER", value = "documenso" },
         { name = "POSTGRES_DB", value = "documenso" },
         { name = "NEXT_PUBLIC_WEBAPP_URL", value = "https://docs.curiousdev.net" },
         { name = "NEXTAUTH_URL", value = "https://docs.curiousdev.net" },
-        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://host.docker.internal:3000" },
-        { name = "NEXT_PUBLIC_JOBS_URL", value = "http://host.docker.internal:3000/api/jobs" },
+        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
+        { name = "NEXT_PUBLIC_JOBS_URL", value = "http://documenso:3000/api/jobs" },
         { name = "NEXT_PUBLIC_API_URL", value = "https://docs.curiousdev.net" },
         { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
         { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
@@ -518,6 +517,8 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH", value = "/opt/documenso/cert.p12" },
         { name = "NEXT_PRIVATE_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
         { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
+        { name = "DATABASE_HOST", value = "documenso-postgres" },
+        { name = "DATABASE_PORT", value = "5432" },
       ]
       secrets = [
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
@@ -542,9 +543,17 @@ resource "aws_ecs_task_definition" "documenso" {
       image     = "postgres:15"
       user      = "postgres"
       essential = true
+      healthCheck = {
+        command     = ["CMD-SHELL", "pg_isready -U documenso || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
       portMappings = [
         {
           containerPort = 5432,
+          hostPort      = 5433,
           protocol      = "tcp"
         }
       ]
@@ -575,19 +584,69 @@ resource "aws_ecs_task_definition" "documenso" {
     },
     {
       name      = "documenso-worker"
-      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:debug-amd64"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso-worker:latest"
       essential = false
-      command   = ["inngest", "dev", "-u", "http://documenso:3000/api/jobs"]
+      links     = ["documenso-postgres", "documenso"],
+      dependsOn = [
+        {
+          containerName = "documenso-postgres"
+          condition     = "HEALTHY"
+        }
+      ],
       environment = [
         {
-          name  = "NEXT_PRIVATE_DATABASE_URL"
-          value = "postgresql://documenso:password@documenso-postgres:5432/documenso"
+          name  = "BACKEND_URL"
+          value = "https://api.curiousdev.net"
+        },
+        {
+          name  = "WEBHOOK_PATH"
+          value = "/admin/leases/webhooks/documenso"
+        },
+        {
+          name  = "POLL_INTERVAL"
+          value = "15"
+        },
+        {
+          name  = "POSTGRES_USER"
+          value = "documenso"
+        },
+        {
+          name  = "POSTGRES_DB"
+          value = "documenso"
+        },
+        {
+          name  = "POSTGRES_HOST"
+          value = "documenso-postgres"
+        },
+        {
+          name  = "POSTGRES_PORT"
+          value = "5432"
+        },
+        {
+          name  = "STARTUP_DELAY"
+          value = "120"
+        },
+        {
+          name  = "MAX_CONNECTION_RETRIES"
+          value = "10"
+        },
+        {
+          name  = "DOCUMENSO_BASE_URL"
+          value = "http://documenso:3000"
+        },
+        {
+          name  = "DEBUG"
+          value = "true"
         }
+      ]
+      secrets = [
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
+        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" }
       ]
       logConfiguration = {
         logDriver = "awslogs",
         options = {
-          awslogs-group         = "/ecs/documenso"
+          awslogs-group         = aws_cloudwatch_log_group.documenso_logs.name
           awslogs-region        = "us-east-2"
           awslogs-stream-prefix = "worker"
         }
@@ -730,10 +789,11 @@ resource "aws_ecs_service" "backend_with_frontend" {
 
 
 resource "aws_ecs_service" "documenso" {
-  name            = "rentdaddy-documenso-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.documenso.arn
-  desired_count   = 1
+  name                               = "rentdaddy-documenso-service"
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.documenso.arn
+  desired_count                      = 1
+  health_check_grace_period_seconds  = 120
   # network_configuration {
   #   subnets          = aws_subnet.public[*].id
   #   security_groups  = [aws_security_group.ec2_sg.id]
@@ -913,11 +973,11 @@ resource "aws_lb_target_group" "documenso" {
 
   health_check {
     path                = "/"
-    interval            = 30
-    timeout             = 5
+    interval            = 300
+    timeout             = 60
     healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200"
+    unhealthy_threshold = 5
+    matcher             = "200-499"
   }
 }
 
@@ -935,7 +995,7 @@ resource "aws_lb_target_group_attachment" "backend" {
 
 resource "aws_lb_target_group_attachment" "documenso" {
   target_group_arn = aws_lb_target_group.documenso.arn
-  target_id        = "i-07fc1015320b68724" # Instance in zone A for documenso
+  target_id        = "i-02055500af192fa53" # Instance in zone A for documenso
   port             = 3000
 }
 

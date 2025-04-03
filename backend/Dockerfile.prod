@@ -1,64 +1,74 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.23 AS builder
 
-RUN apk update && apk add --no-cache git make openssh-client
+# 👇 Debian uses apt-get instead of apk
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git make openssh-client wget ca-certificates bash && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy go module files first for better layer caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
+
+# Download specific dependencies needed for scripts
+RUN go mod download github.com/bxcodec/faker/v4 && \
+    go mod download github.com/clerk/clerk-sdk-go/v2 && \
+    go mod download github.com/clerk/clerk-sdk-go/v2/user
 
 # Copy the rest of the application
 COPY . .
 
-# Generate database code
-RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+# Install sqlc
+RUN wget https://github.com/sqlc-dev/sqlc/releases/download/v1.28.0/sqlc_1.28.0_linux_amd64.tar.gz && \
+    tar -xzf sqlc_1.28.0_linux_amd64.tar.gz -C /usr/local/bin sqlc && \
+    chmod +x /usr/local/bin/sqlc && \
+    rm sqlc_1.28.0_linux_amd64.tar.gz
+
 RUN sqlc generate
 
 # Build the Go application
 RUN CGO_ENABLED=0 GOOS=linux go build -o server -ldflags="-s -w" ./server.go
 
 # Final stage
-FROM golang:1.23-alpine
+FROM debian:bookworm-slim
 
-RUN apk --no-cache add ca-certificates tzdata postgresql-client wget
-
-# Install golang-migrate
-RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz \
-    && tar -xvf migrate.tar.gz \
-    && mv migrate /usr/local/bin/migrate \
-    && chmod +x /usr/local/bin/migrate \
-    && rm migrate.tar.gz
+# Install packages needed at runtime including golang
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates tzdata postgresql-client wget git bash golang && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Create directories for app files
-RUN mkdir -p /app/temp
-RUN mkdir -p /app/config
+# Install golang-migrate
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz && \
+    tar -xvf migrate.tar.gz && \
+    mv migrate /usr/local/bin/migrate && \
+    chmod +x /usr/local/bin/migrate && \
+    rm migrate.tar.gz
 
-# Copy the binary from the builder stage
+# Create runtime directories
+RUN mkdir -p /app/temp /app/config /go/pkg/mod
+
+# Copy the binary and supporting files from builder
 COPY --from=builder /app/server .
 COPY --from=builder /app/entrypoint-prod.sh .
 COPY --from=builder /app/internal/db/migrations /app/internal/db/migrations
 COPY --from=builder /app/scripts /app/scripts
+COPY --from=builder /app/go.mod /app/go.sum ./
+# Copy the Go modules cache to ensure dependencies are available
+COPY --from=builder /go/pkg/mod/ /go/pkg/mod/
 
-# Note: In production, environment variables should be passed at runtime
-# We don't copy .env files into the Docker image for security
-
-# Make entrypoint executable
+# Make the entrypoint script executable
 RUN chmod +x /app/entrypoint-prod.sh
 
-# Use environment variables for configuration
+# Set environment variables
 ENV PORT=8080
-ENV PG_URL=''
-ENV DOCUMENSO_API_URL='https://api.documenso.com/api/v1'
+ENV PG_URL=""
+ENV DOCUMENSO_API_URL="https://api.documenso.com/api/v1"
 ENV TEMP_DIR=/app/temp
 
-# Expose the server port
 EXPOSE 8080
 
-# Start the application
 ENTRYPOINT ["/app/entrypoint-prod.sh"]

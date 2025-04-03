@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -678,11 +680,36 @@ func (u UserHandler) TenantCreateWorkOrder(w http.ResponseWriter, r *http.Reques
 
 // TENANT END
 func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("==== [ADMIN_SETUP] SetupAdminUser handler called ====")
+
+	// Log headers for debugging auth issues
+	for name, values := range r.Header {
+		if name != "Authorization" && name != "Cookie" {
+			log.Printf("[ADMIN_SETUP] Header %s: %v", name, values)
+		} else {
+			log.Printf("[ADMIN_SETUP] Header %s: [present]", name)
+		}
+	}
+
+	// Read and log the request body
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[ADMIN_SETUP] Failed to read request body: %v", err)
+		http.Error(w, "Failed to read request", http.StatusBadRequest)
+		return
+	}
+
+	// Restore the body for further processing
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	log.Printf("[ADMIN_SETUP] Request body: %s", string(bodyBytes))
+
 	var payload SetupAdminRequest
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Printf("[ADMIN_SETUP] Failed to decode JSON payload: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	log.Printf("[ADMIN_SETUP] Parsed payload: clerk_id=%s", payload.ClerkID)
 
 	ctx := r.Context()
 
@@ -716,15 +743,33 @@ func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
 
 	// Check if an admin already exists in the DB
 	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
-	if err == nil && len(admins) > 0 {
-		// Allow only if this is the default admin
-		if primaryEmail == "wrldconnect1@gmail.com" && metadata.DbId == 1 {
-			log.Println("[SETUP] Default admin override accepted")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Default admin recognized"))
-			return
+	log.Printf("[ADMIN_SETUP] Checking for existing admins: found %d, error: %v", len(admins), err)
+
+	// Get admin email from environment variables
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+
+	// Check if we can proceed with this admin setup
+	isAllowedAdmin := false
+
+	// Case 1: No admins exist yet, anyone can become the first admin
+	if err == nil && len(admins) == 0 {
+		isAllowedAdmin = true
+		log.Printf("[ADMIN_SETUP] No admins exist yet, allowing setup for: %s", primaryEmail)
+	} else if adminEmail != "" && primaryEmail == adminEmail {
+		// Case 2: Admins exist, but this user is identified as an admin via env var
+		isAllowedAdmin = true
+		log.Printf("[ADMIN_SETUP] Email matches ADMIN_EMAIL env var: %s", primaryEmail)
+	} else if adminEmail == "" {
+		// Case 3: Admins exist, try SMTP_FROM as fallback
+		smtpFrom := os.Getenv("SMTP_FROM")
+		if smtpFrom != "" && primaryEmail == smtpFrom {
+			isAllowedAdmin = true
+			log.Printf("[ADMIN_SETUP] Email matches SMTP_FROM env var: %s", primaryEmail)
 		}
-		log.Println("[SETUP] Admin already exists and override not allowed")
+	}
+
+	if !isAllowedAdmin && len(admins) > 0 {
+		log.Printf("[ADMIN_SETUP] Admin already exists (%d found) and override not allowed", len(admins))
 		http.Error(w, "Admin already seeded", http.StatusConflict)
 		return
 	}
@@ -737,6 +782,9 @@ func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert the admin into the DB using provided db_id
+	log.Printf("[ADMIN_SETUP] Attempting to insert admin: ClerkID=%s, Name=%s %s, Email=%s",
+		clerkUser.ID, deref(clerkUser.FirstName), deref(clerkUser.LastName), primaryEmail)
+
 	admin, err := u.queries.InsertAdminWithID(ctx, db.InsertAdminWithIDParams{
 		ID:        int64(metadata.DbId),
 		ClerkID:   clerkUser.ID,
@@ -746,10 +794,12 @@ func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
 		Role:      db.RoleAdmin,
 	})
 	if err != nil {
-		log.Printf("[SETUP] Failed to insert admin into DB: %v", err)
+		log.Printf("[ADMIN_SETUP] Failed to insert admin into DB: %v", err)
 		http.Error(w, "Failed to insert admin", http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("[ADMIN_SETUP] Successfully inserted admin with ID=%d", admin.ID)
 
 	// Update Clerk metadata if needed
 	meta := ClerkUserPublicMetaData{
@@ -776,6 +826,7 @@ func deref(s *string) string {
 	}
 	return ""
 }
+
 // SeedingState tracks the progress of seeding operations
 type SeedingState struct {
 	InProgress   bool   `json:"in_progress"`
@@ -786,10 +837,10 @@ type SeedingState struct {
 
 // Package-level variables to track seeding status
 var (
-	usersSeedingState    = SeedingState{InProgress: false}
-	usersSeedingMutex    sync.Mutex
-	dataSeedingState     = SeedingState{InProgress: false}
-	dataSeedingMutex     sync.Mutex
+	usersSeedingState = SeedingState{InProgress: false}
+	usersSeedingMutex sync.Mutex
+	dataSeedingState  = SeedingState{InProgress: false}
+	dataSeedingMutex  sync.Mutex
 )
 
 func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
@@ -808,7 +859,7 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 			"message": "User seeding is already in progress",
 		}
 		usersSeedingMutex.Unlock()
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(resp)
@@ -834,21 +885,21 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
 		cmd.Dir = "/app" // ECS container working directory
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			errMsg := err.Error()
 			if len(output) > 0 {
 				errMsg += ": " + string(output)
 			}
-			
+
 			log.Printf("[SEED_USERS] Failed: %v\nOutput: %s", err, string(output))
-			
+
 			usersSeedingMutex.Lock()
 			usersSeedingState.LastError = errMsg
 			usersSeedingMutex.Unlock()
 			return
 		}
-		
+
 		log.Println("[SEED_USERS] Seeding complete successfully")
 	}()
 
@@ -857,7 +908,7 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 		"status":  "started",
 		"message": "User seeding process started",
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
 	json.NewEncoder(w).Encode(resp)
@@ -879,7 +930,7 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 			"message": "Data seeding is already in progress",
 		}
 		dataSeedingMutex.Unlock()
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(resp)
@@ -905,21 +956,21 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
 		cmd.Dir = "/app"
 		output, err := cmd.CombinedOutput()
-		
+
 		if err != nil {
 			errMsg := err.Error()
 			if len(output) > 0 {
 				errMsg += ": " + string(output)
 			}
-			
+
 			log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", err, string(output))
-			
+
 			dataSeedingMutex.Lock()
 			dataSeedingState.LastError = errMsg
 			dataSeedingMutex.Unlock()
 			return
 		}
-		
+
 		log.Println("[SEED_DATA] Seeding complete successfully")
 	}()
 
@@ -928,20 +979,204 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 		"status":  "started",
 		"message": "Complaints and work orders seeding started",
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted) // 202 Accepted indicates the request has been accepted for processing
 	json.NewEncoder(w).Encode(resp)
 }
 
+// AuthenticatedCheckAdminExists is a wrapper for CheckAdminExists that ensures
+// it's being called within the authenticated middleware chain
+func (u UserHandler) AuthenticatedCheckAdminExists(w http.ResponseWriter, r *http.Request) {
+	log.Println("==== [CHECK_ADMIN] AuthenticatedCheckAdminExists endpoint called ====")
+
+	// Since this endpoint is behind the ClerkAuthMiddleware, authentication has
+	// already been verified, and the user context is already available.
+	// The middleware will have returned a 401 error if authentication failed.
+
+	// Just log the authenticated user for debugging
+	if clerkUser := middleware.GetUserCtx(r); clerkUser != nil {
+		log.Printf("[CHECK_ADMIN] Authenticated endpoint used by: ClerkID=%s", clerkUser.ID)
+	}
+
+	// Call the main handler which will detect the authenticated context
+	u.CheckAdminExists(w, r)
+}
+
 func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
+	log.Println("==== [CHECK_ADMIN] CheckAdminExists endpoint called ====")
 	ctx := r.Context()
 
+	// Get admin email from environment
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = os.Getenv("SMTP_FROM")
+	}
+
+	// 1. First check if there are any admin users in the database
 	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
 	if err != nil {
-		log.Printf("[CHECK_ADMIN] DB error: %v", err)
+		log.Printf("[CHECK_ADMIN] DB error listing admins: %v", err)
 		http.Error(w, "Error checking admin", http.StatusInternalServerError)
 		return
+	}
+
+	log.Printf("[CHECK_ADMIN] Found %d admins in the database", len(admins))
+
+	// 2. If any admins exist, first try to find one matching ADMIN_EMAIL environment variable
+	var selectedAdmin db.User
+	var firstAdminEmail string
+	var adminFound bool
+
+	if len(admins) > 0 {
+		// First try to find admin matching the environment variable email
+		if adminEmail != "" {
+			for _, admin := range admins {
+				if admin.Email == adminEmail {
+					log.Printf("[CHECK_ADMIN] Found admin matching ADMIN_EMAIL/SMTP_FROM: ID=%d, Email=%s",
+						admin.ID, admin.Email)
+					selectedAdmin = db.User{
+						ID:        admin.ID,
+						Email:     admin.Email,
+						FirstName: admin.FirstName,
+						LastName:  admin.LastName,
+						Role:      admin.Role,
+					}
+					firstAdminEmail = admin.Email
+					adminFound = true
+					break
+				}
+			}
+		}
+
+		// If no match with environment variable, use first admin in the list
+		if !adminFound {
+			selectedAdmin = db.User{
+				ID:        admins[0].ID,
+				Email:     admins[0].Email,
+				FirstName: admins[0].FirstName,
+				LastName:  admins[0].LastName,
+				Role:      admins[0].Role,
+			}
+			firstAdminEmail = admins[0].Email
+			log.Printf("[CHECK_ADMIN] Using first admin found: ID=%d, Email=%s",
+				selectedAdmin.ID, selectedAdmin.Email)
+		}
+	}
+
+	// 3. Check if the current authenticated user matches admin criteria
+	var currentUserEmail, currentUserClerkID string
+	var shouldBeAdmin bool
+
+	// Try to get authenticated user from request context
+	clerkUser := middleware.GetUserCtx(r)
+
+	if clerkUser != nil {
+		log.Printf("[CHECK_ADMIN] Authenticated user found in request context")
+
+		// Extract user information
+		currentUserClerkID = clerkUser.ID
+
+		// Get primary email
+		for _, email := range clerkUser.EmailAddresses {
+			if clerkUser.PrimaryEmailAddressID != nil && email.ID == *clerkUser.PrimaryEmailAddressID {
+				currentUserEmail = email.EmailAddress
+				break
+			}
+		}
+		if currentUserEmail == "" && len(clerkUser.EmailAddresses) > 0 {
+			currentUserEmail = clerkUser.EmailAddresses[0].EmailAddress
+		}
+
+		log.Printf("[CHECK_ADMIN] Authenticated user: ClerkID=%s, Email=%s",
+			currentUserClerkID, currentUserEmail)
+
+		// FIRST: Check for admin role in Clerk metadata
+		var userMetaData middleware.ClerkUserPublicMetaData
+		if err := json.Unmarshal(clerkUser.PublicMetadata, &userMetaData); err == nil {
+			if userMetaData.Role == db.RoleAdmin {
+				shouldBeAdmin = true
+				log.Printf("[CHECK_ADMIN] Current user has admin role in Clerk metadata")
+			} else {
+				log.Printf("[CHECK_ADMIN] Current user role in Clerk: %v (not admin)", userMetaData.Role)
+			}
+		} else {
+			log.Printf("[CHECK_ADMIN] Couldn't parse Clerk metadata, error: %v", err)
+		}
+
+		// FALLBACK: If role check fails, check email against environment variables
+		if !shouldBeAdmin {
+			log.Printf("[CHECK_ADMIN] No admin role found in Clerk metadata, falling back to email checks")
+			// Check if this user's email matches admin email from environment
+			if adminEmail != "" && currentUserEmail == adminEmail {
+				shouldBeAdmin = true
+				log.Printf("[CHECK_ADMIN] Current user (%s) matches ADMIN_EMAIL/SMTP_FROM", currentUserEmail)
+			} else {
+				// Fallback checks based on name
+				adminFirst := os.Getenv("ADMIN_FIRST_NAME")
+				adminLast := os.Getenv("ADMIN_LAST_NAME")
+
+				if adminFirst != "" && adminLast != "" &&
+					*clerkUser.FirstName == adminFirst &&
+					*clerkUser.LastName == adminLast {
+					shouldBeAdmin = true
+					log.Printf("[CHECK_ADMIN] Current user (%s) matches ADMIN_FIRST_NAME/ADMIN_LAST_NAME", currentUserEmail)
+				} else if currentUserEmail == "ezra@gitfor.ge" {
+					// Legacy support for hardcoded email
+					shouldBeAdmin = true
+					log.Printf("[CHECK_ADMIN] Current user is using legacy admin email")
+				}
+			}
+
+			// Special case: if current user matches admin email but not in admin list
+			if shouldBeAdmin && len(admins) > 0 && !adminFound && currentUserEmail == adminEmail {
+				// Override the selected admin to be the one with matching email
+				log.Printf("[CHECK_ADMIN] Current user email matches admin email but isn't first in DB. Prioritizing this user.")
+				selectedAdmin = db.User{
+					Email: currentUserEmail,
+					ID:    0, // We don't know the ID yet
+				}
+				firstAdminEmail = currentUserEmail
+			}
+		}
+	} else {
+		// Handling for unauthenticated requests (like from taskfile)
+		log.Printf("[CHECK_ADMIN] No authenticated user found - handling as task/script execution")
+
+		// Use admin email from environment variables for creating admin
+		if adminEmail != "" {
+			// For unauthenticated requests, use the email from environment variables
+			currentUserEmail = adminEmail
+			log.Printf("[CHECK_ADMIN] Using ADMIN_EMAIL/SMTP_FROM env var as current user email: %s", currentUserEmail)
+
+			// Set flag to indicate this email should be admin
+			shouldBeAdmin = true
+
+			// If we're creating a new admin, we'll need more info
+			adminFirst := os.Getenv("ADMIN_FIRST_NAME")
+			adminLast := os.Getenv("ADMIN_LAST_NAME")
+
+			if adminFirst == "" || adminLast == "" {
+				log.Printf("[CHECK_ADMIN] Warning: ADMIN_FIRST_NAME and/or ADMIN_LAST_NAME not set")
+				log.Printf("[CHECK_ADMIN] Using default values for admin user details")
+			} else {
+				log.Printf("[CHECK_ADMIN] Using env vars for admin details: %s %s <%s>",
+					adminFirst, adminLast, adminEmail)
+			}
+		} else {
+			log.Printf("[CHECK_ADMIN] Warning: No ADMIN_EMAIL or SMTP_FROM set for unauthenticated request")
+		}
+	}
+
+	// 4. Check if we should auto-create admin in the response
+	createAdminResponse := false
+	if len(admins) == 0 && shouldBeAdmin {
+		// For authenticated users, we need a Clerk ID
+		// For unauthenticated requests from taskfile, we can proceed even without a Clerk ID
+		if currentUserClerkID != "" || clerkUser == nil {
+			createAdminResponse = true
+			log.Printf("[CHECK_ADMIN] Suggesting admin creation for user: %s", currentUserEmail)
+		}
 	}
 
 	tenants, err := u.queries.ListUsersByRole(ctx, db.RoleTenant)
@@ -950,12 +1185,26 @@ func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error checking tenants", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("[CHECK_ADMIN] Found %d tenants in the database", len(tenants))
 
+	// 5. Build and send response
+	response := map[string]any{
+		"admin_exists":       len(admins) > 0,
+		"tenants_exist":      len(tenants) > 0,
+		"create_admin":       createAdminResponse,
+		"admin_clerk_id":     currentUserClerkID,
+		"current_user_email": currentUserEmail,
+	}
+
+	// Add first admin info if exists
+	if len(admins) > 0 {
+		response["first_admin_email"] = firstAdminEmail
+		response["first_admin_id"] = selectedAdmin.ID
+	}
+
+	log.Printf("[CHECK_ADMIN] Responding with: %+v", response)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"admin_exists":  len(admins) > 0,
-		"tenants_exist": len(tenants) > 0,
-	})
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetSeedingStatus returns the current status of seeding operations
@@ -964,21 +1213,21 @@ func (u UserHandler) GetSeedingStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	
+
 	// Get current status
 	usersSeedingMutex.Lock()
 	userStatus := usersSeedingState
 	usersSeedingMutex.Unlock()
-	
+
 	dataSeedingMutex.Lock()
 	dataStatus := dataSeedingState
 	dataSeedingMutex.Unlock()
-	
+
 	status := map[string]interface{}{
 		"user_seeding": userStatus,
 		"data_seeding": dataStatus,
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(status)

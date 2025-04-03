@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"log"
 
 	"github.com/bxcodec/faker/v4"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -39,10 +41,45 @@ func createAdmin(ctx context.Context) (*clerk.User, error) {
 	}
 	metadataRaw := json.RawMessage(metadataBytes)
 
+	// Try to use environment variables for admin email and name
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	adminFirstName := os.Getenv("ADMIN_FIRST_NAME")
+	adminLastName := os.Getenv("ADMIN_LAST_NAME")
+	
+	// Log the admin email we're using
+	if adminEmail != "" {
+		log.Printf("[CREATE_ADMIN] Using ADMIN_EMAIL from environment: %s", adminEmail)
+	} else {
+		// Fall back to SMTP_FROM if ADMIN_EMAIL is not set
+		adminEmail = os.Getenv("SMTP_FROM")
+		if adminEmail != "" {
+			log.Printf("[CREATE_ADMIN] ADMIN_EMAIL not set, using SMTP_FROM: %s", adminEmail)
+		} else {
+			// Last resort: use a random email
+			adminEmail = faker.Email()
+			log.Printf("[CREATE_ADMIN] No admin email in environment, using random email: %s", adminEmail)
+		}
+	}
+	
+	// Use environment variables for name if available, otherwise use random values
+	if adminFirstName == "" {
+		adminFirstName = faker.FirstName()
+		log.Printf("[CREATE_ADMIN] Using random first name: %s", adminFirstName)
+	} else {
+		log.Printf("[CREATE_ADMIN] Using ADMIN_FIRST_NAME from environment: %s", adminFirstName)
+	}
+	
+	if adminLastName == "" {
+		adminLastName = faker.LastName()
+		log.Printf("[CREATE_ADMIN] Using random last name: %s", adminLastName)
+	} else {
+		log.Printf("[CREATE_ADMIN] Using ADMIN_LAST_NAME from environment: %s", adminLastName)
+	}
+
 	userEntry := ClerkUserEntry{
-		EmailAddresses: []string{faker.Email()},
-		FirstName:      faker.FirstName(),
-		LastName:       faker.LastName(),
+		EmailAddresses: []string{adminEmail},
+		FirstName:      adminFirstName,
+		LastName:       adminLastName,
 		PublicMetaData: metadataRaw,
 	}
 
@@ -55,6 +92,9 @@ func createAdmin(ctx context.Context) (*clerk.User, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	log.Printf("[CREATE_ADMIN] Successfully created admin user: %s %s (%s)", 
+		adminFirstName, adminLastName, adminEmail)
 	return adminUser, nil
 }
 

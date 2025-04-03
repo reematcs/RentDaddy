@@ -86,57 +86,109 @@ export const LeaseModalComponent = ({
     const {
         data: tenants = [],
         isLoading: loadingTenants,
+        refetch: refetchTenants,
+        isFetching: isFetchingTenants,
     } = useQuery<Tenant[]>({
         queryKey: ['tenants', 'without-lease'],
         queryFn: async () => {
-            const token = await getToken();
-            if (!token) throw new Error("Authentication token required");
+            // Retry up to 3 times with increasing delay
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    console.log(`[TENANT_QUERY] Fetching tenants without lease, attempt ${attempt + 1}`);
+                    const token = await getToken();
+                    if (!token) {
+                        console.log(`[TENANT_QUERY] Waiting for auth token... (attempt ${attempt + 1})`);
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+                        continue;
+                    }
 
-            const response = await fetch(`${API_URL}/admin/leases/without-lease`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    const response = await fetch(`${API_URL}/admin/leases/without-lease`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        // For auth failures, try again
+                        if (response.status === 401 || response.status === 403) {
+                            console.log(`[TENANT_QUERY] Auth failed (${response.status}), retrying...`);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+                            continue;
+                        }
+                        throw new Error(`Failed to fetch tenants: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log(`[TENANT_QUERY] Fetched ${data?.length || 0} tenants without lease`);
+
+                    // Transform the data to match our interface
+                    return data.map((tenant: any) => ({
+                        id: tenant.id,
+                        firstName: tenant.first_name,
+                        lastName: tenant.last_name,
+                        email: tenant.email,
+                        unitNumber: tenant.unit_number?.value
+                    }));
+                } catch (err) {
+                    // If this is the last attempt, throw the error
+                    if (attempt === 2) throw err;
+                    console.log(`[TENANT_QUERY] Failed, retrying... Error: ${err}`);
+                    // Wait before retry (exponential backoff)
+                    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
                 }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch tenants: ${response.statusText}`);
             }
-
-            const data = await response.json();
-
-            // Transform the data to match our interface
-            return data.map((tenant: any) => ({
-                id: tenant.id,
-                firstName: tenant.first_name,
-                lastName: tenant.last_name,
-                email: tenant.email,
-                unitNumber: tenant.unit_number?.value
-            }));
+            throw new Error("Failed to fetch tenants after multiple attempts");
         },
         enabled: visible && mode === "add",
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        retry: 1
+        staleTime: 30 * 1000, // 30 seconds
+        retry: 2,
+        refetchOnWindowFocus: true, // Refetch when window regains focus
+        // Only auto-refetch if we have no tenants
+        refetchInterval: (data) => {
+            // If we have tenants, don't auto-refetch (user must refresh manually)
+            // If we have no tenants, refetch every 5 seconds
+            return (!data || (Array.isArray(data) && data.length === 0)) ? 5000 : false;
+        }
     });
+
+    // Force refetch tenants when modal becomes visible in add mode
+    useEffect(() => {
+        // Only try to refetch if the function is available (avoids potential timing issues)
+        if (visible && mode === "add" && typeof refetchTenants === 'function') {
+            console.log("[TENANT_QUERY] Modal visible, forcing tenant refetch");
+            // Use setTimeout to ensure this runs after component is fully mounted
+            setTimeout(() => {
+                // Extra safety check
+                if (typeof refetchTenants === 'function') {
+                    refetchTenants()
+                        .catch(err => console.warn('[TENANT_QUERY] Refetch error:', err));
+                }
+            }, 300);
+        }
+    }, [visible, mode, refetchTenants]);
 
     // Query for available apartments
     const {
         data: apartments = [],
         isLoading: loadingApartments,
+        refetch: refetchApartments,
+        isFetching: isFetchingApartments,
     } = useQuery<Apartment[]>({
         queryKey: ['apartments', 'available'],
         queryFn: async () => {
-            // Retry up to 3 times with increasing delay
-            for (let attempt = 0; attempt < 3; attempt++) {
+            // Retry up to 5 times with increasing delay
+            for (let attempt = 0; attempt < 5; attempt++) {
                 try {
+                    console.log(`[APARTMENT_QUERY] Fetching available apartments, attempt ${attempt + 1}`);
                     const token = await getToken();
                     if (!token) {
-                        console.log(`[Attempt ${attempt + 1}] Waiting for auth token...`);
+                        console.log(`[APARTMENT_QUERY] Waiting for auth token... (attempt ${attempt + 1})`);
                         // Wait before retry (exponential backoff)
-                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        if (attempt < 4) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
                         continue;
                     }
-                    
+
                     const response = await fetch(`${API_URL}/admin/leases/apartments-available`, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -146,30 +198,54 @@ export const LeaseModalComponent = ({
 
                     if (!response.ok) {
                         // For auth failures, try again
-                        if (response.status === 401) {
-                            console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
-                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        if (response.status === 401 || response.status === 403) {
+                            console.log(`[APARTMENT_QUERY] Auth failed (${response.status}), retrying...`);
+                            if (attempt < 4) await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
                             continue;
                         }
                         throw new Error(`Failed to fetch apartments: ${response.statusText}`);
                     }
 
                     const data = await response.json();
+                    console.log(`[APARTMENT_QUERY] Fetched ${data?.length || 0} apartments`);
                     return data || [];
                 } catch (err) {
                     // If this is the last attempt, throw the error
-                    if (attempt === 2) throw err;
-                    console.log(`[Attempt ${attempt + 1}] Failed, retrying... Error: ${err}`);
+                    if (attempt === 4) throw err;
+                    console.log(`[APARTMENT_QUERY] Failed, retrying... Error: ${err}`);
                     // Wait before retry (exponential backoff)
-                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
                 }
             }
             throw new Error("Failed to fetch apartments after multiple attempts");
         },
         enabled: visible && (mode === "add" || mode === "amend"), // Enable for both modes
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        retry: 1
+        staleTime: 30 * 1000, // Reduce stale time to 30 seconds
+        retry: 3, // Increase retry count
+        refetchOnWindowFocus: true, // Refetch when window regains focus
+        // Only auto-refetch if we have no apartments
+        refetchInterval: (data) => {
+            // If we have apartments, don't auto-refetch (user must refresh manually)
+            // If we have no apartments, refetch every 5 seconds
+            return (!Array.isArray(data) || data.length === 0) ? 5000 : false;
+        }
     });
+
+    // Force refetch apartments when modal becomes visible
+    useEffect(() => {
+        // Only try to refetch if the function is available (avoids potential timing issues)
+        if (visible && (mode === "add" || mode === "amend") && typeof refetchApartments === 'function') {
+            console.log("[APARTMENT_QUERY] Modal visible, forcing apartment refetch");
+            // Use setTimeout to ensure this runs after component is fully mounted
+            setTimeout(() => {
+                // Extra safety check
+                if (typeof refetchApartments === 'function') {
+                    refetchApartments()
+                        .catch(err => console.warn('[APARTMENT_QUERY] Refetch error:', err));
+                }
+            }, 500);
+        }
+    }, [visible, mode, refetchApartments]);
 
     // When apartment is selected, update the rent amount if available
     const handleApartmentChange = (apartmentId: number) => {
@@ -555,12 +631,31 @@ export const LeaseModalComponent = ({
                 return (
                     <Form form={form} layout="vertical">
                         <Form.Item
-                            label="Tenant"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <span>Tenant</span>
+                                    {isFetchingTenants ? (
+                                        <Spin size="small" />
+                                    ) : (
+                                        <span style={{ padding: '0', fontSize: '12px', marginLeft: '5px' }}>
+                                            <ButtonComponent
+                                                type="link"
+                                                onClick={() => {
+                                                    refetchTenants();
+                                                    message.info('Refreshing tenant list...');
+                                                }}
+                                                size="small"
+                                                title="Refresh"
+                                            />
+                                        </span>
+                                    )}
+                                </div>
+                            }
                             name="tenant_id"
                             rules={[{ required: true, message: "Please select a tenant" }]}
                         >
                             <Select
-                                placeholder="Select a tenant"
+                                placeholder={tenants.length === 0 ? "No tenants available" : "Select a tenant"}
                                 loading={loadingTenants}
                                 showSearch
                                 optionFilterProp="children"
@@ -569,7 +664,19 @@ export const LeaseModalComponent = ({
                                     const childText = option?.children ? String(option.children) : '';
                                     return childText.toLowerCase().includes(input.toLowerCase());
                                 }}
-                                notFoundContent={loadingTenants ? <Spin size="small" /> : "No tenants available"}
+                                notFoundContent={
+                                    loadingTenants ? <Spin size="small" /> : (
+                                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                                            <div>No tenants available</div>
+                                            <ButtonComponent
+                                                type="link"
+                                                onClick={() => refetchTenants()}
+                                                size="small"
+                                                title="Click to refresh">
+                                            </ButtonComponent>
+                                        </div>
+                                    )
+                                }
                                 listHeight={256}
                                 virtual={true}
                                 popupMatchSelectWidth={false}
@@ -585,12 +692,32 @@ export const LeaseModalComponent = ({
                         </Form.Item>
 
                         <Form.Item
-                            label="Apartment"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <span>Apartment</span>
+                                    {isFetchingApartments ? (
+                                        <Spin size="small" />
+                                    ) : (
+                                        <span style={{ padding: '0', fontSize: '12px', marginLeft: '5px' }}>
+                                            <ButtonComponent
+                                                type="link"
+                                                icon={<span>↻</span>}
+                                                onClick={() => {
+                                                    refetchApartments();
+                                                    message.info('Refreshing apartment list...');
+                                                }}
+                                                size="small"
+                                                title={`Refresh (${apartments.length})`}
+                                            />
+                                        </span>
+                                    )}
+                                </div>
+                            }
                             name="apartment_id"
                             rules={[{ required: true, message: "Please select an apartment" }]}
                         >
                             <Select
-                                placeholder="Select an apartment"
+                                placeholder={apartments.length === 0 ? "No apartments available" : "Select an apartment"}
                                 loading={loadingApartments}
                                 showSearch
                                 optionFilterProp="children"
@@ -599,7 +726,19 @@ export const LeaseModalComponent = ({
                                     const childText = option?.children ? String(option.children) : '';
                                     return childText.toLowerCase().includes(input.toLowerCase());
                                 }}
-                                notFoundContent={loadingApartments ? <Spin size="small" /> : "No apartments available"}
+                                notFoundContent={
+                                    loadingApartments ? <Spin size="small" /> : (
+                                        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                                            <div>No apartments available</div>
+                                            <ButtonComponent
+                                                type="link"
+                                                onClick={() => refetchApartments()}
+                                                size="small"
+                                                title="Click to refresh">
+                                            </ButtonComponent>
+                                        </div>
+                                    )
+                                }
                                 onChange={handleApartmentChange}
                                 listHeight={256}
                                 virtual={true}

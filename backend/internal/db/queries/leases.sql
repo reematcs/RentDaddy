@@ -282,3 +282,23 @@ SELECT * FROM leases
 WHERE tenant_id = $1
 AND status IN ('active', 'draft', 'pending_approval')
 ORDER BY id DESC;
+
+-- name: GetLeaseByExternalID :one
+SELECT id,
+    lease_number,
+    external_doc_id,
+    lease_pdf_s3,
+    tenant_id,
+    landlord_id,
+    apartment_id,
+    lease_start_date,
+    lease_end_date,
+    rent_amount,
+    status,
+    created_by,
+    updated_by,
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
+FROM leases
+WHERE external_doc_id = $1;

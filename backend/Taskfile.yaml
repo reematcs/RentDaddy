@@ -11,26 +11,50 @@ tasks:
   seed:users:
     desc: "Run user seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go"
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go"
     silent: false
 
   seed:data:
     desc: "Run complaints/work_orders seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go"
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go"
     silent: false
 
   # 🚀 Production-compatible: Explicit naming
   seed:users:prod:
     desc: "Run user seeder directly (ECS or inside backend container shell)"
     cmds:
-      - cd backend && go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
     silent: false
 
   seed:data:prod:
     desc: "Run complaints/work_orders seeder directly (ECS or inside backend container shell)"
     cmds:
-      - cd backend && go run scripts/cmd/complaintswork/main.go
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go
     silent: false
 
   build:

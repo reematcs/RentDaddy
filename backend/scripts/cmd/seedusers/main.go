@@ -1,3 +1,21 @@
+// Package main provides functionality to seed users in the database
+//
+// IMPORTANT: This script requires the CLERK_SECRET_KEY environment variable to be set.
+// Without this key, the script will fail to run as it cannot authenticate with Clerk API.
+//
+// Other helpful environment variables:
+// - ADMIN_EMAIL: Email address for the primary admin user (fallback: SMTP_FROM)
+// - ADMIN_FIRST_NAME: First name for admin user
+// - ADMIN_LAST_NAME: Last name for admin user
+// - ADMIN_CLERK_ID: Clerk ID for admin user (optional, will try to find by email)
+// - SCRIPT_MODE: Set to "true" when running in script/task context without user authentication
+//   This allows for more resilient operation when environment variables can't be verified
+//
+// Example usage:
+// CLERK_SECRET_KEY=sk_test_xyz ADMIN_EMAIL=admin@example.com go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
+//
+// Example usage in script mode:
+// CLERK_SECRET_KEY=sk_test_xyz ADMIN_EMAIL=admin@example.com SCRIPT_MODE=true go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
 package main
 
 import (
@@ -37,7 +55,29 @@ func updateClerkMetadata(ctx context.Context, clerkID string, dbID int32, role d
 
 // processClerkUser synchronizes a Clerk user with the database
 func processClerkUser(ctx context.Context, clerkU *clerk.User, queries *db.Queries, adminClerkID string) (bool, error) {
-	if clerkU.ID == adminClerkID {
+	// Get admin email from environment variables
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = os.Getenv("SMTP_FROM")
+	}
+	
+	// Check if this is the main admin we're looking for
+	isTargetAdmin := false
+	
+	// Get user's email
+	userEmail := ""
+	if len(clerkU.EmailAddresses) > 0 {
+		userEmail = clerkU.EmailAddresses[0].EmailAddress
+	}
+	
+	// Check if this user is our target admin by email
+	if adminEmail != "" && userEmail == adminEmail {
+		isTargetAdmin = true
+		log.Printf("[SEED_USERS] Found user with admin email: %s (ID: %s)", adminEmail, clerkU.ID)
+	}
+	
+	// Skip if this is the admin being processed separately, but only if not our target admin
+	if clerkU.ID == adminClerkID && !isTargetAdmin {
 		return false, nil // Skip admin, already processed
 	}
 
@@ -51,11 +91,38 @@ func processClerkUser(ctx context.Context, clerkU *clerk.User, queries *db.Queri
 			log.Printf("[SEED_USERS] Warning: Failed to parse metadata for user %s: %v", clerkU.ID, metaErr)
 			// Continue anyway, using default values
 		}
+		
+		// If this is our target admin, ensure they have admin role
+		if isTargetAdmin && existingUser.Role != db.RoleAdmin {
+			log.Printf("[SEED_USERS] User %s has admin email but role is %s. Updating to admin.", 
+				clerkU.ID, existingUser.Role)
+				
+			// Update user role to admin
+			err := queries.UpdateUser(ctx, db.UpdateUserParams{
+				ClerkID:   clerkU.ID,
+				FirstName: existingUser.FirstName,
+				LastName:  existingUser.LastName,
+				Email:     existingUser.Email,
+				Phone:     existingUser.Phone,
+			})
+			if err != nil {
+				log.Printf("[SEED_USERS] Failed to update user role: %v", err)
+			} else {
+				log.Printf("[SEED_USERS] Successfully updated user to admin role")
+			}
+		}
 
 		// Update Clerk metadata if necessary
 		if meta.DbId != int32(existingUser.ID) {
 			log.Printf("[SEED_USERS] Updating metadata for user %s (DB ID: %d)", clerkU.ID, existingUser.ID)
-			if err := updateClerkMetadata(ctx, clerkU.ID, int32(existingUser.ID), existingUser.Role); err != nil {
+			
+			// Set proper role in metadata
+			role := existingUser.Role
+			if isTargetAdmin {
+				role = db.RoleAdmin
+			}
+			
+			if err := updateClerkMetadata(ctx, clerkU.ID, int32(existingUser.ID), role); err != nil {
 				log.Printf("[SEED_USERS] Failed to update Clerk metadata for %s: %v", clerkU.ID, err)
 			} else {
 				log.Printf("[SEED_USERS] Successfully updated Clerk metadata with DB ID %d for user %s", 
@@ -130,9 +197,67 @@ func main() {
 	}
 	clerk.SetKey(clerkSecretKey)
 
+	// Try to find the admin Clerk ID
 	adminClerkID := os.Getenv("ADMIN_CLERK_ID")
-	if adminClerkID == "" {
-		log.Fatal("[SEED_USERS] Missing ADMIN_CLERK_ID")
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = os.Getenv("SMTP_FROM")
+	}
+	
+	// Check if this is running in a script/task (unauthenticated) context
+	isScriptMode := os.Getenv("SCRIPT_MODE") == "true"
+	
+	// If we don't have an admin Clerk ID but we have an admin email,
+	// try to find the Clerk ID by looking up the email
+	if adminClerkID == "" && adminEmail != "" {
+		log.Printf("[SEED_USERS] No ADMIN_CLERK_ID set, looking up user by email: %s", adminEmail)
+		
+		// List Clerk users and find by email
+		userList, err := clerkuser.List(ctx, nil)
+		if err == nil {
+			for _, user := range userList.Users {
+				for _, email := range user.EmailAddresses {
+					if email.EmailAddress == adminEmail {
+						adminClerkID = user.ID
+						log.Printf("[SEED_USERS] Found user with matching email %s, using Clerk ID: %s", 
+							adminEmail, adminClerkID)
+						break
+					}
+				}
+				if adminClerkID != "" {
+					break
+				}
+			}
+		}
+		
+		// If still not found and we have admin details, consider creating a new user
+		if adminClerkID == "" && isScriptMode {
+			adminFirst := os.Getenv("ADMIN_FIRST_NAME")
+			adminLast := os.Getenv("ADMIN_LAST_NAME")
+			
+			if adminFirst != "" && adminLast != "" && adminEmail != "" {
+				log.Printf("[SEED_USERS] Creating new admin user in script mode: %s %s <%s>", 
+					adminFirst, adminLast, adminEmail)
+				
+				// This will create a new admin user with the provided details
+				admin, err := createAdmin(ctx)
+				if err != nil {
+					log.Printf("[SEED_USERS] Failed to create admin user: %v", err)
+				} else if admin != nil {
+					adminClerkID = admin.ID
+					log.Printf("[SEED_USERS] Created new admin user with Clerk ID: %s", adminClerkID)
+				}
+			}
+		}
+	}
+	
+	// If we still don't have an admin Clerk ID and not in script mode, this is a serious issue
+	if adminClerkID == "" && !isScriptMode {
+		log.Fatal("[SEED_USERS] No ADMIN_CLERK_ID found, either set this environment variable or set ADMIN_EMAIL to the email of an existing Clerk user")
+	} else if adminClerkID == "" {
+		// In script mode, we can generate a placeholder for testing
+		adminClerkID = "script_admin_placeholder_id"
+		log.Printf("[SEED_USERS] Using placeholder admin ID in script mode: %s", adminClerkID)
 	}
 
 	pgURL := os.Getenv("PG_URL")
@@ -143,13 +268,63 @@ func main() {
 	defer pool.Close()
 	queries := db.New(pool)
 
-	// Get Clerk user info
+	// Get admin email from environment variables
+	adminEmail = os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = os.Getenv("SMTP_FROM")
+	}
+	
+	// First, check if we need to clean up existing admin entries to ensure proper priority
+	if adminEmail != "" {
+		log.Printf("[SEED_USERS] Checking existing admin users with target email: %s", adminEmail)
+		
+		// List existing admins in the database
+		existingAdmins, err := queries.ListUsersByRole(ctx, db.RoleAdmin)
+		if err != nil {
+			log.Printf("[SEED_USERS] Warning: Failed to list existing admins: %v", err)
+		} else if len(existingAdmins) > 0 {
+			var foundAdminWithEmail bool
+			var adminPosition int
+			
+			// Look for admin with the target email
+			for i, admin := range existingAdmins {
+				if admin.Email == adminEmail {
+					foundAdminWithEmail = true
+					adminPosition = i
+					log.Printf("[SEED_USERS] Found admin with target email %s at position %d (ID=%d)", 
+						adminEmail, i, admin.ID)
+					break
+				}
+			}
+			
+			// If admin with target email exists but is not the first admin (position > 0),
+			// we'll need to make sure it's processed first
+			if foundAdminWithEmail && adminPosition > 0 {
+				log.Printf("[SEED_USERS] Admin with target email exists but is not first in list. Will prioritize.")
+			}
+		}
+	}
+
+	// Get Clerk user info for admin
 	clerkUser, err := clerkuser.Get(ctx, adminClerkID)
 	if err != nil {
 		log.Fatalf("[SEED_USERS] Clerk user fetch failed: %v", err)
 	}
 
-	log.Printf("[SEED_USERS] Processing admin: %s", clerkUser.EmailAddresses[0].EmailAddress)
+	// Compare emails to see if this is the target admin
+	clerkUserEmail := ""
+	if len(clerkUser.EmailAddresses) > 0 {
+		clerkUserEmail = clerkUser.EmailAddresses[0].EmailAddress
+	}
+	
+	isTargetAdmin := adminEmail != "" && clerkUserEmail == adminEmail
+	
+	if isTargetAdmin {
+		log.Printf("[SEED_USERS] ✅ Processing PRIMARY admin: %s (matches target email)", clerkUserEmail)
+	} else {
+		log.Printf("[SEED_USERS] Processing admin: %s (does not match target email: %s)", 
+			clerkUserEmail, adminEmail)
+	}
 
 	var adminID int32
 
@@ -201,6 +376,61 @@ func main() {
 	processedUsers := 0
 	existingUsers := 0
 
+	// First, check for users with admin email - we want to prioritize these
+	adminEmail = os.Getenv("ADMIN_EMAIL")
+	if adminEmail != "" {
+		log.Printf("[SEED_USERS] Looking for existing users with admin email: %s", adminEmail)
+		
+		// Pre-scan for admin users by email
+		listParams := &clerkuser.ListParams{
+			ListParams: clerk.ListParams{
+				Limit: func(v int) *int64 { val := int64(v); return &val }(100), // Large limit to find all
+			},
+		}
+		
+		userList, err := clerkuser.List(ctx, listParams)
+		if err == nil {
+			foundAdminEmail := false
+			
+			for _, clerkU := range userList.Users {
+				// Skip empty or invalid users
+				if clerkU.ID == "" {
+					continue
+				}
+				
+				for _, email := range clerkU.EmailAddresses {
+					if email.EmailAddress == adminEmail {
+						log.Printf("[SEED_USERS] ✅ Found user with admin email %s, ID: %s - will process this user first", 
+							adminEmail, clerkU.ID)
+						
+						isNew, err := processClerkUser(ctx, clerkU, queries, adminClerkID)
+						if err != nil {
+							log.Printf("[SEED_USERS] ❌ Error processing admin user %s: %v", clerkU.ID, err)
+						} else {
+							log.Printf("[SEED_USERS] ✅ Successfully processed admin user: %s", clerkU.ID)
+							if isNew {
+								processedUsers++
+							} else {
+								existingUsers++
+							}
+						}
+						
+						foundAdminEmail = true
+						break
+					}
+				}
+				
+				if foundAdminEmail {
+					break
+				}
+			}
+			
+			if !foundAdminEmail {
+				log.Printf("[SEED_USERS] ⚠️ No existing user found with admin email: %s", adminEmail)
+			}
+		}
+	}
+	
 	// Store pagination parameters
 	limit := 15 // Larger limit to reduce number of API calls
 
@@ -233,15 +463,63 @@ func main() {
 		log.Printf("[SEED_USERS] Got page %d with %d users (offset: %d, total fetched so far: %d)", 
 			page, len(userList.Users), (page-1)*limit, totalUsers + len(userList.Users))
 
-		// Process users on this page
+		// Sort users before processing - admin email first, then other users
+		var priorityUsers []*clerk.User
+		var regularUsers []*clerk.User
+		
+		// First pass: sort users into priority and regular
 		for _, clerkU := range userList.Users {
-			totalUsers++
-			
-			// Skip empty or invalid users
 			if clerkU.ID == "" {
-				log.Printf("[SEED_USERS] ⚠️ Warning: Received user with empty ID from Clerk API")
 				continue
 			}
+			
+			// Get email for this user
+			email := ""
+			if len(clerkU.EmailAddresses) > 0 {
+				email = clerkU.EmailAddresses[0].EmailAddress
+			}
+			
+			// Prioritize users with the admin email
+			if adminEmail != "" && email == adminEmail {
+				log.Printf("[SEED_USERS] Found user with admin email %s - marking as priority", email)
+				priorityUsers = append(priorityUsers, clerkU)
+			} else {
+				regularUsers = append(regularUsers, clerkU)
+			}
+		}
+		
+		// Fallback: If no priority users found but admin email is set, log a warning
+		if len(priorityUsers) == 0 && adminEmail != "" {
+			log.Printf("[SEED_USERS] ⚠️ No users found with admin email %s in Clerk directory", adminEmail)
+			log.Printf("[SEED_USERS] Will continue with normal user processing")
+		}
+		
+		// Process priority users first
+		for _, clerkU := range priorityUsers {
+			totalUsers++
+			
+			email := ""
+			if len(clerkU.EmailAddresses) > 0 {
+				email = clerkU.EmailAddresses[0].EmailAddress
+			}
+			
+			log.Printf("[SEED_USERS] ⭐ Processing PRIORITY user with admin email: %s", email)
+			
+			isNew, err := processClerkUser(ctx, clerkU, queries, adminClerkID)
+			if err != nil {
+				log.Printf("[SEED_USERS] ❌ Error processing admin user %s: %v", clerkU.ID, err)
+			} else if isNew {
+				log.Printf("[SEED_USERS] ✅ Created new admin user in database: %s", clerkU.ID)
+				processedUsers++
+			} else {
+				log.Printf("[SEED_USERS] ℹ️ Admin user already exists in database: %s", clerkU.ID)
+				existingUsers++
+			}
+		}
+		
+		// Process regular users
+		for _, clerkU := range regularUsers {
+			totalUsers++
 			
 			// Get primary email for logging
 			email := ""
@@ -249,7 +527,7 @@ func main() {
 				email = clerkU.EmailAddresses[0].EmailAddress
 			}
 			
-			log.Printf("[SEED_USERS] Processing Clerk user ID: %s, Email: %s", clerkU.ID, email)
+			log.Printf("[SEED_USERS] Processing regular user ID: %s, Email: %s", clerkU.ID, email)
 			
 			isNew, err := processClerkUser(ctx, clerkU, queries, adminClerkID)
 			if err != nil {

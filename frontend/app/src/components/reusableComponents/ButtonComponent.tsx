@@ -4,7 +4,7 @@ import { SizeType } from "antd/es/config-provider/SizeContext";
 // Props
 export interface ButtonComponentProps {
     title: string;
-    type: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
+    type: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger" | "link";
     disabled?: boolean;
     icon?: React.ReactNode;
     size?: SizeType;
