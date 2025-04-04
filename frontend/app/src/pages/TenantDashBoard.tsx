@@ -1,5 +1,5 @@
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined, KeyOutlined as KeyIcon } from "@ant-design/icons";
-import { Divider, Form, Input, Select } from "antd";
+import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
+import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
 import ModalComponent from "../components/ModalComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -8,17 +8,9 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import LeaseCard from "../components/LeaseCardComponent";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-    ComplaintsData,
-    Parking,
-    ParkingEntry,
-    TenantLeaseStatusAndURL,
-    WorkOrderData,
-    ComplaintEntry
-} from "../types/types";
+import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
 
 const isDevelopment = import.meta.env.MODE === 'development';
 const absoluteServerUrl = isDevelopment
@@ -118,14 +110,18 @@ export const TenantDashBoard = () => {
     });
 
     // Fetch lease status using TanStack Query
-    const { data: leaseData, isLoading, isError } = useQuery({
+    const {
+        data: leaseData,
+        isLoading,
+        isError,
+    } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             if (!userId) {
                 console.log("`userId` variable is not populated");
                 return null;
             }
-            const response = await fetch(` ${absoluteServerUrl}/tenant/leases/${userId}/signing-url`);
+            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
             if (!response.ok) {
                 return null;
             }
@@ -204,14 +200,27 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={<TenantParkingPermitModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
+                    button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
 
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <LeaseCard />
+                <CardComponent
+                    title="Lease"
+                    description="View or Resign your lease"
+                    hoverable={true}
+                    button={
+                        <ModalComponent
+                            type="default"
+                            buttonTitle="View Lease"
+                            content="Lease should go here"
+                            buttonType="primary"
+                            handleOkay={() => { }}
+                        />
+                    }
+                />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}
@@ -231,32 +240,32 @@ export const TenantDashBoard = () => {
             </div>
 
             {/* Inescapable Modal for lease signing */}
-            {isSigningModalVisible && (
-                <ModalComponent
-                    buttonTitle="" // No button title since we're controlling visibility externally
-                    buttonType="primary"
-                    modalTitle="Action Required: Lease Signing"
-                    type="default"
-                    content={
-                        <div className="text-center">
-                            <WarningOutlined className="warning-icon" />
-                            <h3 className="lease-modal-title">Your Lease Requires Attention</h3>
-                            <p>
-                                Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
-                            </p>
-                            <p>You must sign your lease to continue using the tenant portal.</p>
-                            <p className="lease-modal-note">This action is required and cannot be dismissed.</p>
-                        </div>
-                    }
-                    handleOkay={async () => handleOk()}
-                    isModalOpen={isSigningModalVisible}
-                    onCancel={() => { }} // Empty function to prevent closing
-                    setUserId={() => { }} // Required by ModalComponent but not used here
-                    setAccessCode={() => { }} // Required by ModalComponent but not used here
-                    selectedUserId=""
-                    accessCode=""
-                />
-            )}
+            <Modal
+                title="Action Required: Lease Signing"
+                open={isSigningModalVisible}
+                onOk={handleOk}
+                onCancel={() => { }} // Empty function prevents closing
+                maskClosable={false} // Prevents closing when clicking outside
+                keyboard={false} // Prevents closing with ESC key
+                closable={false} // Removes the X button
+                footer={[
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={handleOk}>
+                        Sign Lease Now
+                    </Button>,
+                ]}>
+                <div style={{ textAlign: "center" }}>
+                    <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
+                    <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
+                    <p>
+                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
+                    </p>
+                    <p>You must sign your lease to continue using the tenant portal.</p>
+                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
+                </div>
+            </Modal>
         </div>
     );
 };
@@ -406,42 +415,37 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
                 type="primary"
                 onClick={showModal}
             />
-            <ModalComponent
-                buttonTitle="View Work Orders"
-                buttonType="primary"
-                modalTitle="Work Orders"
-                type="default"
-                content={
-                    <div className="modal-scroll-container">
-                        {props.data ? (
-                            <>
-                                {props.data.map((order, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                        <p>{order.title}</p>
-                                        <p>
-                                            Category: <span className="text-success">{order.category}</span>
-                                        </p>
-                                        <p>
-                                            Status: <span className="text-success">{order.status}</span>
-                                        </p>
-                                    </div>
-                                ))}
-                            </>
-                        ) : (
-                            <p>No work orders found.</p>
-                        )}
-                    </div>
-                }
-                handleOkay={async () => Promise.resolve()}
-                setUserId={() => { }}
-                setAccessCode={() => { }}
-                selectedUserId=""
-                accessCode=""
-                isModalOpen={internalModalOpen}
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Work Orders</h3>}
+                open={internalModalOpen}
+                onOk={() => { }}
                 onCancel={handleCancel}
-            />
+                okButtonProps={{ hidden: true, disabled: true }}
+                cancelButtonProps={{ hidden: true, disabled: true }}>
+                <Divider />
+                <div style={{ overflowY: "auto", height: "200px" }}>
+                    {props.data ? (
+                        <>
+                            {props.data.map((order, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                                    <p>{order.title}</p>
+                                    <p>
+                                        Category: <span style={{ color: "green" }}>{order.category}</span>
+                                    </p>
+                                    <p>
+                                        Status: <span style={{ color: "green" }}>{order.status}</span>
+                                    </p>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <p>No work orders....</p>
+                    )}
+                </div>
+            </Modal>
         </>
     );
 }

@@ -90,12 +90,12 @@ const ProtectedRoutes = () => {
     // After Clerk is loaded, if user is not signed in, redirect to login
     if (!isSignedIn) {
         console.log('🔒 User is not signed in, redirecting to login');
-        return <Navigate to="/auth/login" />;
+        return <Navigate to="/auth/sign-in/" />;
     }
 
     // Get user role from metadata
     // TODO: We need to make sure that this is set up sometime during the Clerk user creation process, or our own DB User object creation process
-    const userRole = user?.publicMetadata?.role as string;
+    const { role: userRole } = user?.publicMetadata as ClerkPublicMetadata;
 
     // Only log on first load or debug mode
     const showVerboseLogs = sessionStorage.getItem('has_loaded_before') !== 'true';

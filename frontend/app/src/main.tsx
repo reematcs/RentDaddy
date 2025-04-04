@@ -86,7 +86,6 @@ createRoot(document.getElementById("root")!).render(
                     colorLink: "#00674f",
                     colorFillSecondary: "#7789f4",
                     colorFillTertiary: "#d86364",
-                    fontFamily: `"Poppins"`,
                 },
                 components: {
                     Card: {
@@ -128,110 +127,110 @@ createRoot(document.getElementById("root")!).render(
                             }
                         }}>
                         <ApiProvider>
-                        <Routes>
-                            <Route element={<PreAuthedLayout />}>
-                                <Route path="/healthz" element={<div>ok</div>} />
-                                {/* Landing Page */}
-                                <Route
-                                    index
-                                    element={<App />}
-                                />
-
-                                {/* Reusable Components Route */}
-                                <Route
-                                    path="reusable-components"
-                                    element={<ReusableComponents />}
-                                />
-
-                                {/* Authentication Routes */}
-                                <Route path="auth">
+                            <Routes>
+                                <Route element={<PreAuthedLayout />}>
+                                    <Route path="/healthz" element={<div>ok</div>} />
+                                    {/* Landing Page */}
                                     <Route
-                                        path="sign-in/*"
-                                        element={
-                                            <div className="d-flex justify-content-center align-items-center h-100 py-5">
-                                                <SignIn 
-                                                    appearance={{
-                                                        elements: {
-                                                            rootBox: "mx-auto",
-                                                            card: "shadow-sm rounded-lg border border-gray-200",
-                                                            header: "text-center",
-                                                            footer: "text-center",
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-                                        }
+                                        index
+                                        element={<App />}
                                     />
-                                </Route>
 
-                            </Route>
-                            {/* End of Pre-authentication Layout Group */}
+                                    {/* Reusable Components Route */}
+                                    <Route
+                                        path="reusable-components"
+                                        element={<ReusableComponents />}
+                                    />
 
-                            {/* Protected Routes (Admin & Tenant) */}
-                            <Route element={<ProtectedRoutes />}>
-                                {/* Authenticated Layout Group */}
-                                <Route element={<AuthenticatedLayout />}>
-                                    {/* Admin Route Group */}
-                                    <Route path="admin">
+                                    {/* Authentication Routes */}
+                                    <Route path="auth">
                                         <Route
-                                            index
-                                            element={<AdminDashboard />}
-                                        />
-                                        <Route
-                                            path="init-apartment-complex"
-                                            element={<AdminApartmentSetupAndDetailsManagement />}
-                                        />
-                                        <Route
-                                            path="manage-tenants"
-                                            element={<AddTenant />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-leases"
-                                            element={<AdminViewEditLeases />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-work-orders-and-complaints"
-                                            element={<AdminWorkOrder />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-smart-lockers"
-                                            element={<AdminViewEditSmartLockers />}
+                                            path="sign-in/*"
+                                            element={
+                                                <div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                                    <SignIn
+                                                        appearance={{
+                                                            elements: {
+                                                                rootBox: "mx-auto",
+                                                                card: "shadow-sm rounded-lg border border-gray-200",
+                                                                header: "text-center",
+                                                                footer: "text-center",
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            }
                                         />
                                     </Route>
 
-                                    {/* Tenant Route Group */}
-                                    <Route path="tenant">
-                                        <Route
-                                            index
-                                            element={<TenantDashBoard />}
-                                        />
-                                        <Route
-                                            path="guest-parking"
-                                            element={<h1>Guest Parking</h1>}
-                                        />
-                                        <Route
-                                            path="tenant-view-and-edit-leases"
-                                            element={<h1>Digital Documents</h1>}
-                                        />
-                                        <Route
-                                            path="tenant-complaints"
-                                            element={<TenantComplaints />}
-                                        />
-                                        <Route
-                                            path="tenant-work-orders"
-                                            element={<TenantWorkOrders />}
-                                        />
+                                </Route>
+                                {/* End of Pre-authentication Layout Group */}
+
+                                {/* Protected Routes (Admin & Tenant) */}
+                                <Route element={<ProtectedRoutes />}>
+                                    {/* Authenticated Layout Group */}
+                                    <Route element={<AuthenticatedLayout />}>
+                                        {/* Admin Route Group */}
+                                        <Route path="admin">
+                                            <Route
+                                                index
+                                                element={<AdminDashboard />}
+                                            />
+                                            <Route
+                                                path="init-apartment-complex"
+                                                element={<AdminApartmentSetupAndDetailsManagement />}
+                                            />
+                                            <Route
+                                                path="manage-tenants"
+                                                element={<AddTenant />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-leases"
+                                                element={<AdminViewEditLeases />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-work-orders-and-complaints"
+                                                element={<AdminWorkOrder />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-smart-lockers"
+                                                element={<AdminViewEditSmartLockers />}
+                                            />
+                                        </Route>
+
+                                        {/* Tenant Route Group */}
+                                        <Route path="tenant">
+                                            <Route
+                                                index
+                                                element={<TenantDashBoard />}
+                                            />
+                                            <Route
+                                                path="guest-parking"
+                                                element={<h1>Guest Parking</h1>}
+                                            />
+                                            <Route
+                                                path="tenant-view-and-edit-leases"
+                                                element={<h1>Digital Documents</h1>}
+                                            />
+                                            <Route
+                                                path="tenant-complaints"
+                                                element={<TenantComplaints />}
+                                            />
+                                            <Route
+                                                path="tenant-work-orders"
+                                                element={<TenantWorkOrders />}
+                                            />
+                                        </Route>
                                     </Route>
                                 </Route>
-                            </Route>
-                            {/* End of Protected Routes (Admin & Tenant) */}
+                                {/* End of Protected Routes (Admin & Tenant) */}
 
-                            {/* 404 Route - Always place at the end to catch unmatched routes */}
-                            <Route
-                                path="*"
-                                element={<ErrorNotFound />}
-                            />
-                        </Routes>
+                                {/* 404 Route - Always place at the end to catch unmatched routes */}
+                                <Route
+                                    path="*"
+                                    element={<ErrorNotFound />}
+                                />
+                            </Routes>
                         </ApiProvider>
                     </ClerkProvider>
                 </BrowserRouter>

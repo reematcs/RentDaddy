@@ -16,8 +16,8 @@ import EmptyState from "../components/reusableComponents/EmptyState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL;
-
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
@@ -332,46 +332,54 @@ const AdminWorkOrder = () => {
     const { getToken } = useAuth();
     const queryClient = useQueryClient();
 
-    const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
-        queryKey: ['workOrders'],
+    const {
+        data: workOrderData,
+        isLoading: isWorkOrdersLoading,
+        error: workOrdersError,
+    } = useQuery({
+        queryKey: ["workOrders"],
         queryFn: async () => {
             const token = await getToken();
-            const response = await fetch(`${API_URL}/admin/work_orders`, {
+            const response = await fetch(`${absoluteServerUrl}/admin/work_orders`, {
                 method: "GET",
                 headers: {
-                    "Authorization": `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                }
+                },
             });
             if (!response.ok) {
-                throw new Error('Failed to fetch work orders');
+                throw new Error("Failed to fetch work orders");
             }
-            const data = await response.json() as WorkOrderData[];
+            const data = (await response.json()) as WorkOrderData[];
             if (!Array.isArray(data)) {
                 throw new Error("No work orders");
             }
 
-            return data
+            return data;
         },
     });
 
-    const { data: complaintsData, isLoading: isComplaintsLoading, error: complaintsError } = useQuery({
+    const {
+        data: complaintsData,
+        isLoading: isComplaintsLoading,
+        error: complaintsError,
+    } = useQuery({
         queryKey: ["complaints"],
         queryFn: async () => {
             const token = await getToken();
-            const response = await fetch(`${API_URL}/admin/complaints`, {
+            const response = await fetch(`${absoluteServerUrl}/admin/complaints`, {
                 method: "GET",
                 headers: {
-                    "Authorization": `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                }
+                },
             });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data = await response.json() as ComplaintsData[];
+            const data = (await response.json()) as ComplaintsData[];
             if (!Array.isArray(data)) {
-                throw new Error('No complaints');
+                throw new Error("No complaints");
             }
 
             return data;
@@ -389,35 +397,11 @@ const AdminWorkOrder = () => {
 
                 if (itemType === "workOrder") {
                     // Work order update logic (existing)
-                    const response = await fetch(`${API_URL}/admin/work_orders/${selectedItem.id}/status`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            "Authorization": `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            status: currentStatus,
-                        }),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to update work order');
-                    }
-
-                    queryClient.setQueryData(['workOrders'], (oldData: WorkOrderData[] | undefined) => {
-                        if (!oldData) return oldData;
-                        return oldData.map(item =>
-                            item.id === selectedItem.id
-                                ? { ...item, status: currentStatus, updatedAt: new Date() }
-                                : item
-                        );
-                    });
-                } else {
-                    const response = await fetch(`${API_URL}/admin/complaints/${selectedItem.id}/status`, {
+                    const response = await fetch(`${absoluteServerUrl}/admin/work_orders/${selectedItem.id}/status`, {
                         method: "PATCH",
                         headers: {
                             "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`,
+                            Authorization: `Bearer ${token}`,
                         },
                         body: JSON.stringify({
                             status: currentStatus,
@@ -425,16 +409,32 @@ const AdminWorkOrder = () => {
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to update complaint');
+                        throw new Error("Failed to update work order");
                     }
 
-                    queryClient.setQueryData(['complaints'], (oldData: ComplaintsData[] | undefined) => {
+                    queryClient.setQueryData(["workOrders"], (oldData: WorkOrderData[] | undefined) => {
                         if (!oldData) return oldData;
-                        return oldData.map(item =>
-                            item.id === selectedItem.id
-                                ? { ...item, status: currentStatus, updatedAt: new Date() }
-                                : item
-                        );
+                        return oldData.map((item) => (item.id === selectedItem.id ? { ...item, status: currentStatus, updatedAt: new Date() } : item));
+                    });
+                } else {
+                    const response = await fetch(`${absoluteServerUrl}/admin/complaints/${selectedItem.id}/status`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            status: currentStatus,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to update complaint");
+                    }
+
+                    queryClient.setQueryData(["complaints"], (oldData: ComplaintsData[] | undefined) => {
+                        if (!oldData) return oldData;
+                        return oldData.map((item) => (item.id === selectedItem.id ? { ...item, status: currentStatus, updatedAt: new Date() } : item));
                     });
                 }
                 setIsModalVisible(false);
@@ -467,15 +467,7 @@ const AdminWorkOrder = () => {
         }).length
         : 0;
 
-    const hoursSinceRecentlyCompleted: number = 24;
-    const recentlyCompletedServiceCount: number = workOrderData
-        ? workOrderData.filter(({ updatedAt, status }) => {
-            const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
-            return status === "resolved" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
-        }).length
-        : 0;
-
-    let alerts: string[] = [];
+    const alerts: string[] = [];
     if (isWorkOrdersLoading || isComplaintsLoading) {
         alerts.push("Loading data...");
     } else if (workOrdersError || complaintsError) {
@@ -549,10 +541,10 @@ const AdminWorkOrder = () => {
             <div className="w-100 justify-content-between mb-4 left-text text-start">
                 {alertDescription ? (
                     <AlertComponent
-                        title="Alert"
-                        message={alertDescription}
-                        type="info"
+                        title=""
+                        message=""
                         description={alertDescription}
+                        type="info"
                     />
                 ) : null}
             </div>

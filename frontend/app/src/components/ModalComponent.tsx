@@ -2,14 +2,8 @@ import { useState } from "react";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-
-type InviteTenant = {
-    email: string;
-    unitNumber: number;
-    management_id: string;
-};
-
 import { useUser } from "@clerk/react-router";
+import { RuleObject } from "antd/es/form";
 
 interface Lease {
     id: string | number;
@@ -127,12 +121,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                     onOk={async () => {
                         try {
                             props.setUserId(props.selectedUserId);
-                            props.setAccessCode(props.accessCode);
                             console.log("props: ", props);
                             await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
                             setInternalModalOpen(false);
                             handleCancel();
-
                         } catch (error) {
                             console.error("Error in modal onOk:", error);
                             // Keep modal open if there's an error
@@ -142,9 +134,13 @@ const ModalComponent = (props: ModalComponentProps) => {
 
                     <Divider />
                     <Form layout="vertical">
+                        <p
+                            style={{ fontWeight: "bold" }}
+                            className="fs-6">
+                            User
+                        </p>
                         <Form.Item
                             name="userId"
-                            label="Tenant"
                             rules={[{ required: true, message: "Please pick a tenant" }]}>
                             <Select
                                 placeholder="Please pick a tenant"
@@ -158,15 +154,13 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 }))}
                             />
                         </Form.Item>
-                        <Form.Item
-                            name="accessCode"
-                            label="Access Code"
-                            rules={[{ required: true, message: "Please enter an access code" }]}>
-                            <Input.Password
-                                placeholder="Enter access code"
-                                maxLength={8}
-                                onChange={(e) => props.setAccessCode(e.target.value)}
-                            />
+                        <p
+                            style={{ fontWeight: "bold" }}
+                            className="fs-6">
+                            Access Code
+                        </p>
+                        <Form.Item name="accessCode">
+                            <p style={{ color: "black" }}>{props.accessCode}</p>
                         </Form.Item>
                         <Divider />
                     </Form>
@@ -704,54 +698,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                             <Divider />
                         </Modal>
                     </>
-                )
-            }
-            {
-                props.type === "Update Password Locker" && (
-                    <>
-                        <ButtonComponent
-                            type="primary"
-                            onClick={showModal}
-                            title={props.buttonTitle}
-                        />
-                        <Modal
-                            className="p-3 flex-wrap-row"
-                            title={<h3>{props.modalTitle}</h3>}
-                            open={isModalOpen}
-                            onOk={props.handleOkay}
-                            onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
-                        >
-                            <Divider />
-                            <p>{props.content}</p>
-                            <Form>
-                                <Form.Item>
-                                    <Input
-                                        placeholder="Enter New Password"
-                                        type="password"
-                                    // value={password}
-                                    // onChange={(e) => setPassword(e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Form>
-                            <Divider />
-                            {/* <div className="flex justify-content-end gap-2">
-                            <Button
-                                type="default"
-                                onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                onClick={props.handleOkay}>
-                                Confirm
-                            </Button>
-                        </div> */}
-                        </Modal>
-                    </>
-                )
-            }
+                )}
         </>
     );
 };

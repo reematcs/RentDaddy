@@ -72,10 +72,6 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	// Webhooks
-	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ClerkWebhookHandler(w, r, pool, queries)
-	})
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
@@ -95,6 +91,12 @@ func main() {
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
+	// Webhooks
+	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ClerkWebhookHandler(w, r, pool, queries)
+	})
+	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
@@ -107,6 +109,7 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
 				if err != nil {
@@ -114,10 +117,8 @@ func main() {
 					return
 				}
 			})
-			
 			// Documenso Configuration
 			r.Post("/config/documenso", leaseHandler.UpdateDocumensoConfig)
-
 			// Tenants
 			r.Route("/tenants", func(r chi.Router) {
 				r.Get("/", userHandler.GetAllTenants)
@@ -162,9 +163,11 @@ func main() {
 				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
 				r.Get("/{id}", lockerHandler.GetLocker)
 				// Used to change the user assigned to a locker or the status of a locker
-				r.Patch("/{id}", lockerHandler.UpdateLocker)
+				r.Patch("/{id}/code", lockerHandler.UpdateLockerAccessCode)
+				r.Patch("/{id}/unlock", lockerHandler.UnlockLocker)
+				r.Post("/", lockerHandler.AddPackage)
 				// Used to set up the initial lockers for an apartment
-				r.Post("/", lockerHandler.CreateManyLockers)
+				r.Post("/many", lockerHandler.CreateManyLockers)
 			})
 			// End of Locker Handlers
 

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     // Load env file based on `mode` in the current directory.
     // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
     const env = loadEnv(mode, path.resolve(__dirname), '');
-    
+
     // Safe console.log for build environment
     if (mode === 'development') {
         console.log('Vite environment variables:');

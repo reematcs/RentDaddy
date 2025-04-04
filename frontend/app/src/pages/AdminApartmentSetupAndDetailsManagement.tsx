@@ -10,6 +10,8 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useAuth } from "@clerk/clerk-react";
 import { useApiAuth } from "../utils/apiContext";
 
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
@@ -331,7 +333,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
 
             console.log("adminSetupObject", adminSetupObject);
 
-            const res = await fetch(`${API_URL}/admin/setup`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/setup`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -478,7 +480,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         mutationFn: async (buildingData: Building) => {
             console.log(editBuildingObj, "editBuildingObj in tanstack mutation");
             // TODO: James, when you finish the backend route, change the variable endpoint to the right one.
-            const res = await fetch(`${API_URL}/admins/buildings/{id}`, {
+            const res = await fetch(`${absoluteServerUrl}/admins/buildings/{id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(buildingData),

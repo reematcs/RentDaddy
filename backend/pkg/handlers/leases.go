@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -196,6 +197,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	}
 }
 
+
 func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
 	log.Printf("[LEASE_AMEND] Incoming payload: %+v", req)
@@ -339,6 +341,7 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+
 func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
 	leaseID, err := strconv.Atoi(leaseIDStr)
@@ -455,6 +458,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 
 	// Check for duplicate leases
 	log.Println("[LEASE_UPSERT] Checking for duplicate leases")
+	log.Println("[LEASE_UPSERT] Checking for duplicate leases")
 	existing, err := h.queries.GetDuplicateLease(r.Context(), db.GetDuplicateLeaseParams{
 		TenantID:    req.TenantID,
 		ApartmentID: req.ApartmentID,
@@ -463,6 +467,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 
 	// If a duplicate is found, provide a more detailed error
 	if err == nil && existing.ID != 0 {
+		log.Printf("[LEASE_UPSERT] Duplicate lease ID %d already exists", existing.ID)
 		log.Printf("[LEASE_UPSERT] Duplicate lease ID %d already exists", existing.ID)
 		if req.ReplaceExisting {
 			// Terminate the existing lease instead of "archiving" it
@@ -957,10 +962,12 @@ func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
 	// Create /app/temp directory to save pdfs
 
 	if err := os.MkdirAll(envDir, 0o755); err != nil {
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
 		log.Printf("Could not create directory %s: %v", envDir, err)
 	}
 
 	filepath := filepath.Join(envDir, filename)
+	err := os.WriteFile(filepath, pdfData, 0o666)
 	err := os.WriteFile(filepath, pdfData, 0o666)
 	if err != nil {
 		log.Printf("Could not save PDF to %s: %v", filepath, err)
@@ -973,6 +980,8 @@ func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
 func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWithSignersRequest, landlordName, landlordEmail string) (docID string,
 	tenantRecipientID int,
 	tenantSigningURL string, landlordSigningURL string, leasePdfS3 string,
+	err error,
+) {
 	err error,
 ) {
 	log.Printf("Uploading lease %v to Documenso...\n", req.DocumentTitle)
@@ -994,6 +1003,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		},
 	}
 
+	log.Printf("[Upload/Setup] Signers: %+v", signers)
 	log.Printf("[Upload/Setup] Signers: %+v", signers)
 
 	if landlordName == "" {
@@ -1103,6 +1113,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 	return docID, tenantID, recipientInfoMap[req.TenantEmail].SigningURL, recipientInfoMap[landlordEmail].SigningURL, s3bucket, nil
 }
 
+
 func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
 
@@ -1126,6 +1137,7 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// req.PreviousLeaseID in db as LeaseID great. If not, you gotta return.
 	// req.PreviousLeaseID in db as LeaseID great. If not, you gotta return.
 	if lease, err := h.queries.GetLeaseByID(ctx, *req.PreviousLeaseID); err != nil {
 		http.Error(w, "No previous lease for tenant", http.StatusBadRequest)
@@ -1233,6 +1245,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 
 	// 5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
+	// 5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
 	docID, _, tenantSigningURL, landlordSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
@@ -1276,6 +1289,10 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		TenantSigningUrl: pgtype.Text{
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",
+		},
+		LandlordSigningUrl: pgtype.Text{
+			String: landlordSigningURL,
+			Valid:  landlordSigningURL != "",
 		},
 		LandlordSigningUrl: pgtype.Text{
 			String: landlordSigningURL,
@@ -2412,6 +2429,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[LEASE_SEND] Failed to encode response: %v", err)
 	}
 }
+
 
 func (h *LeaseHandler) GetSignedLeaseURL(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
