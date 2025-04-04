@@ -27,11 +27,15 @@ type NewLockerRequest struct {
 	AccessCode  string `json:"access_code"`
 }
 
+type UpdateLockerAccessCode struct {
+	AccessCode string `json:"access_code"`
+}
+
 // Need the pointers to handle the case where the field is not provided.
 type UpdateLockerRequest struct {
-	UserID     string `json:"user_id,omitempty"`
-	AccessCode string `json:"access_code,omitempty"`
-	InUse      *bool  `json:"in_use,omitempty"`
+	UserID     *string `json:"user_id,omitempty"`
+	AccessCode *string `json:"access_code,omitempty"`
+	InUse      *bool   `json:"in_use,omitempty"`
 }
 
 func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
@@ -129,26 +133,21 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 }
 
 func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
-	tenantCtx := middleware.GetUserCtx(r)
-	if tenantCtx == nil {
-		log.Printf("[LOCKER_HANDLER] Failed getting tenant context")
-		http.Error(w, "Error no user context", http.StatusUnauthorized)
-		return
+	lockerIdStr := chi.URLParam(r, "id")
+	lockerId, err := strconv.Atoi(lockerIdStr)
+	if err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed locker Id invalid: %v", err)
+		http.Error(w, "Error locker id invalid", http.StatusBadRequest)
 	}
 
-	var tenantMetadata ClerkUserPublicMetaData
-	if err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata); err != nil {
-		log.Printf("[LOCKER_HANDLER] Failed parsing metadata: %v", err)
-		http.Error(w, "Error parsing metadata", http.StatusInternalServerError)
-		return
-	}
 	// Get access code from request body
 	var req struct {
 		AccessCode string `json:"access_code"`
-		LockerID   string `json:"locker_id"`
+		LockerId   int64  `json:"locker_id"`
 		InUse      bool   `json:"in_use"`
 		UserID     int64  `json:"user_id"`
 	}
+	req.LockerId = int64(lockerId)
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error decoding request body: %v", err)
@@ -157,7 +156,7 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get locker assigned to user
-	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
+	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(req.UserID), Valid: true})
 	if err != nil {
 		log.Printf("Error getting locker: %v", err)
 		http.Error(w, "Could not find locker for user", http.StatusNotFound)
@@ -196,7 +195,7 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode("Locker unlocked successfully")
 }
 
-func (l LockerHandler) CreateLocker(w http.ResponseWriter, r *http.Request) {
+func (l LockerHandler) AddPackage(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed reading body: %v", err)
@@ -225,43 +224,74 @@ func (l LockerHandler) CreateLocker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAvailableLocker := false
 	availableLocker, err := l.queries.GetAvailableLocker(r.Context())
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed query for an available locker: %v", err)
 		http.Error(w, "Error getting an available locker", http.StatusInternalServerError)
 		return
-	} else {
-		isAvailableLocker = true
 	}
 
-	if isAvailableLocker {
-		err := l.queries.UpdateLockerInUse(r.Context(), db.UpdateLockerInUseParams{
-			ID:         availableLocker.ID,
-			UserID:     pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true},
-			AccessCode: pgtype.Text{String: newLocker.AccessCode, Valid: true},
-		})
-		if err != nil {
-			log.Printf("[LOCKER_HANDLER] Failed updating available locker: %v", err)
-			http.Error(w, "Error updating available locker", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("successfully updated new locker"))
-		return
-	}
-
-	if err := l.queries.CreateLocker(r.Context(), db.CreateLockerParams{
-		AccessCode: pgtype.Text{String: newLocker.AccessCode, Valid: true},
+	err = l.queries.UpdateLockerInUse(r.Context(), db.UpdateLockerInUseParams{
+		ID:         availableLocker.ID,
 		UserID:     pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true},
-	}); err != nil {
-		log.Printf("[LOCKER_HANDLER] Failed creating new locker: %v", err)
-		http.Error(w, "Error creating new locker", http.StatusInternalServerError)
+		AccessCode: pgtype.Text{String: newLocker.AccessCode, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed updating available locker: %v", err)
+		http.Error(w, "Error updating available locker", http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("successfully created new locker"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("success"))
+
+	// if err := l.queries.CreateLocker(r.Context(), db.CreateLockerParams{
+	// 	AccessCode: pgtype.Text{String: newLocker.AccessCode, Valid: true},
+	// 	UserID:     pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true},
+	// }); err != nil {
+	// 	log.Printf("[LOCKER_HANDLER] Failed creating new locker: %v", err)
+	// 	http.Error(w, "Error creating new locker", http.StatusInternalServerError)
+	// 	return
+	// }
+	//
+	// w.WriteHeader(http.StatusCreated)
+	// w.Write([]byte("successfully created new locker"))
+}
+
+func (l LockerHandler) UpdateLockerAccessCode(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		log.Printf("Error parsing locker ID: %v", err)
+		http.Error(w, "Invalid locker ID", http.StatusBadRequest)
+		return
+	}
+
+	var req UpdateLockerAccessCode
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.AccessCode == "" {
+		log.Printf("Failed no access code provided: %v", err)
+		http.Error(w, "Error no access code provided", http.StatusInternalServerError)
+		return
+	}
+
+	err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
+		ID:         id,
+		AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
+	})
+	if err != nil {
+		log.Printf("Error updating access code: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("successfully updated access code"))
 }
 
 // This can handle updating the userId, access code, and the inUse status separately and together.
@@ -283,20 +313,18 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
 
 	// Handles user and / or status update
 	var userID pgtype.Int8
-	if req.UserID != "" {
-		if req.UserID == "" {
-			// If there is no userId the field is invalid
-			userID = pgtype.Int8{Valid: false}
-		} else {
-			// Get the user's DB ID from Clerk ID
-			user, err := l.queries.GetUser(r.Context(), req.UserID)
-			if err != nil {
-				log.Printf("Error getting user by clerk_id: %v", err)
-				http.Error(w, "Invalid user ID", http.StatusBadRequest)
-				return
-			}
-			userID = pgtype.Int8{Int64: user.ID, Valid: true}
+	if req.UserID == nil {
+		// If there is no userId the field is invalid
+		userID = pgtype.Int8{Valid: false}
+	} else {
+		// Get the user's DB ID from Clerk ID
+		user, err := l.queries.GetUser(r.Context(), *req.UserID)
+		if err != nil {
+			log.Printf("Error getting user by clerk_id: %v", err)
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
 		}
+		userID = pgtype.Int8{Int64: user.ID, Valid: true}
 	}
 
 	inUse := true
@@ -316,10 +344,10 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handles access code update
-	if req.AccessCode != "" {
+	if req.AccessCode != nil {
 		err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
 			ID:         id,
-			AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
+			AccessCode: pgtype.Text{String: *req.AccessCode, Valid: true},
 		})
 		if err != nil {
 			log.Printf("Error updating access code: %v", err)

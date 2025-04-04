@@ -151,8 +151,9 @@ func main() {
 				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
 				r.Get("/{id}", lockerHandler.GetLocker)
 				// Used to change the user assigned to a locker or the status of a locker
-				r.Patch("/{id}", lockerHandler.UpdateLocker)
-				r.Post("/", lockerHandler.CreateLocker)
+				r.Patch("/{id}/code", lockerHandler.UpdateLockerAccessCode)
+				r.Patch("/{id}/unlock", lockerHandler.UnlockLocker)
+				r.Post("/", lockerHandler.AddPackage)
 				// Used to set up the initial lockers for an apartment
 				r.Post("/many", lockerHandler.CreateManyLockers)
 			})

@@ -1,146 +1,57 @@
 // TODO: I was last working on setting up the tanstack mutations for updatePassword and unlockLocker between the action menu and the modals. I need to make sure I am passing the right states that are needed. For the Unlock, I need to unlock the locker using the access code, that belongs to a user. For the update locker, I need to update the access code, that belongs to a user
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
-import TableComponent from "../components/reusableComponents/TableComponent";
 import { useAuth } from "@clerk/react-router";
-import { ColumnsType } from "antd/es/table";
+import Table, { ColumnsType } from "antd/es/table";
 import { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
-import { NumberOutlined, SyncOutlined, UnlockOutlined, UserAddOutlined } from "@ant-design/icons";
+import { NumberOutlined, SyncOutlined, UnlockOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Form, InputNumber, MenuProps, Modal, Select } from "antd";
 import { generateAccessCode } from "../lib/utils";
+import { TableRowSelection } from "antd/es/table/interface";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
 
 type Locker = {
     id: number;
-    user_id: string | null;
+    user_id: number | null;
     access_code: string | null;
     in_use: boolean;
 };
 
 interface ActionsDropdownProps {
     lockerId: number;
+    userId: number;
     password: string;
 }
 
 const AdminViewEditSmartLockers = () => {
+    const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+    const [loading, setLoading] = useState(false);
     const { getToken } = useAuth();
-    // Update the type to match clerk_id which is a string
     const queryClient = useQueryClient();
 
-    const { mutate: updatePassword } = useMutation({
-        mutationFn: async ({ lockerID, accessCode }: { lockerID: number; accessCode: string }) => {
-            if (!lockerID) {
-                throw new Error("Invalid locker ID");
-            }
-            if (!accessCode) {
-                throw new Error("Invalid access code");
-            }
+    const start = () => {
+        setLoading(true);
+        // ajax request after empty completing
+        setTimeout(() => {
+            setSelectedRowKeys([]);
+            setLoading(false);
+        }, 1000);
+    };
 
-            const token = await getToken();
-            if (!token) {
-                throw new Error("No authentication token available");
-            }
+    const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+        console.log("selectedRowKeys changed: ", newSelectedRowKeys);
+        setSelectedRowKeys(newSelectedRowKeys);
+    };
 
-            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    access_code: accessCode,
-                }),
-            });
+    const rowSelection: TableRowSelection<Locker> = {
+        selectedRowKeys,
+        onChange: onSelectChange,
+    };
 
-            if (!res.ok) {
-                throw new Error(`Failed to update password: ${res.status}`);
-            }
-
-            return (await res.json()) as { message: string };
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["lockers", "numberOfLockersInUse"] });
-        },
-    });
-
-    const { mutate: unlockLocker } = useMutation({
-        mutationFn: async ({ lockerID, accessCode }: { lockerID: number; accessCode: string }) => {
-            const token = await getToken();
-
-            if (!token) {
-                throw new Error("No authentication token available");
-            }
-
-            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    access_code: accessCode,
-                    in_use: false,
-                }),
-            });
-
-            if (!res.ok) {
-                throw new Error(`Failed to unlock locker: ${res.status}`);
-            }
-
-            return (await res.json()) as { message: string };
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["lockers", "numberOfLockersInUse"] });
-        },
-    });
-
-    function ActionMenu(props: ActionsDropdownProps) {
-        const items: MenuProps["items"] = [
-            {
-                key: "1",
-                label: (
-                    <div onClick={() => updatePassword({ lockerID: props.lockerId, accessCode: props.password })}>
-                        <UserAddOutlined className="me-1" />
-                        Assign
-                    </div>
-                ),
-            },
-            {
-                key: "2",
-                label: (
-                    <div onClick={() => updatePassword({ lockerID: props.lockerId, accessCode: props.password })}>
-                        <SyncOutlined className="me-1" />
-                        Update Password
-                    </div>
-                ),
-            },
-            {
-                key: "3",
-                label: (
-                    <div onClick={() => unlockLocker({ lockerID: props.lockerId, accessCode: props.password })}>
-                        <UnlockOutlined className="me-1" />
-                        Unlock
-                    </div>
-                ),
-            },
-        ];
-
-        return (
-            <div>
-                <Dropdown
-                    menu={{ items }}
-                    placement="bottomRight"
-                    overlayClassName={"custom-dropdown"}>
-                    <Button>
-                        <p className="fs-3 fw-bold">...</p>
-                    </Button>
-                </Dropdown>
-            </div>
-        );
-    }
+    const hasSelected = selectedRowKeys.length > 0;
 
     // Query for getting all tenants clerk_id
     const { data: tenants } = useQuery<Tenant[]>({
@@ -193,13 +104,115 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error(`Failed to fetch lockers: ${res.status}`);
             }
 
-            const data = await res.json();
+            const data = (await res.json()) as Locker[];
             // console.log("Locker response data:", data);
             return data;
         },
         // retry: 3, // Retry failed requests 3 times
         staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     });
+
+    const { mutate: updatePassword } = useMutation({
+        mutationFn: async ({ lockerID, accessCode }: { lockerID: number; accessCode: string }) => {
+            if (!lockerID) {
+                throw new Error("Invalid locker ID");
+            }
+            if (!accessCode) {
+                throw new Error("Invalid access code");
+            }
+
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}/code`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    access_code: accessCode,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to update password: ${res.status}`);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+        },
+    });
+
+    const { mutate: unlockLocker } = useMutation({
+        mutationFn: async ({ lockerID, tenantID, accessCode }: { lockerID: number; tenantID: number; accessCode: string }) => {
+            const token = await getToken();
+
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/${lockerID}/unlock`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    access_code: accessCode,
+                    in_use: false,
+                    user_id: tenantID,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to unlock locker: ${res.status}`);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+        },
+    });
+
+    function ActionMenu(props: ActionsDropdownProps) {
+        const items: MenuProps["items"] = [
+            {
+                key: "1",
+                label: (
+                    <div onClick={() => updatePassword({ lockerID: props.lockerId, accessCode: generateAccessCode() })}>
+                        <SyncOutlined className="me-1" />
+                        Update Password
+                    </div>
+                ),
+            },
+            {
+                key: "2",
+                label: (
+                    <div onClick={() => unlockLocker({ lockerID: props.lockerId, tenantID: props.userId, accessCode: props.password })}>
+                        <UnlockOutlined className="me-1" />
+                        Unlock
+                    </div>
+                ),
+            },
+        ];
+
+        return (
+            <div>
+                <Dropdown
+                    menu={{ items }}
+                    placement="bottomRight"
+                    overlayClassName={"custom-dropdown"}>
+                    <Button>
+                        <p className="fs-3 fw-bold">...</p>
+                    </Button>
+                </Dropdown>
+            </div>
+        );
+    }
 
     const columns: ColumnsType<Locker> = [
         {
@@ -213,6 +226,12 @@ const AdminViewEditSmartLockers = () => {
             dataIndex: "access_code",
             key: "access_code",
             render: (accessCode: string | null) => <span>{accessCode ?? "N/A"}</span>,
+        },
+        {
+            title: "User Id",
+            dataIndex: "user_id",
+            key: "user_id",
+            render: (id: number | null) => <span>{id ?? "N/A"}</span>,
         },
         {
             title: "In Use",
@@ -243,6 +262,7 @@ const AdminViewEditSmartLockers = () => {
                     <ActionMenu
                         key={record.id}
                         lockerId={record.id}
+                        userId={record.user_id ?? 0}
                         password={record.access_code ?? ""}
                     />
                     {/* Leaving these here because I think we might need them. */}
@@ -260,18 +280,45 @@ const AdminViewEditSmartLockers = () => {
     console.log("Lockers data:", lockers);
 
     return (
-        <div className="container">
+        <div className="container ">
             <PageTitleComponent title="Admin View Edit Smart Lockers" />
             <p className="text-muted mb-4 text-center">View and manage all smart lockers in the system</p>
             <div className="d-flex mb-4 gap-2">
-                <AddPackageModal tenants={tenants ?? []} />
                 <AddLockersModal />
+                <AddPackageModal tenants={tenants ?? []} />
             </div>
-            <TableComponent
-                columns={columns}
-                dataSource={dataSource}
-                loading={isLoadingLockers}
-            />
+            <div style={{ position: "relative" }}>
+                {hasSelected ? (
+                    <span className="d-flex">
+                        <Button
+                            type="primary"
+                            style={{ position: "absolute", top: "2%", left: "3%", zIndex: 5 }}
+                            onClick={start}
+                            disabled={!hasSelected}
+                            loading={loading}>
+                            Unlock ({selectedRowKeys.length})
+                        </Button>
+                        <Button
+                            className="btn btn-danger"
+                            style={{ position: "absolute", top: "2%", left: "11%", zIndex: 5 }}
+                            onClick={start}
+                            disabled={!hasSelected}
+                            loading={loading}>
+                            Delete ({selectedRowKeys.length})
+                        </Button>
+                    </span>
+                ) : null}
+                <Table
+                    rowSelection={rowSelection}
+                    columns={columns}
+                    dataSource={dataSource}
+                />
+            </div>
+            {/* <TableComponent */}
+            {/*     columns={columns} */}
+            {/*     dataSource={dataSource} */}
+            {/*     loading={isLoadingLockers} */}
+            {/* /> */}
         </div>
     );
 };
