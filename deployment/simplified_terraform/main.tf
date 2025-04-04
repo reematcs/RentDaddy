@@ -254,8 +254,14 @@ resource "aws_autoscaling_group" "ecs_asg" {
   min_size            = 2
   max_size            = 2
 
-
-
+  # Ensure we have one instance in each availability zone
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
+    triggers = ["tag"]
+  }
 
   launch_template {
     id      = aws_launch_template.ecs_lt.id
@@ -777,10 +783,10 @@ resource "aws_ecs_service" "backend_with_frontend" {
     container_name   = "backend"
     container_port   = 8080
   }
-  # Place app service in availability zone b
+  # Place app service in availability zone a (same as documenso)
   placement_constraints {
     type       = "memberOf"
-    expression = "attribute:ecs.availability-zone == us-east-2b"
+    expression = "attribute:ecs.availability-zone == us-east-2a"
   }
   lifecycle {
     ignore_changes = [desired_count]
@@ -983,13 +989,13 @@ resource "aws_lb_target_group" "documenso" {
 
 resource "aws_lb_target_group_attachment" "frontend" {
   target_group_arn = aws_lb_target_group.frontend.arn
-  target_id        = "i-0ded6293342aa51bf" # Instance in zone B for main app
+  target_id        = "i-02055500af192fa53" # Instance in zone A (same as documenso)
   port             = 5173
 }
 
 resource "aws_lb_target_group_attachment" "backend" {
   target_group_arn = aws_lb_target_group.backend.arn
-  target_id        = "i-0ded6293342aa51bf" # Instance in zone B for main app
+  target_id        = "i-02055500af192fa53" # Instance in zone A (same as documenso)
   port             = 8080
 }
 

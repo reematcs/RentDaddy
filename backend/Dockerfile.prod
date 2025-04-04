@@ -1,21 +1,19 @@
 # Build stage
-FROM golang:1.23 AS builder
+FROM golang:1.23-alpine AS builder
 
-# 👇 Debian uses apt-get instead of apk
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git make openssh-client wget ca-certificates bash && \
-    rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apk add --no-cache git make openssh-client wget ca-certificates bash
 
 WORKDIR /app
 
 # Copy go module files first for better layer caching
 COPY go.mod go.sum ./
+COPY vendor/ ./vendor/
 RUN go mod download
 
 # Download specific dependencies needed for scripts
 RUN go mod download github.com/bxcodec/faker/v4 && \
-    go mod download github.com/clerk/clerk-sdk-go/v2 && \
-    go mod download github.com/clerk/clerk-sdk-go/v2/user
+    go mod download github.com/clerk/clerk-sdk-go/v2
 
 # Copy the rest of the application
 COPY . .
@@ -32,12 +30,10 @@ RUN sqlc generate
 RUN CGO_ENABLED=0 GOOS=linux go build -o server -ldflags="-s -w" ./server.go
 
 # Final stage
-FROM debian:bookworm-slim
+FROM alpine:latest
 
-# Install packages needed at runtime including golang
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates tzdata postgresql-client wget git bash golang && \
-    rm -rf /var/lib/apt/lists/*
+# Install packages needed at runtime
+RUN apk add --no-cache ca-certificates tzdata postgresql-client wget git bash go
 
 WORKDIR /app
 
@@ -49,7 +45,7 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
     rm migrate.tar.gz
 
 # Create runtime directories
-RUN mkdir -p /app/temp /app/config /go/pkg/mod
+RUN mkdir -p /app/temp /app/config /go/pkg/mod /go/src/github.com/careecodes
 
 # Copy the binary and supporting files from builder
 COPY --from=builder /app/server .
@@ -68,6 +64,7 @@ ENV PORT=8080
 ENV PG_URL=""
 ENV DOCUMENSO_API_URL="https://api.documenso.com/api/v1"
 ENV TEMP_DIR=/app/temp
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 EXPOSE 8080
 

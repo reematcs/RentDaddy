@@ -9,6 +9,13 @@ const ENV = import.meta.env.ENV || 'development';
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MODE = import.meta.env.MODE;
 
+// Debug environment variables at load time
+console.log('API Config Environment:');
+console.log('- MODE:', MODE);
+console.log('- ENV:', ENV);
+console.log('- VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL);
+console.log('- VITE_SERVER_URL:', SERVER_URL);
+
 /**
  * Base URL construction for API endpoints
  * - In production: domain without port 
@@ -60,9 +67,14 @@ export const getApiUrl = (path: string): string => {
 /**
  * Standard URL for server API endpoints
  * - Uses VITE_SERVER_URL in development
- * - Uses '/api' in production
+ * - Uses VITE_BACKEND_URL in production
  */
-export const SERVER_API_URL = MODE === 'development' ? SERVER_URL : '/api';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://api.curiousdev.net';
+// Remove trailing slash if present to properly handle path concatenation
+export const SERVER_API_URL = (MODE === 'development' ? SERVER_URL : BACKEND_URL).replace(/\/$/, '');
+
+// Debug the final SERVER_API_URL
+console.log('Final SERVER_API_URL:', SERVER_API_URL);
 
 /**
  * Authentication status enum
@@ -251,6 +263,16 @@ export class ApiClient {
     // Format endpoint
     const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${SERVER_API_URL}${formattedEndpoint}`;
+    
+    // Debug URL construction
+    console.log(`API URL: ${url}`);
+    console.log(`API Request Details:
+      - Endpoint: ${endpoint}
+      - Full URL: ${url}
+      - Method: ${options.method || 'GET'}
+      - Auth Status: ${this.authStatus}
+      - Auth Token Present: ${this.authToken ? 'Yes' : 'No'}
+    `);
 
     // Set up headers
     const headers: HeadersInit = {

@@ -7,6 +7,7 @@ echo "=== Starting frontend container ==="
 echo "Runtime Environment Variables:"
 echo "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-not set}"
 echo "VITE_BACKEND_URL=${VITE_BACKEND_URL:-not set}"
+echo "VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL:-not set}"
 echo "VITE_ENV=${VITE_ENV:-not set}"
 
 # Directory containing the built app
@@ -93,7 +94,7 @@ find ${APP_DIR} -type f -name "*.js" | while read file; do
     BACKEND="${VITE_BACKEND_URL:-https://api.curiousdev.net}"
     DOCUMENSO="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
     
-    echo "Using values: CLERK_KEY=${CLERK_KEY}, BACKEND=${BACKEND}"
+    echo "Using values: CLERK_KEY=${CLERK_KEY}, BACKEND=${BACKEND}, DOCUMENSO=${DOCUMENSO}"
     
     # Replace environment variables with proper escaping for sed
     CLERK_KEY_ESCAPED=$(echo "$CLERK_KEY" | sed 's/[\/&]/\\&/g')

@@ -52,11 +52,15 @@ if command -v go >/dev/null 2>&1; then
   export GOPATH="/go"
   export PATH=$PATH:$GOPATH/bin
   
+  # Set up symbolic links for module resolution
+  echo "Setting up module path structure..."
+  mkdir -p $GOPATH/src/github.com/careecodes
+  ln -sf /app $GOPATH/src/github.com/careecodes/RentDaddy
+  
   # Install necessary packages for scripts
   echo "Installing dependencies for scripts..."
   go mod download github.com/bxcodec/faker/v4
   go mod download github.com/clerk/clerk-sdk-go/v2
-  go mod download github.com/clerk/clerk-sdk-go/v2/user
 else
   echo "Go not found, skipping module dependencies - continuing with server startup..."
 fi
