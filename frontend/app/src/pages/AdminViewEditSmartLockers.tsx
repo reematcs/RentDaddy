@@ -283,9 +283,9 @@ const AdminViewEditSmartLockers = () => {
         <div className="container ">
             <PageTitleComponent title="Admin View Edit Smart Lockers" />
             <p className="text-muted mb-4 text-center">View and manage all smart lockers in the system</p>
-            <div className="d-flex mb-4 gap-2">
-                <AddLockersModal />
+            <div className="d-flex justify-content-between mb-4 gap-2">
                 <AddPackageModal tenants={tenants ?? []} />
+                <AddLockersModal />
             </div>
             <div style={{ position: "relative" }}>
                 {hasSelected ? (
@@ -312,6 +312,7 @@ const AdminViewEditSmartLockers = () => {
                     rowSelection={rowSelection}
                     columns={columns}
                     dataSource={dataSource}
+                    loading={isLoadingLockers}
                 />
             </div>
             {/* <TableComponent */}
@@ -399,8 +400,8 @@ function AddPackageModal(props: AddPackageModalProps) {
                 onClick={() => showModal()}>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="20"
+                    height="20"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -523,8 +524,8 @@ function AddLockersModal() {
                 onClick={() => showModal()}>
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
+                    width="20"
+                    height="20"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"

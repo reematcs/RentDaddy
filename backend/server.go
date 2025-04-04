@@ -148,14 +148,14 @@ func main() {
 			// Start of Locker Handlers
 			r.Route("/lockers", func(r chi.Router) {
 				r.Get("/", lockerHandler.GetLockers)
-				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
-				r.Get("/{id}", lockerHandler.GetLocker)
-				// Used to change the user assigned to a locker or the status of a locker
-				r.Patch("/{id}/code", lockerHandler.UpdateLockerAccessCode)
-				r.Patch("/{id}/unlock", lockerHandler.UnlockLocker)
 				r.Post("/", lockerHandler.AddPackage)
-				// Used to set up the initial lockers for an apartment
+				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
 				r.Post("/many", lockerHandler.CreateManyLockers)
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", lockerHandler.GetLocker)
+					r.Patch("/unlock", lockerHandler.UnlockLocker)
+					r.Patch("/code", lockerHandler.UpdateLockerAccessCode)
+				})
 			})
 			// End of Locker Handlers
 
@@ -210,8 +210,8 @@ func main() {
 			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers", lockerHandler.GetLockersByUserId)
+			r.Post("/lockers/unlock", lockerHandler.TenantUnlockLockers)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {

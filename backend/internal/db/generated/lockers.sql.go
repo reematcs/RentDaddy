@@ -138,6 +138,37 @@ func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {
 	return items, nil
 }
 
+const getLockersByUserId = `-- name: GetLockersByUserId :many
+SELECT id, access_code, in_use, user_id
+FROM lockers
+WHERE user_id = $1
+`
+
+func (q *Queries) GetLockersByUserId(ctx context.Context, userID pgtype.Int8) ([]Locker, error) {
+	rows, err := q.db.Query(ctx, getLockersByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Locker
+	for rows.Next() {
+		var i Locker
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccessCode,
+			&i.InUse,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNumberOfLockersInUse = `-- name: GetNumberOfLockersInUse :one
 SELECT COUNT(*)
 FROM lockers
@@ -149,6 +180,19 @@ func (q *Queries) GetNumberOfLockersInUse(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const unlockUserLockers = `-- name: UnlockUserLockers :exec
+
+UPDATE lockers
+SET user_id = null, access_code= null, in_use = false
+WHERE user_id = $1
+`
+
+// Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
+func (q *Queries) UnlockUserLockers(ctx context.Context, userID pgtype.Int8) error {
+	_, err := q.db.Exec(ctx, unlockUserLockers, userID)
+	return err
 }
 
 const updateAccessCode = `-- name: UpdateAccessCode :exec
@@ -185,7 +229,6 @@ func (q *Queries) UpdateLockerInUse(ctx context.Context, arg UpdateLockerInUsePa
 }
 
 const updateLockerUser = `-- name: UpdateLockerUser :exec
-
 UPDATE lockers
 SET user_id = $2, in_use = $3
 WHERE id = $1
@@ -197,7 +240,6 @@ type UpdateLockerUserParams struct {
 	InUse  bool        `json:"in_use"`
 }
 
-// Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
 func (q *Queries) UpdateLockerUser(ctx context.Context, arg UpdateLockerUserParams) error {
 	_, err := q.db.Exec(ctx, updateLockerUser, arg.ID, arg.UserID, arg.InUse)
 	return err

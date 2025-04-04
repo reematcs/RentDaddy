@@ -108,11 +108,7 @@ export const TenantDashBoard = () => {
     });
 
     // Fetch lease status using TanStack Query
-    const {
-        data: leaseData,
-        isLoading,
-        isError,
-    } = useQuery({
+    const { data: leaseData, isLoading } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             if (!userId) {
@@ -614,15 +610,15 @@ function TenantOpenLockerModal(props: LockerModalProps) {
     const { mutate: openLocker } = useMutation({
         mutationKey: [`${userId}-locker`],
         mutationFn: async () => {
-            const authToken = await getToken();
-            if (!authToken) {
+            const token = await getToken();
+            if (!token) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
-            const res = await fetch(`${absoluteServerUrl}/tenants/lockers/unlock`, {
+            const res = await fetch(`${absoluteServerUrl}/tenant/lockers/unlock`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${authToken}`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -648,7 +644,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
         <>
             <ButtonComponent
                 type="primary"
-                title="Open Locker"
+                title="Open Lockers"
                 onClick={showModal}
                 disabled={props.numberOfPackages === 0 ? true : false}
             />
@@ -676,7 +672,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                         <path d="m14 7 3 3" />
                         <path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814" />
                     </svg>
-                    <p className="fs-5">Locker is open!</p>
+                    <p className="fs-5">Lockers opened!</p>
                 </span>
             </Modal>
         </>
