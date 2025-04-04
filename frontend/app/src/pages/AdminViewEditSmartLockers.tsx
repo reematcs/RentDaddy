@@ -9,6 +9,7 @@ import { NumberOutlined, SyncOutlined, UnlockOutlined } from "@ant-design/icons"
 import { Button, Dropdown, Form, InputNumber, MenuProps, Modal, Select } from "antd";
 import { generateAccessCode } from "../lib/utils";
 import { TableRowSelection } from "antd/es/table/interface";
+import { toast } from "sonner";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -141,9 +142,13 @@ const AdminViewEditSmartLockers = () => {
                 throw new Error(`Failed to update password: ${res.status}`);
             }
         },
-        onSuccess: () => {
+        onSuccess: (_, vars) => {
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            return toast.success("Succesfully updated", { description: `Locker ${vars.lockerID} access code updated.` });
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
@@ -175,6 +180,10 @@ const AdminViewEditSmartLockers = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            return toast.success("Succesfully unlocked!");
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
@@ -378,6 +387,10 @@ function AddPackageModal(props: AddPackageModalProps) {
             setAccessCode(generateAccessCode());
             addPackageForm.resetFields();
             handleCancel();
+            return toast.success("Succes!", { description: "Created new package" });
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
@@ -496,12 +509,16 @@ function AddLockersModal() {
                 throw new Error(`Failed creating new locker`);
             }
         },
-        onSuccess: () => {
+        onSuccess: (_, amount) => {
             // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             lockerForm.resetFields();
             handleCancel();
+            return toast.success(`Successfully created ${amount} lockers`);
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 

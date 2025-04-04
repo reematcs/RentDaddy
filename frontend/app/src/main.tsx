@@ -36,6 +36,8 @@ import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetup
 import TenantComplaints from "./pages/TenantComplaints.tsx";
 import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
+import { Toaster } from "sonner";
+import AdminComplaints from "./pages/AdminComplaints.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -79,6 +81,7 @@ createRoot(document.getElementById("root")!).render(
                     {/*  */}
                     {/* More TODOs: */}
                     {/* We also need to make sure that we somehow assign a role upon creation in the Clerk user object, or our own DB User object */}
+                    <Toaster />
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
@@ -166,8 +169,12 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminViewEditLeases />}
                                         />
                                         <Route
-                                            path="admin-view-and-edit-work-orders-and-complaints"
+                                            path="work-orders"
                                             element={<AdminWorkOrder />}
+                                        />
+                                        <Route
+                                            path="complaints"
+                                            element={<AdminComplaints />}
                                         />
                                         <Route
                                             path="admin-view-and-edit-smart-lockers"

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CalendarOutlined, InboxOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
-import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { Tag, Spin } from "antd";
@@ -12,6 +11,7 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { generateAccessCode } from "../lib/utils";
+import { toast } from "sonner";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -250,6 +250,10 @@ const AdminDashboard = () => {
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             setAccessCode(generateAccessCode());
             setSelectedUserId(undefined);
+            return toast.success("Succes!", { description: "Created new package" });
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
@@ -437,13 +441,6 @@ const AdminDashboard = () => {
     return (
         <div className="container">
             <PageTitleComponent title="Admin Dashboard" />
-            <AlertComponent
-                title="Welcome to the Admin Dashboard"
-                message=""
-                description="This is the Admin Dashboard. Here's a demo alert component."
-                type="success"
-            />
-
             {/* Dashboard Statistics Cards */}
             <div className="d-flex gap-4 my-5 w-100 justify-content-between">
                 <CardComponent
@@ -478,7 +475,7 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Packages"
-                    value={isLoadingLockers ? <Spin size="small" /> : numberOfLockersInUse}
+                    value={numberOfLockersInUse ?? 0}
                     description="Awaiting delivery"
                     hoverable={true}
                     icon={<InboxOutlined style={{ fontSize: "24px", color: "#52c41a", marginBottom: "16px" }} />}
@@ -513,9 +510,9 @@ const AdminDashboard = () => {
                     }
                 />
                 <CardComponent
-                    title="Events"
+                    title="Parking Passes"
                     value={10}
-                    description="Scheduled this month"
+                    description={`Number of parking passes in use`}
                     hoverable={true}
                     icon={<CalendarOutlined style={{ fontSize: "24px", color: "#722ed1", marginBottom: "16px" }} />}
                     button={
