@@ -84,7 +84,7 @@ func main() {
 	// Locker Handler
 	lockerHandler := handlers.NewLockerHandler(pool, queries)
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
-	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)

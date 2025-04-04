@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 
@@ -65,12 +66,6 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 }
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
-	for i := 0; i < 7; i++ {
-		complaint, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
-			CreatedBy:   user.ID,
-			Category:    RandomComplaintCategory(),
-			Title:       faker.Sentence(),
-			Description: faker.Paragraph(),
 	for i := 0; i < 7; i++ {
 		complaint, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
 			CreatedBy:   user.ID,
@@ -151,9 +146,6 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			return errors.New("[SEEDER] error creating work orders: " + err.Error())
 		}
 
-		err = createComplaints(queries, u, ctx)
-		if err != nil {
-			return errors.New("[SEEDER] error creating complaints: " + err.Error())
 		err = createComplaints(queries, u, ctx)
 		if err != nil {
 			return errors.New("[SEEDER] error creating complaints: " + err.Error())
