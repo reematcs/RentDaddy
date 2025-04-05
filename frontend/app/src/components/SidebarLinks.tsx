@@ -150,7 +150,7 @@ const SidebarLinks = () => {
                         </Link>
                         <Link
                             to="/admin/tenants"
-                            className={`d-flex align-items-center gap-2 hover-darken transition-all ${getLinkClass("/admin/manage-tenants")}`}>
+                            className={`d-flex align-items-center gap-2 hover-darken transition-all ${getLinkClass("/admin/tenants")}`}>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="20"
