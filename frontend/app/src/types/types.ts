@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 export type GetApartment = {
     id: number;
     unitNumber: number | null;
@@ -18,15 +18,14 @@ export interface LeaseData {
     leaseEndDate: string;
     rentAmount: number;
     status: string;
-formattedStartDate?: dayjs.Dayjs;
-formattedEndDate?: dayjs.Dayjs;
-admin_doc_url?: string;
-
+    formattedStartDate?: dayjs.Dayjs;
+    formattedEndDate?: dayjs.Dayjs;
+    admin_doc_url?: string;
 }
 
 export interface TenantLeaseStatusAndURL {
-status: string;
-url: string;
+    status: string;
+    url: string;
 }
 
 export type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
@@ -140,10 +139,10 @@ export interface Parking {
 }
 
 export interface ParkingEntry {
-    created_by: number;
+    license_plate: string;
     car_color: string;
     car_make: string;
-    license_plate: string;
+    created_by: number;
 }
 
 export type ClerkPublicMetadata = {
