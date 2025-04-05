@@ -230,8 +230,6 @@ export const TenantDashBoard = () => {
                     value={complaints.data?.length}
                     button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
-
-                <MyChatBot />
             </div>
 
             {/* Inescapable Modal for lease signing */}
@@ -261,6 +259,7 @@ export const TenantDashBoard = () => {
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
                 </div>
             </Modal>
+            <MyChatBot />
         </div>
     );
 };
