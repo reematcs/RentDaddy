@@ -6,6 +6,7 @@ import { GetApartment, WorkOrderData, WorkOrderEntry, WorkStatus } from "../type
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import dayjs from "dayjs";
+import { toast } from "sonner";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -171,6 +172,10 @@ function TenantCreateWorkOrderModal(props: CreateWorkOrderModalProps) {
             });
             workOrderForm.resetFields();
             handleCancel();
+            return toast.success("Successfully created");
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
     return (

@@ -157,11 +157,11 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminDashboard />}
                                         />
                                         <Route
-                                            path="init-apartment-complex"
+                                            path="apartment"
                                             element={<AdminApartmentSetupAndDetailsManagement />}
                                         />
                                         <Route
-                                            path="manage-tenants"
+                                            path="tenants"
                                             element={<AddTenant />}
                                         />
                                         <Route
@@ -177,7 +177,7 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminComplaints />}
                                         />
                                         <Route
-                                            path="admin-view-and-edit-smart-lockers"
+                                            path="lockers"
                                             element={<AdminViewEditSmartLockers />}
                                         />
                                     </Route>
@@ -188,21 +188,21 @@ createRoot(document.getElementById("root")!).render(
                                             index
                                             element={<TenantDashBoard />}
                                         />
+                                        {/* <Route */}
+                                        {/*     path="guest-parking" */}
+                                        {/*     element={<h1>Guest Parking</h1>} */}
+                                        {/* /> */}
                                         <Route
-                                            path="guest-parking"
-                                            element={<h1>Guest Parking</h1>}
-                                        />
-                                        <Route
-                                            path="tenant-view-and-edit-leases"
+                                            path="leases"
                                             element={<h1>Digital Documents</h1>}
                                         />
                                         <Route
-                                            path="tenant-complaints"
-                                            element={<TenantComplaints />}
+                                            path="work-orders"
+                                            element={<TenantWorkOrders />}
                                         />
                                         <Route
-                                            path="tenant-work-orders"
-                                            element={<TenantWorkOrders />}
+                                            path="complaints"
+                                            element={<TenantComplaints />}
                                         />
                                     </Route>
                                 </Route>

@@ -4,7 +4,7 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useAuth } from "@clerk/react-router";
 import Table, { ColumnsType } from "antd/es/table";
 import { Tenant } from "../components/ModalComponent";
-import { useState } from "react";
+import React, { useState } from "react";
 import { NumberOutlined, SyncOutlined, UnlockOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Form, InputNumber, MenuProps, Modal, Select } from "antd";
 import { generateAccessCode } from "../lib/utils";
@@ -29,30 +29,8 @@ interface ActionsDropdownProps {
 
 const AdminViewEditSmartLockers = () => {
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-    const [loading, setLoading] = useState(false);
     const { getToken } = useAuth();
     const queryClient = useQueryClient();
-
-    const start = () => {
-        setLoading(true);
-        // ajax request after empty completing
-        setTimeout(() => {
-            setSelectedRowKeys([]);
-            setLoading(false);
-        }, 1000);
-    };
-
-    const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
-        console.log("selectedRowKeys changed: ", newSelectedRowKeys);
-        setSelectedRowKeys(newSelectedRowKeys);
-    };
-
-    const rowSelection: TableRowSelection<Locker> = {
-        selectedRowKeys,
-        onChange: onSelectChange,
-    };
-
-    const hasSelected = selectedRowKeys.length > 0;
 
     // Query for getting all tenants clerk_id
     const { data: tenants } = useQuery<Tenant[]>({
@@ -76,7 +54,7 @@ const AdminViewEditSmartLockers = () => {
             }
 
             const data = await res.json();
-            console.log("Response data for tenants query:", data);
+            // console.log("Response data for tenants query:", data);
             return data;
         },
     });
@@ -148,7 +126,7 @@ const AdminViewEditSmartLockers = () => {
             return toast.success("Succesfully updated", { description: `Locker ${vars.lockerID} access code updated.` });
         },
         onError: () => {
-            return toast.error("Oops", { description: "Something happned please try again another time." });
+            return toast.error("Oops", { description: "Something happened please try again another time." });
         },
     });
 
@@ -180,10 +158,77 @@ const AdminViewEditSmartLockers = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
-            return toast.success("Succesfully unlocked!");
+            return toast.success("Succesfully unlocked");
         },
         onError: () => {
-            return toast.error("Oops", { description: "Something happned please try again another time." });
+            return toast.error("Oops", { description: "Something happened please try again another time." });
+        },
+    });
+
+    const { mutate: batchDelete, isPending: isPeningBatchDelete } = useMutation({
+        mutationFn: async ({ lockerIds }: { lockerIds: number[] }) => {
+            const token = await getToken();
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/many`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    locker_ids: lockerIds,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to batch delete lockers: ${res.status}`);
+            }
+        },
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            setSelectedRowKeys([]);
+            return toast.success(`Success`, { description: `removed ${vars.lockerIds.length}.` });
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happened please try again another time." });
+        },
+    });
+
+    const { mutate: batchUnlock, isPending: isPeningBatchUnlock } = useMutation({
+        mutationFn: async ({ lockerIds }: { lockerIds: number[] }) => {
+            const token = await getToken();
+
+            if (!token) {
+                throw new Error("No authentication token available");
+            }
+
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/many`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    locker_ids: lockerIds,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error(`Failed to unlock locker: ${res.status}`);
+            }
+        },
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: ["lockers"] });
+            queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
+            setSelectedRowKeys([]);
+            return toast.success(`Success`, { description: `unlocked ${vars.lockerIds.length}` });
+        },
+        onError: () => {
+            return toast.error("Oops", { description: "Something happened please try again another time." });
         },
     });
 
@@ -266,8 +311,6 @@ const AdminViewEditSmartLockers = () => {
             fixed: "right",
             render: (record: Locker) => (
                 <div className="flex flex-column gap-2">
-                    {/* View Tenant Complaints */}
-                    {/* View Tenant Work Orders */}
                     <ActionMenu
                         key={record.id}
                         lockerId={record.id}
@@ -284,51 +327,88 @@ const AdminViewEditSmartLockers = () => {
         },
     ];
 
-    const dataSource = lockers || [];
-
-    console.log("Lockers data:", lockers);
+    const rowSelection: TableRowSelection<Locker> = {
+        selectedRowKeys,
+        onChange: (newSelectedRowKeys: React.Key[]) => {
+            setSelectedRowKeys(newSelectedRowKeys);
+        },
+    };
 
     return (
         <div className="container ">
-            <PageTitleComponent title="Admin View Edit Smart Lockers" />
-            <p className="text-muted mb-4 text-center">View and manage all smart lockers in the system</p>
-            <div className="d-flex justify-content-between mb-4 gap-2">
-                <AddPackageModal tenants={tenants ?? []} />
+            <PageTitleComponent title="Smart Lockers" />
+            <div className="d-flex justify-content-start mb-4 gap-2">
                 <AddLockersModal />
+                <AddPackageModal tenants={tenants ?? []} />
             </div>
             <div style={{ position: "relative" }}>
-                {hasSelected ? (
-                    <span className="d-flex">
+                {selectedRowKeys.length ? (
+                    <span
+                        style={{ position: "absolute", top: "1.5%", left: "3%", zIndex: 5 }}
+                        className="d-flex align-items-center gap-2">
                         <Button
-                            type="primary"
-                            style={{ position: "absolute", top: "2%", left: "3%", zIndex: 5 }}
-                            onClick={start}
-                            disabled={!hasSelected}
-                            loading={loading}>
+                            type="dashed"
+                            className="bg-secondary hover-darken text-white"
+                            onClick={() => batchUnlock({ lockerIds: selectedRowKeys as number[] })}
+                            disabled={!selectedRowKeys.length || isPeningBatchUnlock}
+                            loading={isPeningBatchUnlock}>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                className="lucide lucide-lock-open-icon lucide-lock-open">
+                                <rect
+                                    width="18"
+                                    height="11"
+                                    x="3"
+                                    y="11"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                            </svg>
                             Unlock ({selectedRowKeys.length})
                         </Button>
                         <Button
-                            className="btn btn-danger"
-                            style={{ position: "absolute", top: "2%", left: "11%", zIndex: 5 }}
-                            onClick={start}
-                            disabled={!hasSelected}
-                            loading={loading}>
+                            type="dashed"
+                            className="bg-danger hover-darken text-white"
+                            onClick={() => batchDelete({ lockerIds: selectedRowKeys as number[] })}
+                            disabled={!selectedRowKeys.length || isPeningBatchDelete}
+                            loading={isPeningBatchDelete}>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                className="lucide lucide-trash-icon lucide-trash">
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
                             Delete ({selectedRowKeys.length})
                         </Button>
                     </span>
                 ) : null}
-                <Table
+                <Table<Locker>
+                    rowKey={"id"}
                     rowSelection={rowSelection}
                     columns={columns}
-                    dataSource={dataSource}
+                    dataSource={lockers ?? []}
                     loading={isLoadingLockers}
                 />
+                <p className="text-muted mb-4 text-center">View and manage all smart lockers in the system</p>
             </div>
-            {/* <TableComponent */}
-            {/*     columns={columns} */}
-            {/*     dataSource={dataSource} */}
-            {/*     loading={isLoadingLockers} */}
-            {/* /> */}
         </div>
     );
 };
@@ -377,20 +457,30 @@ function AddPackageModal(props: AddPackageModalProps) {
                 body: JSON.stringify({ user_clerk_id: selectedUserId, access_code: accessCode }),
             });
             if (!res.ok) {
-                throw new Error(`Failed creating new locker`);
+                if (res.status === 409) {
+                    throw new Error("No Lockers available");
+                }
+                throw new Error("Failed to add package");
             }
         },
         onSuccess: () => {
-            // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             setAccessCode(generateAccessCode());
             addPackageForm.resetFields();
             handleCancel();
-            return toast.success("Succes!", { description: "Created new package" });
+            return toast.success("Success", { description: "Created new package" });
         },
-        onError: () => {
-            return toast.error("Oops", { description: "Something happned please try again another time." });
+        onError: (err: Error) => {
+            if (err.message === "No Lockers available") {
+                return toast.error("No Lockers Available", {
+                    description: "All lockers are currently in use. Please create or unlock some lockers.",
+                });
+            } else {
+                return toast.error("Oops", {
+                    description: "Something went wrong. Please try again another time.",
+                });
+            }
         },
     });
 
@@ -518,7 +608,7 @@ function AddLockersModal() {
             return toast.success(`Successfully created ${amount} lockers`);
         },
         onError: () => {
-            return toast.error("Oops", { description: "Something happned please try again another time." });
+            return toast.error("Oops", { description: "Something happened please try again another time." });
         },
     });
 

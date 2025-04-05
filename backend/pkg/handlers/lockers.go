@@ -21,6 +21,13 @@ type LockerHandler struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
 }
+type BatchUnlockRequest struct {
+	LockerIds []int32 `json:"locker_ids"`
+}
+
+type BatchDeleteRequest struct {
+	LockerIds []int32 `json:"locker_ids"`
+}
 
 type NewLockerRequest struct {
 	UserClerkId string `json:"user_clerk_id"`
@@ -234,7 +241,7 @@ func (l LockerHandler) AddPackage(w http.ResponseWriter, r *http.Request) {
 	clerkUser, err := user.Get(r.Context(), newLocker.UserClerkId)
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed getting user Clerk data: %v", err)
-		http.Error(w, "Error querying user Clerk data", http.StatusInternalServerError)
+		http.Error(w, "Error querying user Clerk data", http.StatusNotFound)
 		return
 	}
 
@@ -248,7 +255,7 @@ func (l LockerHandler) AddPackage(w http.ResponseWriter, r *http.Request) {
 	availableLocker, err := l.queries.GetAvailableLocker(r.Context())
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed query for an available locker: %v", err)
-		http.Error(w, "Error getting an available locker", http.StatusInternalServerError)
+		http.Error(w, "Error getting an available locker", http.StatusConflict)
 		return
 	}
 
@@ -413,6 +420,53 @@ func (l LockerHandler) CreateManyLockers(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(map[string]int64{
 		"lockers_created": rowsAffected,
 	})
+}
+
+func (l LockerHandler) BatchDeleteLockers(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed reading body: %v", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
+		return
+	}
+
+	var lockerIds BatchDeleteRequest
+	if err := json.Unmarshal(body, &lockerIds); err != nil {
+		log.Printf("Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+	if err = l.queries.DeleteLockersByIds(r.Context(), lockerIds.LockerIds); err != nil {
+		log.Printf("Failed batch deleting lockers: %v", err)
+		http.Error(w, "Error batch deleteing", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (l LockerHandler) BatchUnlockLockers(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed reading body: %v", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
+		return
+	}
+
+	var lockerIds BatchUnlockRequest
+	if err := json.Unmarshal(body, &lockerIds); err != nil {
+		log.Printf("Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: queries batch unlock lockers
+	if err = l.queries.UnlockerLockersByIds(r.Context(), lockerIds.LockerIds); err != nil {
+		log.Printf("Failed batch update lockers: %v", err)
+		http.Error(w, "Error batch update", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // For the Admin Dashboard Card that shows the number of lockers in use

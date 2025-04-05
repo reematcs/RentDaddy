@@ -20,8 +20,13 @@ FROM generate_series(1, sqlc.arg(count)::int); -- Used the sqlc.arg to help crea
 
 -- name: UnlockUserLockers :exec 
 UPDATE lockers
-SET user_id = null, access_code= null, in_use = false
+SET user_id = null, access_code = null, in_use = false
 WHERE user_id = $1;
+
+-- name: UnlockerLockersByIds :exec
+UPDATE lockers 
+SET user_id = null, access_code = null, in_use = false
+WHERE id =  ANY($1::int[]);
 
 -- name: UpdateLockerUser :exec
 UPDATE lockers
@@ -70,3 +75,7 @@ WHERE in_use = true;
 SELECT *
 FROM lockers
 WHERE in_use = false;
+
+-- name: DeleteLockersByIds :exec 
+DELETE FROM lockers
+WHERE id =  ANY($1::int[]);

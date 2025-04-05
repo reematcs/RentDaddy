@@ -124,6 +124,7 @@ func main() {
 			r.Route("/parking", func(r chi.Router) {
 				r.Get("/", parkingPermitHandler.GetParkingPermits)
 				r.Post("/", parkingPermitHandler.CreateParkingPermit)
+				r.Get("/in-use/count", parkingPermitHandler.GetParkingPermitAmount)
 				r.Route("/{permit_id}", func(r chi.Router) {
 					r.Get("/", parkingPermitHandler.GetParkingPermit)
 					r.Delete("/", parkingPermitHandler.DeleteParkingPermit)
@@ -150,7 +151,11 @@ func main() {
 				r.Get("/", lockerHandler.GetLockers)
 				r.Post("/", lockerHandler.AddPackage)
 				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
-				r.Post("/many", lockerHandler.CreateManyLockers)
+				r.Route("/many", func(r chi.Router) {
+					r.Post("/", lockerHandler.CreateManyLockers)
+					r.Put("/", lockerHandler.BatchUnlockLockers)
+					r.Delete("/", lockerHandler.BatchDeleteLockers)
+				})
 				r.Route("/{id}", func(r chi.Router) {
 					r.Get("/", lockerHandler.GetLocker)
 					r.Patch("/unlock", lockerHandler.UnlockLocker)

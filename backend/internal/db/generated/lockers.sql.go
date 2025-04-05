@@ -51,6 +51,16 @@ func (q *Queries) CreateManyLockers(ctx context.Context, count int32) (int64, er
 	return result.RowsAffected(), nil
 }
 
+const deleteLockersByIds = `-- name: DeleteLockersByIds :exec
+DELETE FROM lockers
+WHERE id =  ANY($1::int[])
+`
+
+func (q *Queries) DeleteLockersByIds(ctx context.Context, dollar_1 []int32) error {
+	_, err := q.db.Exec(ctx, deleteLockersByIds, dollar_1)
+	return err
+}
+
 const getAvailableLocker = `-- name: GetAvailableLocker :one
 SELECT id, access_code, in_use, user_id
 FROM lockers
@@ -185,13 +195,24 @@ func (q *Queries) GetNumberOfLockersInUse(ctx context.Context) (int64, error) {
 const unlockUserLockers = `-- name: UnlockUserLockers :exec
 
 UPDATE lockers
-SET user_id = null, access_code= null, in_use = false
+SET user_id = null, access_code = null, in_use = false
 WHERE user_id = $1
 `
 
 // Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
 func (q *Queries) UnlockUserLockers(ctx context.Context, userID pgtype.Int8) error {
 	_, err := q.db.Exec(ctx, unlockUserLockers, userID)
+	return err
+}
+
+const unlockerLockersByIds = `-- name: UnlockerLockersByIds :exec
+UPDATE lockers 
+SET user_id = null, access_code = null, in_use = false
+WHERE id =  ANY($1::int[])
+`
+
+func (q *Queries) UnlockerLockersByIds(ctx context.Context, dollar_1 []int32) error {
+	_, err := q.db.Exec(ctx, unlockerLockersByIds, dollar_1)
 	return err
 }
 

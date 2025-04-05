@@ -1,26 +1,25 @@
 import "../styles/styles.scss";
 
-import { Tag } from "antd";
+import { Modal, Tag } from "antd";
 import dayjs from "dayjs";
 import { Input, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
-import { WorkOrderData, ComplaintsData } from "../types/types";
+import { ComplaintsData, ComplaintStatus } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
+import { toast } from "sonner";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
 
 export default function AdminComplaints() {
-    const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
+    const [selectedItem, setSelectedItem] = useState<ComplaintsData | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
     const [currentStatus, setCurrentStatus] = useState<string>("");
 
     const { getToken } = useAuth();
@@ -39,75 +38,53 @@ export default function AdminComplaints() {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data = (await response.json()) as ComplaintsData[];
-            if (!Array.isArray(data)) {
-                throw new Error("No complaints");
+            return (await response.json()) as ComplaintsData[];
+        },
+    });
+
+    const { mutate: updateComplaintStatus, isPending } = useMutation({
+        mutationFn: async ({ selectedItem, status }: { selectedItem: ComplaintsData; status: ComplaintStatus }) => {
+            const token = await getToken();
+            if (!token) {
+                throw new Error("[ADMIN_COMPLAINT] Error unauthorized");
             }
 
-            return data;
+            if (!selectedItem?.id) {
+                throw new Error("[ADMIN_COMPLAINT] Error no item selected");
+            }
+
+            const response = await fetch(`${absoluteServerUrl}/admin/complaints/${selectedItem.id}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    status: status,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to update complaint ${selectedItem.id}`);
+            }
+        },
+        onSuccess: (_, vars) => {
+            queryClient.invalidateQueries({ queryKey: ["complaints"] });
+            setIsModalVisible(false);
+            return toast.success(`Successfully updated ${vars.selectedItem.id}`);
+        },
+
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
     const handleStatusChange = (newStatus: string) => {
         setCurrentStatus(newStatus);
     };
-    const handleConfirm = async () => {
-        if (selectedItem && currentStatus) {
-            try {
-                const token = await getToken();
 
-                if (itemType === "workOrder") {
-                    // Work order update logic (existing)
-                    const response = await fetch(`${absoluteServerUrl}/admin/work_orders/${selectedItem.id}/status`, {
-                        method: "PATCH",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            status: currentStatus,
-                        }),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Failed to update work order");
-                    }
-
-                    queryClient.setQueryData(["workOrders"], (oldData: WorkOrderData[] | undefined) => {
-                        if (!oldData) return oldData;
-                        return oldData.map((item) => (item.id === selectedItem.id ? { ...item, status: currentStatus, updatedAt: new Date() } : item));
-                    });
-                } else {
-                    const response = await fetch(`${absoluteServerUrl}/admin/complaints/${selectedItem.id}/status`, {
-                        method: "PATCH",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({
-                            status: currentStatus,
-                        }),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Failed to update complaint");
-                    }
-
-                    queryClient.setQueryData(["complaints"], (oldData: ComplaintsData[] | undefined) => {
-                        if (!oldData) return oldData;
-                        return oldData.map((item) => (item.id === selectedItem.id ? { ...item, status: currentStatus, updatedAt: new Date() } : item));
-                    });
-                }
-                setIsModalVisible(false);
-            } catch (error) {
-                console.error("Error updating status:", error);
-            }
-        }
-    };
-
-    const handleRowClick = (record: WorkOrderData | ComplaintsData, type: "workOrder" | "complaint") => {
+    const handleRowClick = (record: ComplaintsData) => {
         setSelectedItem(record);
-        setItemType(type);
         setCurrentStatus(record.status);
         setIsModalVisible(true);
     };
@@ -283,42 +260,6 @@ export default function AdminComplaints() {
         pageSize: 5,
         showSizeChanger: false,
     };
-    const modalContent = selectedItem && (
-        <div>
-            <div className="mb-4">
-                <strong>Title:</strong> {selectedItem.title}
-            </div>
-            <div className="mb-4">
-                <strong>Description:</strong> {selectedItem.description}
-            </div>
-            <div className="mb-4">
-                <strong>Unit Number:</strong> {selectedItem.unitNumber}
-            </div>
-            <div>
-                <strong>Status:</strong>
-                <Select
-                    value={currentStatus}
-                    style={{ width: 200, marginLeft: 10 }}
-                    onChange={handleStatusChange}>
-                    {itemType === "workOrder" ? (
-                        <>
-                            <Select.Option value="open">Open</Select.Option>
-                            <Select.Option value="in_progress">In Progress</Select.Option>
-                            <Select.Option value="resolved">Resolved</Select.Option>
-                            <Select.Option value="closed">Closed</Select.Option>
-                        </>
-                    ) : (
-                        <>
-                            <Select.Option value="open">Open</Select.Option>
-                            <Select.Option value="in_progress">In Progress</Select.Option>
-                            <Select.Option value="resolved">Resolved</Select.Option>
-                            <Select.Option value="closed">Closed</Select.Option>
-                        </>
-                    )}
-                </Select>
-            </div>
-        </div>
-    );
     return (
         <div className="container">
             <PageTitleComponent title="Complaints" />
@@ -333,27 +274,48 @@ export default function AdminComplaints() {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                     onRow={(record: ComplaintsData) => ({
-                        onClick: () => handleRowClick(record, "complaint"),
+                        onClick: () => handleRowClick(record),
                         style: {
                             cursor: "pointer",
                         },
                         className: "hoverable-row",
                     })}
                 />
+                <p className="text-muted mb-4 text-center">View all complaints in the system</p>
             </div>
 
             {selectedItem && (
-                <ModalComponent
-                    buttonTitle=""
-                    buttonType="default"
-                    content={modalContent}
-                    type="default"
-                    handleOkay={handleConfirm}
-                    modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
-                    isModalOpen={isModalVisible}
+                <Modal
+                    title={<h3>Complaint {selectedItem.id}</h3>}
+                    open={isModalVisible}
+                    onOk={() => updateComplaintStatus({ selectedItem: selectedItem, status: currentStatus as ComplaintStatus })}
                     onCancel={() => setIsModalVisible(false)}
-                    apartmentBuildingSetEditBuildingState={() => {}}
-                />
+                    okText={"Update"}
+                    okButtonProps={{ disabled: isPending ? true : false }}
+                    cancelButtonProps={{ disabled: isPending ? true : false }}>
+                    <div>
+                        <div className="mb-4">
+                            <strong>Title:</strong> {selectedItem.title}
+                        </div>
+                        <div className="mb-4">
+                            <strong>Description:</strong> {selectedItem.description}
+                        </div>
+                        <div className="mb-4">
+                            <strong>Unit Number:</strong> {selectedItem.unitNumber}
+                        </div>
+                        <div>
+                            <strong>Status:</strong>
+                            <Select
+                                value={currentStatus}
+                                style={{ width: 200, marginLeft: 10 }}
+                                onChange={handleStatusChange}>
+                                {["open", "in_progress", "resolved", "closed"].map((s) => (
+                                    <Select.Option value={s}>{s}</Select.Option>
+                                ))}
+                            </Select>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

@@ -43,6 +43,28 @@ func NewParkingPermitHandler(pool *pgxpool.Pool, queries *db.Queries) *ParkingPe
 }
 
 // ADMIN START
+func (p ParkingPermitHandler) GetParkingPermitAmount(w http.ResponseWriter, r *http.Request) {
+	permits, err := p.queries.ListParkingPermits(r.Context())
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed querying list of parking permits: %v", err)
+		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
+		return
+	}
+
+	// parkingPermitAmount := len(permits)
+
+	jsonRes, err := json.Marshal(permits)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed converting to JSON: %v", err)
+		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonRes))
+}
+
 func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
