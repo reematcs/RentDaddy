@@ -90,11 +90,18 @@ func main() {
 	for i := 0; i < userCount; i++ {
 		if err := createTenant(ctx); err != nil {
 			log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
+			return
 		}
 
 		if userCount+1 > rateLimitThreshold {
 			time.Sleep(2 * time.Second)
 		}
+	}
+	log.Println("[SEED_USERS] Creating parking permits")
+	_, err = queries.CreateManyParkingPermits(ctx, int32(userCount*2))
+	if err != nil {
+		log.Printf("[SEED_USERS] Error Createing parking permit %d: %v", userCount, err)
+		return
 	}
 
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
