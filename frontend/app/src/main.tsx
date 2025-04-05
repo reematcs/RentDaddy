@@ -31,7 +31,6 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AddTenant from "./pages/AddTenant.tsx";
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 import AdminWorkOrder from "./pages/AdminWorkOrder.tsx";
-import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
@@ -137,14 +136,8 @@ createRoot(document.getElementById("root")!).render(
                                         element={<App />}
                                     />
 
-                                    {/* Reusable Components Route */}
-                                    <Route
-                                        path="reusable-components"
-                                        element={<ReusableComponents />}
-                                    />
-
                                     {/* Authentication Routes */}
-                                    <Route path="auth">
+                                    <Route path="/auth">
                                         <Route
                                             path="sign-in/*"
                                             element={

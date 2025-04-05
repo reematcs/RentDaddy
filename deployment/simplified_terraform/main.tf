@@ -338,6 +338,13 @@ resource "aws_autoscaling_group" "ecs_asg" {
   min_size            = 2
   max_size            = 2
 
+  # Connect to target groups for health checking and traffic routing
+  target_group_arns = [
+    aws_lb_target_group.frontend.arn,
+    aws_lb_target_group.backend.arn,
+    aws_lb_target_group.documenso.arn
+  ]
+
   # Ensure we have one instance in each availability zone
   instance_refresh {
     strategy = "Rolling"
@@ -935,11 +942,11 @@ resource "aws_lb_target_group" "documenso" {
   target_type = "instance"
 
   health_check {
-    path                = "/api/healthcheck"
-    interval            = 120
-    timeout             = 30
+    path                = "/"
+    interval            = 300
+    timeout             = 60
     healthy_threshold   = 2
-    unhealthy_threshold = 5
+    unhealthy_threshold = 10
     matcher             = "200-499"
   }
 }
