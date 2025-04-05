@@ -21,7 +21,6 @@ import { ConfigProvider } from "antd";
 
 // Clerk
 import { ClerkProvider, SignedOut, SignIn } from "@clerk/react-router";
-import TestGoBackend from "./components/TestGoBackend.tsx";
 
 // Pages
 import App from "./App.tsx";
@@ -135,14 +134,6 @@ createRoot(document.getElementById("root")!).render(
                                             <SignedOut />
                                         </div>
                                     }></Route>
-
-                                {/* Testing Routes */}
-                                <Route path="test">
-                                    <Route
-                                        path="test-clerk-go-backend"
-                                        element={<TestGoBackend />}
-                                    />
-                                </Route>
                             </Route>
                             {/* End of Pre-authentication Layout Group */}
 
