@@ -8,8 +8,11 @@ import { CheckOutlined, CloseCircleOutlined, MailOutlined, PlusOutlined } from "
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
-type InviteTenant = {
+// Updated to include all fields needed by both AddTenant and ModalComponent
+export type InviteTenant = {
     email: string;
+    unitNumber?: number;
+    management_id?: string;
 };
 
 interface InviteStatusNotification {

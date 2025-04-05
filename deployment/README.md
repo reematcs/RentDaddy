@@ -282,21 +282,40 @@ chmod +x setup-monitoring.sh
 
 ## Terraform Deployment
 
+The project uses Terraform for infrastructure as code deployment. The configuration is located in the `deployment/simplified_terraform` directory.
+
 ### Step 1: Initialize Terraform
 
 ```bash
-cd deployment/terraform
+cd deployment/simplified_terraform
 terraform init
 ```
 
 ### Step 2: Configure Variables
 
-Create a `terraform.tfvars` file:
+Copy the example variables file and customize it:
 
-```hcl
-aws_region = "us-east-1"  # Change to your preferred region
-key_name = "your-key-pair-name"
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your AWS account ID, domain name, etc.
 ```
+
+Required variables in `terraform.tfvars`:
+- `aws_account_id`: Your 12-digit AWS account ID
+- `domain_name`: Your domain name (e.g., example.com)
+- `route53_zone_id`: Your Route53 zone ID for DNS management
+- `backend_secret_arn`: ARN for the AWS Secrets Manager secret containing backend credentials
+- `documenso_secret_arn`: ARN for the AWS Secrets Manager secret containing Documenso credentials
+- `deploy_version`: Version string to force redeployment of ECS tasks
+
+Optional variables with defaults:
+- `aws_region`: AWS region (default: us-east-2)
+- `app_subdomain`: Subdomain for frontend (default: app)
+- `api_subdomain`: Subdomain for API (default: api)
+- `docs_subdomain`: Subdomain for Documenso (default: docs)
+- `ec2_key_pair_name`: EC2 key pair name (default: rentdaddy_key)
+- `ecs_instance_size`: EC2 instance type for ECS (default: t3.xlarge)
+- `debug_mode`: Debug mode for backend (default: false)
 
 ### Step 3: Deploy Infrastructure
 
@@ -305,23 +324,28 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-### Step 4: Deploy Application
+### Step 4: Verify Deployment
 
-After the infrastructure is created, use the deployment scripts with the IPs provided by Terraform:
+After applying the Terraform plan, verify the deployment:
 
 ```bash
-cd ../scripts
-chmod +x deploy-main.sh deploy-documenso.sh
+# Get the load balancer DNS name
+terraform output load_balancer_dns
 
-# Get IPs from Terraform outputs
-MAIN_IP=$(cd ../terraform && terraform output -raw main_app_public_ip)
-DOC_IP=$(cd ../terraform && terraform output -raw documenso_public_ip)
-MAIN_PRIVATE_IP=$(cd ../terraform && terraform output -raw main_app_private_ip)
-
-# Deploy applications
-./deploy-main.sh $MAIN_IP <path-to-ssh-key>
-./deploy-documenso.sh $DOC_IP <path-to-ssh-key> $MAIN_PRIVATE_IP
+# Get the application URLs
+terraform output app_url
+terraform output api_url
+terraform output docs_url
 ```
+
+The Terraform configuration includes:
+- VPC with public subnets in 2 availability zones
+- EC2 instances for ECS with auto-scaling
+- ECS cluster with task definitions for the main application and Documenso
+- Application Load Balancer with routing rules for different subdomains
+- Route53 DNS records for all services
+- CloudWatch log groups for monitoring
+- Required IAM roles and security groups
 
 ## Monitoring and Maintenance
 

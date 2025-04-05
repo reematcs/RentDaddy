@@ -23,6 +23,7 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/smtp"
+	"github.com/careecodes/RentDaddy/internal/templates"
 	"github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/go-chi/chi/v5"
@@ -1740,17 +1741,33 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		log.Printf("[WEBHOOK] Warning: DOCUMENSO_WEBHOOK_SECRET not set")
 	}
 
-	// Read the signature from the header
-	receivedSignature := r.Header.Get("X-Documenso-Secret")
+	// Read the signature from both possible headers
+	receivedSecretHeader := r.Header.Get("X-Documenso-Secret")
+	receivedSignatureHeader := r.Header.Get("X-Documenso-Signature")
 
-	// Only verify signature if we have a secret configured
-	if webhookSecret != "" && receivedSignature != "" {
-		// Compare with the provided signature
-		if webhookSecret != receivedSignature {
-			log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received: %s", webhookSecret, receivedSignature)
+	// Use either header that matches
+	var signatureValid bool
+	
+	// Check both headers and log which one matched
+	if webhookSecret != "" {
+		if receivedSecretHeader != "" && webhookSecret == receivedSecretHeader {
+			log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Secret header")
+			signatureValid = true
+		} else if receivedSignatureHeader != "" && webhookSecret == receivedSignatureHeader {
+			log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Signature header")
+			signatureValid = true
+		}
+		
+		// If we have a webhook secret but no valid signature was provided, reject the request
+		if !signatureValid && (receivedSecretHeader != "" || receivedSignatureHeader != "") {
+			log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received Secret: %s, Received Signature: %s", 
+				webhookSecret, receivedSecretHeader, receivedSignatureHeader)
 			http.Error(w, "Invalid signature", http.StatusUnauthorized)
 			return
 		}
+	}
+	
+	if signatureValid {
 		log.Printf("[WEBHOOK] Signature validation successful")
 	}
 	log.Printf("[WEBHOOK] Extracting webhook data...")
@@ -2028,6 +2045,91 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 					}
 				}
 
+			case strings.Contains(jobType, "send.signing.email"):
+				// Extract document ID, recipient info and signing URL
+				if documentID != "" && recipientEmail != "" {
+					log.Printf("[WEBHOOK] Processing signing email request for document %s, recipient %s", documentID, recipientEmail)
+					
+					// Look up more document details if needed
+					ctx := context.Background()
+					lease, err := h.queries.GetLeaseByExternalID(ctx, documentID)
+					
+					if err != nil {
+						log.Printf("[WEBHOOK] Error finding lease for document ID %s: %v", documentID, err)
+						return
+					}
+					
+					// Extract document title and recipient name
+					documentTitle := "Lease Agreement" // Default
+					
+					// Try to get a better document title from the lease's apartment
+					apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
+					if err == nil && apartment.UnitNumber.Valid {
+						documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
+					}
+					
+					recipientName := "Tenant" // Default
+					signingURL := "" // Will extract from recipients
+					
+					// Extract from data if available
+					if data["document_title"] != nil {
+						documentTitle = fmt.Sprintf("%v", data["document_title"])
+					}
+					
+					// Extract recipient data
+					if recipients, ok := data["recipients"].([]interface{}); ok && len(recipients) > 0 {
+						for _, r := range recipients {
+							if recMap, ok := r.(map[string]interface{}); ok {
+								if recEmail, ok := recMap["email"].(string); ok && recEmail == recipientEmail {
+									if recName, ok := recMap["name"].(string); ok {
+										recipientName = recName
+									}
+									
+									// Extract signing URL
+									if url, ok := recMap["signing_url"].(string); ok {
+										signingURL = url
+									}
+									break
+								}
+							}
+						}
+					}
+					
+					// If we didn't find the signing URL in recipients, check other locations
+					if signingURL == "" {
+						if url, ok := data["signing_url"].(string); ok {
+							signingURL = url
+						}
+					}
+					
+					if signingURL == "" {
+						log.Printf("[WEBHOOK] Error: No signing URL found for recipient %s", recipientEmail)
+						return
+					}
+					
+					log.Printf("[WEBHOOK] Using document title: %s, recipient: %s, signing URL: %s", 
+						documentTitle, recipientName, signingURL)
+					
+					// Generate email using template rendering
+					htmlBody, subject, err := templates.RenderSignRequestEmail(recipientName, documentTitle, signingURL)
+					if err != nil {
+						log.Printf("[WEBHOOK] Error rendering signing request email: %v", err)
+						return
+					}
+					
+					// Send the email
+					plainText := fmt.Sprintf("Please sign your document: %s\n\nHello %s,\n\nYour lease agreement \"%s\" is ready for your signature.\nPlease follow this link to sign: %s", 
+						documentTitle, recipientName, documentTitle, signingURL)
+					
+					err = smtp.SendEmailHTML(recipientEmail, subject, plainText, htmlBody)
+					if err != nil {
+						log.Printf("[WEBHOOK] Error sending signing request email to %s: %v", recipientEmail, err)
+					} else {
+						log.Printf("[WEBHOOK] Successfully sent signing request email to %s for document ID %s", recipientEmail, documentID)
+					}
+				} else {
+					log.Printf("[WEBHOOK] Missing required data for sending signing email: documentID=%s, recipientEmail=%s", documentID, recipientEmail)
+				}
 			default:
 				// Log but acknowledge unknown job types
 				log.Printf("[WEBHOOK] Received unknown job type: %s", jobType)
@@ -2155,6 +2257,69 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			log.Printf("[WEBHOOK] Failed to update signed document URL: %v", err)
 		} else {
 			log.Printf("[WEBHOOK] Updated lease %d with signed document URL %v", updatedLease.ID, unescapedURL)
+		}
+		
+		// 5. Send completion emails to both tenant and landlord
+		// Get tenant information
+		tenant, err := h.queries.GetUserByID(ctx, lease.TenantID)
+		if err != nil {
+			log.Printf("[WEBHOOK] Failed to get tenant information: %v", err)
+		} else if tenant.Email != "" {
+			// Get document title - use apartment info if available
+			documentTitle := "Lease Agreement"
+			apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
+			if err == nil && apartment.UnitNumber.Valid {
+				documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
+			}
+			
+			// Generate and send completion email to tenant
+			recipientName := fmt.Sprintf("%s %s", tenant.FirstName, tenant.LastName)
+			htmlBody, subject, err := templates.RenderSigningCompleteEmail(recipientName, documentTitle, unescapedURL)
+			if err != nil {
+				log.Printf("[WEBHOOK] Error rendering signing complete email: %v", err)
+			} else {
+				// Send the email
+				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nYour lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s", 
+					documentTitle, recipientName, documentTitle, unescapedURL)
+				
+				err = smtp.SendEmailHTML(tenant.Email, subject, plainText, htmlBody)
+				if err != nil {
+					log.Printf("[WEBHOOK] Error sending completion email to tenant %s: %v", tenant.Email, err)
+				} else {
+					log.Printf("[WEBHOOK] Successfully sent completion email to tenant %s for document %s", tenant.Email, documentID)
+				}
+			}
+		}
+		
+		// Send to landlord as well
+		landlord, err := h.queries.GetUserByID(ctx, lease.LandlordID)
+		if err != nil {
+			log.Printf("[WEBHOOK] Failed to get landlord information: %v", err)
+		} else if landlord.Email != "" {
+			// Get document title - use apartment info if available
+			documentTitle := "Lease Agreement"
+			apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
+			if err == nil && apartment.UnitNumber.Valid {
+				documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
+			}
+			
+			// Generate and send completion email to landlord
+			recipientName := fmt.Sprintf("%s %s", landlord.FirstName, landlord.LastName)
+			htmlBody, subject, err := templates.RenderSigningCompleteEmail(recipientName, documentTitle, unescapedURL)
+			if err != nil {
+				log.Printf("[WEBHOOK] Error rendering signing complete email: %v", err)
+			} else {
+				// Send the email
+				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nThe lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s", 
+					documentTitle, recipientName, documentTitle, unescapedURL)
+				
+				err = smtp.SendEmailHTML(landlord.Email, subject, plainText, htmlBody)
+				if err != nil {
+					log.Printf("[WEBHOOK] Error sending completion email to landlord %s: %v", landlord.Email, err)
+				} else {
+					log.Printf("[WEBHOOK] Successfully sent completion email to landlord %s for document %s", landlord.Email, documentID)
+				}
+			}
 		}
 	}
 	// }()
@@ -2640,42 +2805,83 @@ func (h *LeaseHandler) GetLandlordInfo(r *http.Request) (int64, string, string, 
 func (h *LeaseHandler) SendDocumentSigningEmail(recipientEmail, recipientName, subject, signingURL string) {
 	log.Printf("[EMAIL_NOTIFICATION] Sending document signing email to %s", recipientEmail)
 
-	// Format a nice HTML email with the signing link
-	emailBody := fmt.Sprintf(`
-	<html>
-	<head>
-		<style>
-			body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-			.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-			.header { text-align: center; margin-bottom: 20px; }
-			.button { display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; 
-					 text-decoration: none; border-radius: 5px; margin: 20px 0; }
-			.footer { margin-top: 30px; font-size: 12px; color: #777; }
-		</style>
-	</head>
-	<body>
-		<div class="container">
-			<div class="header">
-				<h2>Document Ready for Signing</h2>
-			</div>
-			<p>Hello %s,</p>
-			<p>You have a document that requires your signature. Please click the button below to review and sign the document:</p>
-			<p style="text-align: center;">
-				<a href="%s" class="button" style="color: white;">Sign Document</a>
-			</p>
-			<p>If the button doesn't work, you can copy and paste this URL into your browser:</p>
-			<p>%s</p>
-			<p>This document will expire if not signed within 30 days.</p>
-			<div class="footer">
-				<p>This is an automated message. Please do not reply to this email.</p>
-			</div>
-		</div>
-	</body>
-	</html>
-	`, recipientName, signingURL, signingURL)
+	// First, try to use our template system
+	if templates.DefaultManager == nil {
+		err := templates.InitializeDefaultManager()
+		if err != nil {
+			log.Printf("[EMAIL_NOTIFICATION] Failed to initialize template manager: %v", err)
+		}
+	}
 
-	// Send the email
-	err := smtp.SendEmail(recipientEmail, subject, emailBody)
+	// Prepare template data
+	templateData := templates.EmailTemplateData{
+		RecipientName: recipientName,
+		DocumentTitle: "Lease Agreement",
+		SigningURL:    signingURL,
+	}
+
+	var htmlBody, textBody string
+
+	// Try to render from template first
+	if templates.DefaultManager != nil {
+		html, err := templates.DefaultManager.RenderTemplate("sign_request", templateData)
+		if err == nil {
+			htmlBody = html
+
+			// Get subject from template if we have one and none was provided
+			if subject == "" {
+				subject = templates.DefaultManager.GetTemplateSubject("sign_request")
+			}
+
+			// Create plain text version
+			textBody = fmt.Sprintf("Hello %s,\n\nYou have a document that requires your signature. Please visit this URL to sign the document:\n\n%s\n\nThis document will expire if not signed within 30 days.\n\nRegards,\nRentDaddy Team",
+				recipientName, signingURL)
+		}
+	}
+
+	// Fallback to built-in template if needed
+	if htmlBody == "" {
+		// Format a nice HTML email with the signing link
+		htmlBody = fmt.Sprintf(`
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.header { text-align: center; margin-bottom: 20px; }
+				.button { display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; 
+						 text-decoration: none; border-radius: 5px; margin: 20px 0; }
+				.footer { margin-top: 30px; font-size: 12px; color: #777; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<div class="header">
+					<h2>Document Ready for Signing</h2>
+				</div>
+				<p>Hello %s,</p>
+				<p>You have a document that requires your signature. Please click the button below to review and sign the document:</p>
+				<p style="text-align: center;">
+					<a href="%s" class="button" style="color: white;">Sign Document</a>
+				</p>
+				<p>If the button doesn't work, you can copy and paste this URL into your browser:</p>
+				<p>%s</p>
+				<p>This document will expire if not signed within 30 days.</p>
+				<div class="footer">
+					<p>This is an automated message. Please do not reply to this email.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+		`, recipientName, signingURL, signingURL)
+
+		// Create plain text version for fallback
+		textBody = fmt.Sprintf("Hello %s,\n\nYou have a document that requires your signature. Please visit this URL to sign the document:\n\n%s\n\nThis document will expire if not signed within 30 days.\n\nRegards,\nRentDaddy Team",
+			recipientName, signingURL)
+	}
+
+	// Send the email with HTML formatting
+	err := smtp.SendEmailHTML(recipientEmail, subject, textBody, htmlBody)
 	if err != nil {
 		log.Printf("[EMAIL_NOTIFICATION] Failed to send document signing email to %s: %v",
 			recipientEmail, err)

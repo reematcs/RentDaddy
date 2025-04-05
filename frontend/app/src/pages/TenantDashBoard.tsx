@@ -10,7 +10,8 @@ import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
+import { ComplaintsData, ComplaintEntry, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
+import KeyIcon from "../components/reusableComponents/KeyIcon";
 
 const isDevelopment = import.meta.env.MODE === 'development';
 const absoluteServerUrl = isDevelopment
@@ -200,7 +201,7 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
+                    button={<TenantParkingPermitModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
 
@@ -217,7 +218,11 @@ export const TenantDashBoard = () => {
                             buttonTitle="View Lease"
                             content="Lease should go here"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => Promise.resolve()}
+                            setUserId={() => {}}
+                            setAccessCode={() => {}}
+                            selectedUserId=""
+                            accessCode=""
                         />
                     }
                 />
@@ -502,7 +507,10 @@ function TenantViewComplaintsModal(props: ComplaintModalProps) {
                         )}
                     </div>
                 }
-                handleOkay={async () => Promise.resolve()}
+                handleOkay={() => {
+                    // Return a resolved promise to match expected type
+                    return Promise.resolve();
+                }}
                 setUserId={() => { }}
                 setAccessCode={() => { }}
                 selectedUserId=""
@@ -706,7 +714,10 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                         <p className="fs-5">Locker is open!</p>
                     </span>
                 }
-                handleOkay={async () => Promise.resolve()}
+                handleOkay={() => {
+                    // Return a resolved promise to match expected type
+                    return Promise.resolve();
+                }}
                 setUserId={() => { }}
                 setAccessCode={() => { }}
                 selectedUserId=""

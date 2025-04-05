@@ -35,6 +35,7 @@ import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
+import AdminSettings from "./pages/AdminSettings.tsx";
 import TenantComplaints from "./pages/TenantComplaints.tsx";
 import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
@@ -179,6 +180,10 @@ createRoot(document.getElementById("root")!).render(
                                             <Route
                                                 path="init-apartment-complex"
                                                 element={<AdminApartmentSetupAndDetailsManagement />}
+                                            />
+                                            <Route
+                                                path="settings"
+                                                element={<AdminSettings />}
                                             />
                                             <Route
                                                 path="manage-tenants"

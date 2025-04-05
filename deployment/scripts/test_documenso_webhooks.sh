@@ -1,31 +1,13 @@
 #!/bin/bash
-set -e
 
-# Log function for better output
-log() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
-}
+# Load utility functions
+source "$(dirname "$0")/utils.sh"
 
-# Function to load environment variables from a file
-load_env() {
-  local env_file="$1"
-  if [ -f "$env_file" ]; then
-    log "Loading environment variables from $env_file"
-    set -a # automatically export all variables
-    source "$env_file"
-    set +a
-  else
-    log "Warning: Environment file $env_file not found!"
-    return 1
-  fi
-}
+# Initialize
+PROJECT_ROOT=$(init_script "Documenso Webhook Testing Plan" aws)
 
-# Navigate to the project root
-PROJECT_ROOT="/Users/reemmokhtar/Library/CloudStorage/OneDrive-Personal/Documents/DevOps/CYC_Prototype_Apartment/RentDaddy_Production/RentDaddy"
-cd "$PROJECT_ROOT"
-
-# Load environment variables
-load_env "$PROJECT_ROOT/backend/.env.production.local"
+# Load AWS configuration
+load_aws_config "$PROJECT_ROOT"
 
 log "=== DOCUMENSO WEBHOOK TESTING PLAN ==="
 log ""
@@ -56,7 +38,7 @@ log "5. Troubleshooting Steps:"
 log "   - If webhooks aren't being processed, check documenso-worker logs:"
 log "     aws logs filter-log-events --log-group-name /ecs/rentdaddy-documenso --filter-pattern 'documenso-worker'"
 log "   - Verify that the worker can connect to the Documenso database"
-log "   - Confirm webhook URL is correct: https://api.curiousdev.net/admin/leases/webhooks/documenso"
+log "   - Confirm webhook URL is correct: https://api.curiousdev.net/webhooks/documenso"
 log "   - Check backend logs for incoming webhook requests"
 log ""
 log "=== END OF TEST PLAN ==="

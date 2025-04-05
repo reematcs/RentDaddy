@@ -1,43 +1,30 @@
 #!/bin/bash
-set -e
+#
+# Build and deploy RentDaddy Docker images to AWS ECR and force new ECS deployment
+#
+# This script builds the backend, frontend, and/or documenso-worker Docker images
+# and pushes them to Amazon ECR. It can also force a new deployment of the ECS services.
+#
+# Requirements: docker, aws-cli, buildx enabled
+#
 
-# Log function for better output
-log() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
-}
+# Load utility functions
+source "$(dirname "$0")/utils.sh"
 
-# Function to load environment variables from a file
-load_env() {
-  local env_file="$1"
-  if [ -f "$env_file" ]; then
-    log "Loading environment variables from $env_file"
-    set -a # automatically export all variables
-    source "$env_file"
-    set +a
-  else
-    log "Warning: Environment file $env_file not found!"
-    return 1
-  fi
-}
+# Initialize
+init_script "RentDaddy Build and Deploy" docker aws
 
-# Function to authenticate with AWS ECR
-ecr_login() {
-  log "Logging in to Amazon ECR..."
-  aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-}
+# Find project root directly to avoid capturing banner output
+PROJECT_ROOT=$(find_project_root)
 
-# Function to build and push backend
+# Function to build and push backend image
 build_backend() {
   local tag="${1:-latest}"
   log "Building backend with tag: $tag"
   
   # Load backend environment variables
-  # First try relative to current directory
-  if [ -f "./backend/.env.production.local" ]; then
-    load_env "./backend/.env.production.local"
-  # Then try relative to repo root
-  elif [ -f "../backend/.env.production.local" ]; then
-    load_env "../backend/.env.production.local"
+  if [ -f "$PROJECT_ROOT/backend/.env.production.local" ]; then
+    load_env "$PROJECT_ROOT/backend/.env.production.local"
   else
     log "Error: Cannot find backend/.env.production.local in expected locations"
     exit 1
@@ -49,22 +36,16 @@ build_backend() {
     exit 1
   fi
   
+  # Authenticate with ECR
+  ecr_login
+  
   log "Starting backend build..."
   
   # Record the start time
   local start_time=$(date +%s)
   
   # Get absolute path to backend directory
-  local backend_dir
-  if [ -d "./backend" ]; then
-    backend_dir="$(pwd)/backend"
-  elif [ -d "../backend" ]; then
-    backend_dir="$(cd .. && pwd)/backend"
-  else
-    log "Error: Cannot find backend directory"
-    exit 1
-  fi
-  
+  local backend_dir="$PROJECT_ROOT/backend"
   log "Using backend directory: $backend_dir"
   
   # Build and push backend
@@ -73,7 +54,7 @@ build_backend() {
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
     -f $backend_dir/Dockerfile.prod \
     --push \
-    $backend_dir | tee backend-build.log
+    $backend_dir | tee "$PROJECT_ROOT/deployment/backend-build.log"
   
   # Calculate build duration
   local end_time=$(date +%s)
@@ -89,12 +70,8 @@ build_frontend() {
   log "Building frontend with tag: $tag"
   
   # Load frontend environment variables
-  # First try relative to current directory
-  if [ -f "./frontend/app/.env.production.local" ]; then
-    load_env "./frontend/app/.env.production.local"
-  # Then try relative to repo root
-  elif [ -f "../frontend/app/.env.production.local" ]; then
-    load_env "../frontend/app/.env.production.local"
+  if [ -f "$PROJECT_ROOT/frontend/app/.env.production.local" ]; then
+    load_env "$PROJECT_ROOT/frontend/app/.env.production.local"
   else
     log "Error: Cannot find frontend/app/.env.production.local in expected locations"
     exit 1
@@ -111,22 +88,16 @@ build_frontend() {
     exit 1
   fi
   
+  # Authenticate with ECR
+  ecr_login
+  
   log "Starting frontend build..."
   
   # Record the start time
   local start_time=$(date +%s)
   
   # Get absolute path to frontend directory
-  local frontend_dir
-  if [ -d "./frontend/app" ]; then
-    frontend_dir="$(pwd)/frontend/app"
-  elif [ -d "../frontend/app" ]; then
-    frontend_dir="$(cd .. && pwd)/frontend/app"
-  else
-    log "Error: Cannot find frontend/app directory"
-    exit 1
-  fi
-  
+  local frontend_dir="$PROJECT_ROOT/frontend/app"
   log "Using frontend directory: $frontend_dir"
   
   # Build and push frontend
@@ -135,12 +106,12 @@ build_frontend() {
     --progress=plain \
     --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY" \
     --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL" \
-    --build-arg VITE_DOCUMENSO_PUBLIC_URL="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}" \
+    --build-arg VITE_DOCUMENSO_PUBLIC_URL="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.${DOMAIN_NAME:-curiousdev.net}}" \
     --build-arg VITE_ENV="${VITE_ENV:-production}" \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag \
     -f $frontend_dir/Dockerfile.prod \
     --push \
-    $frontend_dir | tee frontend-build.log
+    $frontend_dir | tee "$PROJECT_ROOT/deployment/frontend-build.log"
   
   # Calculate build duration
   local end_time=$(date +%s)
@@ -155,15 +126,11 @@ build_worker() {
   local tag="${1:-latest}"
   log "Building documenso-worker with tag: $tag"
   
-  # Remember original directory and navigate to project root
+  # Remember original directory
   local original_dir=$(pwd)
-  local project_root="/Users/reemmokhtar/Library/CloudStorage/OneDrive-Personal/Documents/DevOps/CYC_Prototype_Apartment/RentDaddy_Production/RentDaddy"
-  cd "$project_root"
-  
-  log "Worker build root directory: $project_root"
   
   # Load backend environment variables for AWS credentials
-  load_env "$project_root/backend/.env.production.local"
+  load_env "$PROJECT_ROOT/backend/.env.production.local"
   
   # Ensure required variables are set
   if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
@@ -186,14 +153,23 @@ build_worker() {
     aws ecr create-repository --repository-name "rentdaddy/documenso-worker" --image-scanning-configuration scanOnPush=true
   fi
   
+  # Find the worker directory using the utility function
+  WORKER_DIR=$(get_worker_dir "$PROJECT_ROOT")
+  if [ $? -ne 0 ] || [ -z "$WORKER_DIR" ]; then
+    log "Error: Could not find documenso-worker directory"
+    exit 1
+  fi
+  
+  log "Using worker directory: $WORKER_DIR"
+  
   # Build and push worker
   log "Building Docker image..."
   docker buildx build \
     --platform linux/amd64 \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag \
-    -f "$project_root/backend/cmd/documenso-worker/Dockerfile" \
+    -f "$WORKER_DIR/Dockerfile" \
     --push \
-    "$project_root/backend" | tee worker-build.log
+    "$WORKER_DIR" | tee "$PROJECT_ROOT/deployment/worker-build.log"
   
   # Calculate build duration
   local end_time=$(date +%s)
@@ -213,33 +189,12 @@ force_deployment() {
   # Ensure AWS credentials are set
   if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
     log "Loading AWS configuration for deployment..."
-    
-    # Remember original directory and navigate to project root
-    local original_dir=$(pwd)
-    local project_root="/Users/reemmokhtar/Library/CloudStorage/OneDrive-Personal/Documents/DevOps/CYC_Prototype_Apartment/RentDaddy_Production/RentDaddy"
-    cd "$project_root"
-    
-    # Try loading from various possible paths
-    if [ -f "$project_root/backend/.env.production.local" ]; then
-      load_env "$project_root/backend/.env.production.local"
-    elif [ -f "$project_root/frontend/app/.env.production.local" ]; then
-      load_env "$project_root/frontend/app/.env.production.local"
-    elif [ -f "./backend/.env.production.local" ]; then
-      load_env "./backend/.env.production.local"
-    elif [ -f "../backend/.env.production.local" ]; then
-      load_env "../backend/.env.production.local"
-    else
-      log "Error: Could not load AWS configuration for deployment"
-      exit 1
-    fi
-    
-    # Return to original directory
-    cd "$original_dir"
+    load_aws_config "$PROJECT_ROOT"
   fi
   
   # Create directory to store deployment info
   local timestamp=$(date +%Y%m%d_%H%M%S)
-  local deploy_dir="./deployment/simplified_terraform/ecs_deployment_$timestamp"
+  local deploy_dir="$PROJECT_ROOT/deployment/simplified_terraform/ecs_deployment_$timestamp"
   mkdir -p "$deploy_dir"
   
   # Force new deployment for all services
@@ -275,8 +230,8 @@ show_help() {
   echo "  $0 --worker               # Build documenso-worker only"
   echo ""
   echo "Note: This script loads environment variables from:"
-  echo "  - ./backend/.env.production.local (for backend builds)"
-  echo "  - ./frontend/app/.env.production.local (for frontend builds)"
+  echo "  - backend/.env.production.local (for backend builds)"
+  echo "  - frontend/app/.env.production.local (for frontend builds)"
   echo ""
   echo "Required variables in the environment files:"
   echo "  - AWS_ACCOUNT_ID: Your AWS account ID"
@@ -342,16 +297,6 @@ else
         ;;
     esac
   done
-fi
-
-# Go to project root directory
-cd "$(dirname "$0")/.."
-log "Working directory: $(pwd)"
-
-# Login to ECR before building
-if [ "$BUILD_BACKEND" = true ] || [ "$BUILD_FRONTEND" = true ]; then
-  # We'll load variables and perform login in the build functions
-  true
 fi
 
 # Build the specified components

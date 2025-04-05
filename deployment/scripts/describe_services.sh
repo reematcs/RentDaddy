@@ -1,11 +1,23 @@
 #!/bin/bash
+set -e
+
+# Load utility functions
+source "$(dirname "$0")/utils.sh"
+
+# Print banner for script start
+print_banner "RentDaddy ECS Service Description"
+
+# Find project root directly
+PROJECT_ROOT=$(find_project_root)
+log "Project root directory: $PROJECT_ROOT"
+
+# Verify AWS CLI is installed
+verify_requirements aws
 
 # Set variables
 CLUSTER_NAME="rentdaddy-cluster"
-BASE_DIR="../simplified_terraform/describe-services"
+BASE_DIR="$PROJECT_ROOT/deployment/simplified_terraform/describe-services"
 SERVICES=(
-  # "rentdaddy-main-postgres-service"
-  # "rentdaddy-documenso-postgres-service"
   "rentdaddy-app-service"
   "rentdaddy-documenso-service"
 )
@@ -21,7 +33,7 @@ get_service_description() {
   local service=$1
   
   # Get the service description
-  echo "Fetching details for $service..."
+  log "Fetching details for $service..."
   
   # Get current deployment number, removing any slashes
   DEPLOYMENT_INFO=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $service \
@@ -43,18 +55,18 @@ get_service_description() {
   aws ecs describe-services --cluster $CLUSTER_NAME --services $service > "$OUTPUT_PATH"
   
   if [ $? -eq 0 ]; then
-    echo "Service description saved to $OUTPUT_PATH"
+    log "Service description saved to $OUTPUT_PATH"
   else
-    echo "Failed to get description for $service"
+    log "Failed to get description for $service"
   fi
 }
 
 # Main execution
-echo "Starting ECS service description capture for $CLUSTER_NAME"
-echo "Storing files in $BASE_DIR"
+log "Starting ECS service description capture for $CLUSTER_NAME"
+log "Storing files in $BASE_DIR"
 
 for service in "${SERVICES[@]}"; do
   get_service_description "$service"
 done
 
-echo "Completed capturing service descriptions"
+log "Completed capturing service descriptions"

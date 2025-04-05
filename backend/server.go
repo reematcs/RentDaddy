@@ -96,6 +96,13 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+	
+	// Cron job endpoints
+	r.Route("/cron", func(r chi.Router) {
+		r.Use(middleware.CronAuthMiddleware) // Apply cron auth middleware
+		r.Get("/leases/expire", leaseHandler.UpdateAllLeaseStatuses)
+		r.Post("/leases/notify-expiring", leaseHandler.NotifyExpiringLeases)
+	})
 
 	// Application Routes
 	r.Group(func(r chi.Router) {

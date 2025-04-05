@@ -41,7 +41,7 @@ RUN mkdir -p /app/tmp /app/temp
 RUN go build -o /app/tmp/server .
 
 # Set up cron job
-COPY ./cmd/cron/leases-cron /etc/cron.d/leases-cron
+COPY ./scripts/cmd/cron/leases-cron /etc/cron.d/leases-cron
 RUN chmod 0644 /etc/cron.d/leases-cron \
     && crontab /etc/cron.d/leases-cron
 

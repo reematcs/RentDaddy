@@ -81,7 +81,7 @@ const AdminViewEditSmartLockers = () => {
     });
 
     // Query for fetching lockers
-    const { data: lockers, isLoading: isLoadingLockers } = useQuery<Locker[]>({
+    const { data: lockers } = useQuery<Locker[]>({
         queryKey: ["lockers"],
         queryFn: async () => {
             // console.log("Fetching lockers...");

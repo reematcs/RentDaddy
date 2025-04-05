@@ -8,6 +8,7 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { ensureAdminExists } from "../utils/adminSetup";
 import { useEffect } from "react";
 import { useApiAuth } from "../utils/apiContext";
+import { ClerkPublicMetadata } from "../types/types";
 
 
 const ProtectedRoutes = () => {

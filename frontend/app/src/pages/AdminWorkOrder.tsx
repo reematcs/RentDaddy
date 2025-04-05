@@ -466,6 +466,14 @@ const AdminWorkOrder = () => {
             return hoursSinceCreation <= hoursSinceRecentlyCreated;
         }).length
         : 0;
+        
+    // Add missing recentlyCompletedServiceCount calculation
+    const recentlyCompletedServiceCount: number = workOrderData
+        ? workOrderData.filter(({ updatedAt, status }) => {
+            const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
+            return (status === "resolved" || status === "closed") && hoursSinceUpdate <= hoursSinceRecentlyCreated;
+        }).length
+        : 0;
 
     const alerts: string[] = [];
     if (isWorkOrdersLoading || isComplaintsLoading) {

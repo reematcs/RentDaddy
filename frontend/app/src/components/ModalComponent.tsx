@@ -3,7 +3,7 @@ import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 import { useUser } from "@clerk/react-router";
-import { RuleObject } from "antd/es/form";
+import { InviteTenant } from "../pages/AddTenant";
 
 interface Lease {
     id: string | number;
