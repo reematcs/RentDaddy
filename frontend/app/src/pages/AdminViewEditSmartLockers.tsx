@@ -123,7 +123,7 @@ const AdminViewEditSmartLockers = () => {
         onSuccess: (_, vars) => {
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
-            return toast.success("Succesfully updated", { description: `Locker ${vars.lockerID} access code updated.` });
+            return toast.success("Successfully updated", { description: `Locker ${vars.lockerID} access code updated.` });
         },
         onError: () => {
             return toast.error("Oops", { description: "Something happened please try again another time." });
@@ -158,7 +158,7 @@ const AdminViewEditSmartLockers = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
-            return toast.success("Succesfully unlocked");
+            return toast.success("Successfully unlocked");
         },
         onError: () => {
             return toast.error("Oops", { description: "Something happened please try again another time." });

@@ -303,7 +303,7 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 queryKey: [`${userId}-parking`],
             });
             handleCancel();
-            return toast.success("Succes!", { description: "Created new parking permit" });
+            return toast.success("Success", { description: "Created new parking permit" });
         },
 
         onError: () => {
@@ -537,7 +537,7 @@ function TenantCreateComplaintsModal() {
                 queryKey: [`${userId}-complaints`],
             });
             handleCancel();
-            return toast.success("Succes!", { description: "Created new complaint" });
+            return toast.success("Success", { description: "Created new complaint" });
         },
 
         onError: () => {

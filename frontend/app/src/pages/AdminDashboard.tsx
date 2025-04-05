@@ -231,7 +231,7 @@ const AdminDashboard = () => {
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             setAccessCode(generateAccessCode());
             setSelectedUserId(undefined);
-            return toast.success("Succes!", { description: "Created new package" });
+            return toast.success("Success", { description: "Created new package" });
         },
         onError: () => {
             return toast.error("Oops", { description: "Something happned please try again another time." });
