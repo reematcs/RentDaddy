@@ -21,6 +21,13 @@ type LockerHandler struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
 }
+type BatchUnlockRequest struct {
+	LockerIds []int32 `json:"locker_ids"`
+}
+
+type BatchDeleteRequest struct {
+	LockerIds []int32 `json:"locker_ids"`
+}
 
 type NewLockerRequest struct {
 	UserClerkId string `json:"user_clerk_id"`
@@ -101,7 +108,7 @@ func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(locker)
 }
 
-func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request) {
+func (l LockerHandler) GetLockersByUserId(w http.ResponseWriter, r *http.Request) {
 	tenantCtx := middleware.GetUserCtx(r)
 	if tenantCtx == nil {
 		log.Printf("[LOCKER_HANDLER] Failed getting tenant context")
@@ -117,7 +124,7 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 	}
 	// log.Printf("TENANTS DB_ID: %d", tenantMetadata.DbId)
 
-	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
+	lockers, err := l.queries.GetLockersByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusOK)
@@ -129,7 +136,32 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(locker)
+	json.NewEncoder(w).Encode(lockers)
+}
+
+func (l LockerHandler) TenantUnlockLockers(w http.ResponseWriter, r *http.Request) {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[LOCKER_HANDLER] Failed getting tenant context")
+		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
+		return
+	}
+
+	var tenantMetadata ClerkUserPublicMetaData
+	if err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata); err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed parsing tenant metadata: %v", err)
+		http.Error(w, "Error parsing tenant metadata", http.StatusInternalServerError)
+		return
+	}
+
+	if err := l.queries.UnlockUserLockers(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true}); err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed opening tenent's locker: %v", err)
+		http.Error(w, "Error opening locker", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("success"))
 }
 
 func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
@@ -140,14 +172,11 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error locker id invalid", http.StatusBadRequest)
 	}
 
-	// Get access code from request body
 	var req struct {
 		AccessCode string `json:"access_code"`
-		LockerId   int64  `json:"locker_id"`
 		InUse      bool   `json:"in_use"`
 		UserID     int64  `json:"user_id"`
 	}
-	req.LockerId = int64(lockerId)
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error decoding request body: %v", err)
@@ -155,8 +184,7 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get locker assigned to user
-	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(req.UserID), Valid: true})
+	locker, err := l.queries.GetLocker(r.Context(), int64(lockerId))
 	if err != nil {
 		log.Printf("Error getting locker: %v", err)
 		http.Error(w, "Could not find locker for user", http.StatusNotFound)
@@ -224,7 +252,7 @@ func (l LockerHandler) AddPackage(w http.ResponseWriter, r *http.Request) {
 	clerkUser, err := user.Get(r.Context(), newLocker.UserClerkId)
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed getting user Clerk data: %v", err)
-		http.Error(w, "Error querying user Clerk data", http.StatusInternalServerError)
+		http.Error(w, "Error querying user Clerk data", http.StatusNotFound)
 		return
 	}
 
@@ -238,7 +266,7 @@ func (l LockerHandler) AddPackage(w http.ResponseWriter, r *http.Request) {
 	availableLocker, err := l.queries.GetAvailableLocker(r.Context())
 	if err != nil {
 		log.Printf("[LOCKER_HANDLER] Failed query for an available locker: %v", err)
-		http.Error(w, "Error getting an available locker", http.StatusInternalServerError)
+		http.Error(w, "Error getting an available locker", http.StatusConflict)
 		return
 	}
 
@@ -403,6 +431,53 @@ func (l LockerHandler) CreateManyLockers(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(map[string]int64{
 		"lockers_created": rowsAffected,
 	})
+}
+
+func (l LockerHandler) BatchDeleteLockers(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed reading body: %v", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
+		return
+	}
+
+	var lockerIds BatchDeleteRequest
+	if err := json.Unmarshal(body, &lockerIds); err != nil {
+		log.Printf("Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+	if err = l.queries.DeleteLockersByIds(r.Context(), lockerIds.LockerIds); err != nil {
+		log.Printf("Failed batch deleting lockers: %v", err)
+		http.Error(w, "Error batch deleteing", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (l LockerHandler) BatchUnlockLockers(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Failed reading body: %v", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
+		return
+	}
+
+	var lockerIds BatchUnlockRequest
+	if err := json.Unmarshal(body, &lockerIds); err != nil {
+		log.Printf("Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: queries batch unlock lockers
+	if err = l.queries.UnlockerLockersByIds(r.Context(), lockerIds.LockerIds); err != nil {
+		log.Printf("Failed batch update lockers: %v", err)
+		http.Error(w, "Error batch update", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // For the Admin Dashboard Card that shows the number of lockers in use

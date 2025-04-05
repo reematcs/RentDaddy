@@ -4,7 +4,7 @@ import TableComponent from "../components/reusableComponents/TableComponent";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react-router";
 import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
-import { CheckOutlined, CloseCircleOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
@@ -124,8 +124,6 @@ const AddTenant = () => {
             fixed: "right",
             render: (record: User) => (
                 <div className="flex flex-column gap-2">
-                    {/* View Tenant Complaints */}
-                    {/* View Tenant Work Orders */}
                     <ActionMenu
                         key={record.id}
                         tenantClerkId={record.clerk_id}
@@ -143,7 +141,7 @@ const AddTenant = () => {
     return (
         <div className="container">
             {/* <h1 className="p-3">View or Add Tenants</h1> */}
-            <PageTitleComponent title="Manage Tenants" />
+            <PageTitleComponent title="Tenants" />
             <div className="mb-3 flex">
                 <InviteUserModal />
             </div>
@@ -152,6 +150,7 @@ const AddTenant = () => {
                 dataSource={tenants}
                 onChange={() => {}}
             />
+            <p className="text-muted mb-4 text-center">View all tenants in the system</p>
         </div>
     );
 };
@@ -273,7 +272,36 @@ function InviteUserModal() {
             <Button
                 type="primary"
                 onClick={showModal}>
-                <PlusOutlined />
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="lucide lucide-user-plus-icon lucide-user-plus">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle
+                        cx="9"
+                        cy="7"
+                        r="4"
+                    />
+                    <line
+                        x1="19"
+                        x2="19"
+                        y1="8"
+                        y2="14"
+                    />
+                    <line
+                        x1="22"
+                        x2="16"
+                        y1="11"
+                        y2="11"
+                    />
+                </svg>
                 Invite Tenant
             </Button>
             <Modal

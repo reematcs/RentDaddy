@@ -533,3 +533,13 @@ body {
     background-color: #eeeeee !important;
     color: inherit !important;
 }
+
+.hover-darken:hover {
+    filter: brightness(90%);
+    transition: filter 0.2s ease;
+}
+
+.hover-light:hover {
+    filter: brightness(110%);
+    transition: filter 0.2s ease;
+}

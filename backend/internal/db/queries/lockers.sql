@@ -18,9 +18,24 @@ SELECT
     false                     -- default to not in use
 FROM generate_series(1, sqlc.arg(count)::int); -- Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
 
+-- name: UnlockUserLockers :exec 
+UPDATE lockers
+SET user_id = null, access_code = null, in_use = false
+WHERE user_id = $1;
+
+-- name: UnlockerLockersByIds :exec
+UPDATE lockers 
+SET user_id = null, access_code = null, in_use = false
+WHERE id =  ANY($1::int[]);
+
 -- name: UpdateLockerUser :exec
 UPDATE lockers
 SET user_id = $2, in_use = $3
+WHERE id = $1;
+
+-- name: UpdateLockerInUse :exec 
+UPDATE lockers
+SET user_id = $2, access_code = $3, in_use = true
 WHERE id = $1;
 
 -- name: UpdateAccessCode :exec
@@ -45,6 +60,12 @@ FROM lockers
 WHERE user_id = $1
 LIMIT 1;
 
+-- name: GetLockersByUserId :many
+SELECT *
+FROM lockers
+WHERE user_id = $1;
+
+
 -- name: GetNumberOfLockersInUse :one
 SELECT COUNT(*)
 FROM lockers
@@ -55,7 +76,6 @@ SELECT *
 FROM lockers
 WHERE in_use = false;
 
--- name: UpdateLockerInUse :exec 
-UPDATE lockers
-SET user_id = $2, access_code = $3, in_use = true
-WHERE id = $1;
+-- name: DeleteLockersByIds :exec 
+DELETE FROM lockers
+WHERE id =  ANY($1::int[]);
