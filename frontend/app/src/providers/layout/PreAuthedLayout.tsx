@@ -118,7 +118,7 @@ function AuthMenuItems() {
                 {user ? (
                     <Link
                         to={user.publicMetadata?.role === "admin" ? "/admin" : "/tenant"}
-                        className="text-white d-flex align-items-center gap-2 mb-1 text-decoration-none hover-darken">
+                        className="text-white d-flex align-items-center gap-1 mb-1 text-decoration-none hover-darken">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="18"

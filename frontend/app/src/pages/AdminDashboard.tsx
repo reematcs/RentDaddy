@@ -434,7 +434,7 @@ const AdminDashboard = () => {
                     }
                 />
                 <CardComponent
-                    title="Parking Passes"
+                    title="Parking Permits"
                     value={parking.data?.length ?? 0}
                     description={`Guests on premises`}
                     hoverable={true}
