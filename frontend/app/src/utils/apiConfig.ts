@@ -73,7 +73,23 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://api.curiousdev.
 // Development URL with fallback
 const DEV_URL = SERVER_URL || 'http://localhost:8080';
 // Remove trailing slash if present to properly handle path concatenation
-export const SERVER_API_URL = (MODE === 'development' && SERVER_URL) ? DEV_URL : BACKEND_URL.replace(/\/$/, '');
+
+// Always ensure we have a valid URL - NEVER use 'undefined' as a URL component
+export const SERVER_API_URL = (() => {
+  // First, check if we have a valid development server URL
+  if (MODE === 'development' && SERVER_URL && SERVER_URL !== 'undefined') {
+    return DEV_URL.replace(/\/$/, '');
+  }
+  
+  // Use backend URL if available and not "undefined"
+  if (BACKEND_URL && BACKEND_URL !== 'undefined') {
+    return BACKEND_URL.replace(/\/$/, '');
+  }
+  
+  // Final fallback to ensure we never have an undefined URL
+  console.warn('⚠️ No valid backend URL found, falling back to default API URL');
+  return 'https://api.curiousdev.net';
+})();
 
 // Debug the final SERVER_API_URL
 console.log('Final SERVER_API_URL:', SERVER_API_URL);
@@ -262,7 +278,13 @@ export class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    // Format endpoint
+    // Ensure endpoint is valid and not undefined/null
+    if (!endpoint || endpoint === 'undefined' || endpoint === 'null') {
+      console.error('❌ Invalid endpoint provided:', endpoint);
+      throw new Error(`Invalid API endpoint: ${endpoint}`);
+    }
+    
+    // Format endpoint and construct URL with safety checks
     const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${SERVER_API_URL}${formattedEndpoint}`;
     
@@ -270,6 +292,7 @@ export class ApiClient {
     console.log(`API URL: ${url}`);
     console.log(`API Request Details:
       - Endpoint: ${endpoint}
+      - Server API URL: ${SERVER_API_URL}
       - Full URL: ${url}
       - Method: ${options.method || 'GET'}
       - Auth Status: ${this.authStatus}

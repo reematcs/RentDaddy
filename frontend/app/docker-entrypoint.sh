@@ -120,20 +120,52 @@ find ${APP_DIR} -type f -name "*.js" | while read file; do
   fi
 done
 
-# Create a small script to expose environment variables to the browser
-echo "Creating environment variables script..."
+# Create a small script to expose environment variables to the browser as a fallback
+# This is a backup in case Vite's build-time replacement doesn't work
+echo "Creating environment variables script for fallback..."
 cat > ${APP_DIR}/env-config.js << EOF
-window.VITE_CLERK_PUBLISHABLE_KEY = "${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk}";
-window.VITE_BACKEND_URL = "${VITE_BACKEND_URL:-https://api.curiousdev.net}";
-window.VITE_DOCUMENSO_PUBLIC_URL = "${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}";
-console.log("Environment variables loaded from env-config.js");
+// This script provides fallback values for environment variables
+// It should only be used if the Vite build-time replacement fails
+(function() {
+  // Check if import.meta.env variables are already defined
+  if (typeof window.VITE_ENV_INITIALIZED === 'undefined') {
+    console.log("Initializing environment variables via env-config.js fallback");
+    
+    // Only set these if they're not already set by Vite
+    if (!window.import || !window.import.meta || !window.import.meta.env) {
+      // Create or use existing import.meta.env object
+      window.import = window.import || {};
+      window.import.meta = window.import.meta || {};
+      window.import.meta.env = window.import.meta.env || {};
+      
+      // Set environment variables
+      window.import.meta.env.VITE_CLERK_PUBLISHABLE_KEY = "${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk}";
+      window.import.meta.env.VITE_BACKEND_URL = "${VITE_BACKEND_URL:-https://api.curiousdev.net}";
+      window.import.meta.env.VITE_DOCUMENSO_PUBLIC_URL = "${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}";
+      window.import.meta.env.MODE = "production";
+      window.import.meta.env.PROD = true;
+      window.import.meta.env.DEV = false;
+    
+      // Also set window-level variables for compatibility
+      window.VITE_CLERK_PUBLISHABLE_KEY = "${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk}";
+      window.VITE_BACKEND_URL = "${VITE_BACKEND_URL:-https://api.curiousdev.net}";
+      window.VITE_DOCUMENSO_PUBLIC_URL = "${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}";
+    }
+    
+    // Mark as initialized to avoid double initialization
+    window.VITE_ENV_INITIALIZED = true;
+    
+    console.log("Environment variables loaded from env-config.js");
+  }
+})();
 EOF
 
-# Add the env-config.js script to index.html
+# Add the env-config.js script to index.html at the BEGINNING of head
+# This ensures it loads before any other scripts that might need these variables
 if [ -f "${APP_DIR}/index.html" ]; then
   if ! grep -q "env-config.js" "${APP_DIR}/index.html"; then
-    echo "Adding env-config.js script to index.html"
-    sed -i 's|</head>|<script src="/env-config.js"></script>\n</head>|' "${APP_DIR}/index.html"
+    echo "Adding env-config.js script to beginning of head in index.html"
+    sed -i 's|<head>|<head>\n<script src="/env-config.js"></script>|' "${APP_DIR}/index.html"
   fi
 fi
 
