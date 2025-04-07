@@ -50,8 +50,17 @@ build_backend() {
   
   # Build and push backend
   set +e  # Temporarily disable error exit to capture exit code
+  
+  # Use a separate buildx builder to avoid issues
+  log "Creating dedicated builder for this build..."
+  docker buildx create --name backend-builder --use --bootstrap || true
+  
+  # Use additional flags to address cross-platform issues 
   docker buildx build \
     --platform linux/amd64 \
+    --builder backend-builder \
+    --allow security.insecure \
+    --provenance=false \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
     -f $backend_dir/Dockerfile.prod \
     --push \
