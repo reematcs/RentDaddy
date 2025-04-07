@@ -49,6 +49,7 @@ build_backend() {
   log "Using backend directory: $backend_dir"
   
   # Build and push backend
+  set +e  # Temporarily disable error exit to capture exit code
   docker buildx build \
     --platform linux/amd64 \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
@@ -56,12 +57,21 @@ build_backend() {
     --push \
     $backend_dir | tee "$PROJECT_ROOT/deployment/backend-build.log"
   
+  local build_exit_code=$?
+  set -e  # Re-enable error exit
+  
   # Calculate build duration
   local end_time=$(date +%s)
   local duration=$((end_time - start_time))
-  log "Backend build completed in ${duration}s"
   
-  log "Backend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag"
+  if [ $build_exit_code -ne 0 ]; then
+    log "ERROR: Backend build failed after ${duration}s (exit code: $build_exit_code)"
+    log "See $PROJECT_ROOT/deployment/backend-build.log for details"
+    return 1
+  else
+    log "Backend build completed in ${duration}s"
+    log "Backend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag"
+  fi
 }
 
 # Function to build and push frontend
@@ -101,6 +111,7 @@ build_frontend() {
   log "Using frontend directory: $frontend_dir"
   
   # Build and push frontend
+  set +e  # Temporarily disable error exit to capture exit code
   docker buildx build \
     --platform linux/amd64 \
     --progress=plain \
@@ -113,12 +124,21 @@ build_frontend() {
     --push \
     $frontend_dir | tee "$PROJECT_ROOT/deployment/frontend-build.log"
   
+  local build_exit_code=$?
+  set -e  # Re-enable error exit
+  
   # Calculate build duration
   local end_time=$(date +%s)
   local duration=$((end_time - start_time))
-  log "Frontend build completed in ${duration}s"
   
-  log "Frontend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag"
+  if [ $build_exit_code -ne 0 ]; then
+    log "ERROR: Frontend build failed after ${duration}s (exit code: $build_exit_code)"
+    log "See $PROJECT_ROOT/deployment/frontend-build.log for details"
+    return 1
+  else
+    log "Frontend build completed in ${duration}s"
+    log "Frontend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag"
+  fi
 }
 
 # Function to build and push documenso-worker
@@ -164,19 +184,36 @@ build_worker() {
   
   # Build and push worker
   log "Building Docker image..."
+  set +e  # Temporarily disable error exit to capture exit code
+  
+  # Use a specific builder instance for more control and disable buildx's automatic platform detection
+  docker buildx create --name workerbuilder --use --driver docker-container --driver-opt image=moby/buildkit:buildx-stable-1 || true
+  docker buildx inspect --bootstrap
+  
   docker buildx build \
     --platform linux/amd64 \
+    --builder workerbuilder \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag \
     -f "$WORKER_DIR/Dockerfile" \
     --push \
     "$WORKER_DIR" | tee "$PROJECT_ROOT/deployment/worker-build.log"
   
+  local build_exit_code=$?
+  set -e  # Re-enable error exit
+  
   # Calculate build duration
   local end_time=$(date +%s)
   local duration=$((end_time - start_time))
-  log "Documenso worker build completed in ${duration}s"
   
-  log "Worker image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag"
+  if [ $build_exit_code -ne 0 ]; then
+    log "ERROR: Documenso worker build failed after ${duration}s (exit code: $build_exit_code)"
+    log "See $PROJECT_ROOT/deployment/worker-build.log for details"
+    return 1
+  else
+    log "Documenso worker build completed in ${duration}s"
+    log "Worker image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag"
+  fi
   
   # Return to original directory
   cd "$original_dir"
@@ -299,22 +336,44 @@ else
   done
 fi
 
+# Track overall build success
+BUILD_SUCCESS=true
+
 # Build the specified components
 if [ "$BUILD_BACKEND" = true ]; then
-  build_backend $BACKEND_TAG
+  if ! build_backend $BACKEND_TAG; then
+    log "ERROR: Backend build failed"
+    BUILD_SUCCESS=false
+  fi
 fi
 
 if [ "$BUILD_FRONTEND" = true ]; then
-  build_frontend $FRONTEND_TAG
+  if ! build_frontend $FRONTEND_TAG; then
+    log "ERROR: Frontend build failed"
+    BUILD_SUCCESS=false
+  fi
 fi
 
 if [ "$BUILD_WORKER" = true ]; then
-  build_worker $WORKER_TAG
+  if ! build_worker $WORKER_TAG; then
+    log "ERROR: Documenso worker build failed"
+    BUILD_SUCCESS=false
+  fi
 fi
 
-# Force deployment if requested
+# Only proceed with deployment if all builds succeeded and deployment was requested
 if [ "$DEPLOY" = true ]; then
-  force_deployment
+  if [ "$BUILD_SUCCESS" = true ]; then
+    force_deployment
+  else
+    log "ERROR: Skipping deployment due to build failures"
+    exit 1
+  fi
 fi
 
-log "Build and deployment process completed successfully!"
+if [ "$BUILD_SUCCESS" = true ]; then
+  log "Build and deployment process completed successfully!"
+else
+  log "ERROR: Build process encountered one or more failures"
+  exit 1
+fi

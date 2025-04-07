@@ -73,11 +73,14 @@ load_aws_config() {
     PROJECT_ROOT=$(find_project_root)
   fi
   
+  # Remove any potential trailing newlines from PROJECT_ROOT
+  PROJECT_ROOT=$(echo "$PROJECT_ROOT" | tr -d '\n')
+  
   log "Looking for AWS credentials in project root: $PROJECT_ROOT"
   # Check that PROJECT_ROOT exists and is a directory
   if [ ! -d "$PROJECT_ROOT" ]; then
     log "ERROR: Project root does not exist or is not a directory: $PROJECT_ROOT"
-    return 1
+    # Continue anyway since we can still use AWS CLI credentials
   fi
   
   # Search for available environment files more thoroughly
@@ -210,25 +213,14 @@ init_script() {
   set -e
   trap 'log "Error on line $LINENO"' ERR
   
-  # First find project root without capturing any other output
-  local PROJECT_ROOT=$(find_project_root)
-
-  # Store PROJECT_ROOT in a file to ensure it's clean
-  local tmp_file=$(mktemp)
-  echo "$PROJECT_ROOT" > "$tmp_file"
-  PROJECT_ROOT=$(cat "$tmp_file")
-  rm -f "$tmp_file"
-  
-  # Now print banner after safely storing the project root
+  # Print banner
   print_banner "$script_name"
   
   # Verify requirements
   verify_requirements "$@"
   
-  log "Project root directory: $PROJECT_ROOT"
-  
-  # Return the clean project root to the calling script
-  echo "$PROJECT_ROOT"
+  # Note: We no longer find or return the project root here
+  # That should be done separately before calling this function
 }
 
 # Export variables and functions

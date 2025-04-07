@@ -24,8 +24,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Initialize
-PROJECT_ROOT=$(init_script "RentDaddy Terraform Apply" terraform aws)
+# Initialize - directly find the project root first
+PROJECT_ROOT=$(find_project_root)
+
+# Now initialize the script properly
+init_script "RentDaddy Terraform Apply" terraform aws
 
 # Load AWS configuration
 load_aws_config "$PROJECT_ROOT"
@@ -92,6 +95,8 @@ else
 fi
 
 # Return to the original directory if it exists
+# Clean up PROJECT_ROOT to remove any newlines
+PROJECT_ROOT=$(echo "$PROJECT_ROOT" | tr -d '\n')
 if [ -d "$PROJECT_ROOT" ]; then
   cd "$PROJECT_ROOT"
 else
