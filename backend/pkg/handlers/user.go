@@ -883,11 +883,11 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// Use the newer seed_users_with_clerk script instead of the outdated seedusers script
-		cmd := exec.Command("go", "run", 
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/seed_users_with_clerk/main.go",
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/seed_users_with_clerk/seed_users.go")
+		cmd := exec.Command("go", "run", "-mod=mod",
+			"/app/scripts/cmd/seed_users_with_clerk/main.go",
+			"/app/scripts/cmd/seed_users_with_clerk/seed_users.go")
 		cmd.Dir = "/app" // ECS container working directory
-		
+
 		// Set SCRIPT_MODE=true to ensure proper operation in non-interactive context
 		cmd.Env = append(os.Environ(), "SCRIPT_MODE=true")
 		output, err := cmd.CombinedOutput()
@@ -907,28 +907,28 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println("[SEED_USERS] User seeding completed successfully")
-		
+
 		// After user seeding completes, automatically run data seeding
 		log.Println("[SEED_USERS] Starting automatic data seeding for work orders and complaints")
-		
+
 		dataSeedingMutex.Lock()
 		dataSeedingState.InProgress = true
 		dataSeedingState.LastError = ""
 		dataSeedingState.StartedAt = time.Now().Format(time.RFC3339)
 		dataSeedingMutex.Unlock()
-		
+
 		// Run the data seeding process
-		dataCmd := exec.Command("go", "run", 
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/main.go",
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/complaintsAndWork.go")
+		dataCmd := exec.Command("go", "run", "-mod=mod",
+			"/app/scripts/cmd/complaintswork/main.go",
+			"/app/scripts/cmd/complaintswork/complaintsAndWork.go")
 		dataCmd.Dir = "/app"
 		dataCmd.Env = append(os.Environ(), "SCRIPT_MODE=true")
 		dataOutput, dataErr := dataCmd.CombinedOutput()
-		
+
 		dataSeedingMutex.Lock()
 		dataSeedingState.InProgress = false
 		dataSeedingState.LastComplete = time.Now().Format(time.RFC3339)
-		
+
 		if dataErr != nil {
 			dataErrMsg := dataErr.Error()
 			if len(dataOutput) > 0 {
@@ -992,9 +992,9 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 			dataSeedingMutex.Unlock()
 		}()
 
-		cmd := exec.Command("go", "run", 
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/main.go",
-			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/complaintsAndWork.go")
+		cmd := exec.Command("go", "run", "-mod=mod",
+			"/app/scripts/cmd/complaintswork/main.go",
+			"/app/scripts/cmd/complaintswork/complaintsAndWork.go")
 		cmd.Dir = "/app"
 		output, err := cmd.CombinedOutput()
 
