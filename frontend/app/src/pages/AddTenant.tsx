@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/react-router";
 import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
 import { CheckOutlined, CloseCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
+import { SERVER_API_URL } from "../utils/apiConfig";
 import { ColumnsType } from "antd/es/table";
 
 // Updated to include all fields needed by both AddTenant and ModalComponent
@@ -31,7 +32,7 @@ const AddTenant = () => {
                 throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -214,7 +215,7 @@ function InviteUserModal() {
                 throw new Error("[TENANT_TABLE] Error tenant email invalid");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/invite`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/invite`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -368,7 +369,7 @@ function TenantWorkOrderModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/work_orders`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}/work_orders`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -457,7 +458,7 @@ function TenantComplaintModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}/complaints`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -551,7 +552,7 @@ function TenantDeleteModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
