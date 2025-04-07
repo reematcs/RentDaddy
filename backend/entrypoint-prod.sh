@@ -84,11 +84,30 @@ if command -v go >/dev/null 2>&1; then
   
   # Set up symlinks to internal packages to ensure they're available for scripts
   echo "Setting up internal packages in vendor directory..."
-  mkdir -p /app/vendor/github.com/careecodes/RentDaddy/internal/
+  mkdir -p /app/vendor/github.com/careecodes/RentDaddy/
+  
+  # Remove existing directory or symlink if it exists
+  echo "Checking for existing internal directory or symlink..."
+  if [ -e "/app/vendor/github.com/careecodes/RentDaddy/internal" ]; then
+    echo "Found existing internal directory or symlink, removing it..."
+    rm -rf /app/vendor/github.com/careecodes/RentDaddy/internal
+  fi
   
   # Create symlinks to internal directories
   echo "Creating symlinks for internal packages..."
   ln -sfn /app/internal /app/vendor/github.com/careecodes/RentDaddy/
+  
+  # Verify the symlink was created correctly
+  echo "Verifying symlink creation..."
+  if [ -L "/app/vendor/github.com/careecodes/RentDaddy/internal" ]; then
+    echo "✅ Symlink created successfully"
+    ls -la /app/vendor/github.com/careecodes/RentDaddy/
+    ls -la /app/vendor/github.com/careecodes/RentDaddy/internal/
+  else
+    echo "❌ Failed to create symlink"
+    ls -la /app/vendor/github.com/careecodes/RentDaddy/
+    exit 1
+  fi
   
   # Install necessary packages for scripts
   echo "Installing dependencies for scripts..."
