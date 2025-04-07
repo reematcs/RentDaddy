@@ -1,7 +1,7 @@
 version: "3"
 
 # Load environment from backend first, then try to load from project root if it exists
-dotenv: [".env.development.local", ".env.production.local", ".env", "../.env"]
+#dotenv: [".env.development.local", ".env.production.local", ".env", "../.env"]
 
 vars:
   MPATH: "internal/db/migrations/"
@@ -177,7 +177,7 @@ tasks:
     cmds:
       - task: sqlc:generate
       - task: migrate:up
-      
+
   worker:run:
     desc: "Build and run the Documenso worker for local development"
     cmds:
