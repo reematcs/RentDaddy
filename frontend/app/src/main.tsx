@@ -87,8 +87,10 @@ createRoot(document.getElementById("root")!).render(
                     <Toaster />
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
-                        signUpFallbackRedirectUrl="/"
-                        signInFallbackRedirectUrl="/"
+                        signUpFallbackRedirectUrl={"/"}
+                        signInFallbackRedirectUrl={"/"}
+                        // Explicitly set routing strategy for reliability
+                        routing="path"
                     >
                         <ApiProvider>
                             {/* Routes: Container for all Route definitions */}
