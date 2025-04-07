@@ -55,16 +55,18 @@ build_backend() {
   log "Creating dedicated builder for this build..."
   docker buildx create --name backend-builder --use --bootstrap || true
   
-  # Use additional flags to address cross-platform issues 
+  # Build image using simpler flags
   docker buildx build \
     --platform linux/amd64 \
     --builder backend-builder \
-    --allow security.insecure \
-    --provenance=false \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
     -f $backend_dir/Dockerfile.prod \
-    --push \
+    --load \
     $backend_dir | tee "$PROJECT_ROOT/deployment/backend-build.log"
+  
+  # Push the image separately
+  log "Pushing image to ECR..."
+  docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag | tee -a "$PROJECT_ROOT/deployment/backend-build.log"
   
   local build_exit_code=$?
   set -e  # Re-enable error exit
