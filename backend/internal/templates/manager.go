@@ -23,14 +23,15 @@ type TemplateInfo struct {
 	Subject  string `json:"subject"`
 }
 
-// TemplateData holds the data for email template rendering
+// EmailTemplateData holds the data for email template rendering
 type EmailTemplateData struct {
-	LogoURL        string
-	RecipientName  string
-	DocumentTitle  string
-	SigningURL     string
-	DownloadURL    string
-	AdditionalData map[string]interface{}
+	LogoURL          string
+	RecipientName    string
+	DocumentTitle    string
+	SigningURL       string
+	DownloadURL      string
+	VerificationURL  string
+	AdditionalData   map[string]interface{}
 }
 
 // EmailTemplateManager loads and manages email templates

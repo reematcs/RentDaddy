@@ -7,6 +7,10 @@
     "signing_complete": {
       "filename": "signing_complete.html",
       "subject": "Your RentDaddy lease agreement has been signed"
+    },
+    "verification_email": {
+      "filename": "verification_email.html",
+      "subject": "Please confirm your Documenso email address"
     }
   }
 }

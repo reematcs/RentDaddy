@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+// Use EmailTemplateData from manager.go
+
 // Email handling functions
 var DefaultManager *EmailTemplateManager
 
@@ -203,4 +205,116 @@ func getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL s
   </div>
 </body>
 </html>`, logoURL, recipientName, documentTitle, downloadURL)
+}
+
+// RenderVerificationEmail renders the email verification template
+func RenderVerificationEmail(verificationURL string) (string, string, error) {
+	if DefaultManager == nil {
+		if err := InitializeDefaultManager(); err != nil {
+			return getFallbackVerificationEmail(verificationURL), 
+				"Please confirm your Documenso email address", nil
+		}
+	}
+	
+	// Get logo URL - use Documenso URL for logo
+	docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
+	if docsURL == "" {
+		// Get domain from environment
+		domain := os.Getenv("DOMAIN_URL")
+		if domain == "" || domain == "http://localhost" {
+			domain = "docs.curiousdev.net"
+		}
+		
+		// Extract just the domain part
+		if strings.HasPrefix(domain, "http://") {
+			domain = strings.TrimPrefix(domain, "http://")
+		} else if strings.HasPrefix(domain, "https://") {
+			domain = strings.TrimPrefix(domain, "https://")
+		}
+		
+		docsURL = "https://" + domain
+	}
+	
+	logoURL := docsURL + "/logo.png"
+	
+	data := EmailTemplateData{
+		VerificationURL: verificationURL,
+		LogoURL: logoURL,
+	}
+	
+	html, err := DefaultManager.RenderTemplate("verification_email", data)
+	if err != nil {
+		return getFallbackVerificationEmail(verificationURL), 
+			"Please confirm your Documenso email address", nil
+	}
+	
+	subject := DefaultManager.GetTemplateSubject("verification_email")
+	return html, subject, nil
+}
+
+// Fallback template for verification emails
+func getFallbackVerificationEmail(verificationURL string) string {
+	// Use Documenso URL for logo
+	docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
+	if docsURL == "" {
+		// Get domain from environment
+		domain := os.Getenv("DOMAIN_URL")
+		if domain == "" || domain == "http://localhost" {
+			domain = "docs.curiousdev.net"
+		}
+		
+		// Extract just the domain part
+		if strings.HasPrefix(domain, "http://") {
+			domain = strings.TrimPrefix(domain, "http://")
+		} else if strings.HasPrefix(domain, "https://") {
+			domain = strings.TrimPrefix(domain, "https://")
+		}
+		
+		docsURL = "https://" + domain
+	}
+	
+	logoURL := docsURL + "/logo.png"
+	
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .logo { max-width: 150px; }
+    .button { display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; 
+              text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
+    .footer { margin-top: 30px; font-size: 12px; color: #777; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="%s" alt="Documenso Logo" class="logo">
+      <h2>Please Verify Your Email Address</h2>
+    </div>
+    
+    <p>Hello!</p>
+    
+    <p>Thanks for signing up for Documenso! Please confirm your email address by clicking the button below.</p>
+    
+    <div style="text-align: center;">
+      <a href="%s" class="button">Verify Email Address</a>
+    </div>
+    
+    <p style="margin-top: 20px;">Or copy and paste this URL into your browser:</p>
+    <p style="word-break: break-all; color: #4F46E5;"><a href="%s">%s</a></p>
+    
+    <p>If you didn't sign up for Documenso, you can ignore this email.</p>
+    
+    <p>Thank you,<br>
+    The Documenso Team</p>
+    
+    <div class="footer">
+      <p>Documenso - The open-source document signing platform</p>
+    </div>
+  </div>
+</body>
+</html>`, logoURL, verificationURL, verificationURL, verificationURL)
 }

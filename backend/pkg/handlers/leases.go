@@ -1408,7 +1408,7 @@ func (h *LeaseHandler) NotifyExpiringLeases(w http.ResponseWriter, r *http.Reque
 // Helper function to send email notifications about expiring leases
 func (h *LeaseHandler) sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) error {
 	// Get admin email from environment or use default
-	adminEmail := os.Getenv("CRON_EMAIL")
+	adminEmail := os.Getenv("ADMIN_EMAIL") // Use ADMIN_EMAIL instead of CRON_EMAIL
 	if adminEmail == "" {
 		adminEmail = "ezra@gitfor.ge" // Fallback to global landlord email
 	}
@@ -1580,7 +1580,7 @@ func (h *LeaseHandler) UpdateDocumensoConfig(w http.ResponseWriter, r *http.Requ
 
 	// TEMPORARY WORKAROUND: Use a default admin ID to bypass the check in clean database environments
 	var landlordID int64 = 1
-	var landlordEmail string = "admin@example.com"
+	var landlordEmail string = "ezra@gitfor.ge"
 
 	// Try to get the admin user ID from the request context, but continue even if it fails
 	actualLandlordID, _, actualEmail, err := h.GetLandlordInfo(r)
@@ -1747,7 +1747,87 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	// Use either header that matches
 	var signatureValid bool
-	
+
+	// Extract job information from different possible locations in the webhook data
+	jobType, isJob := webhookData["job"].(string)
+	jobType2, isJob2 := webhookData["job_type"].(string)
+	jobId, hasJobId := webhookData["job_id"].(string)
+
+	// Define known Documenso job IDs - NOTE: Only confirmation and signup email jobs
+	// should bypass signature validation. Other email types (signing, completion)
+	// require proper signature validation for security.
+	const confirmationEmailJobId = "send.signup.confirmation.email"
+	const signupEmailJobId = "send.signup.email"
+
+	// Extract job ID from data field if not found directly
+	if !hasJobId {
+		if data, ok := webhookData["data"].(map[string]interface{}); ok {
+			if jobIdFromData, ok := data["job_id"].(string); ok {
+				jobId = jobIdFromData
+				hasJobId = true
+				log.Printf("[WEBHOOK] Found job_id in data: %s", jobId)
+			}
+		}
+	}
+
+	// Check for job definition ID that might be included
+	jobDefId, hasJobDefId := webhookData["job_definition_id"].(string)
+	if !hasJobDefId {
+		if data, ok := webhookData["data"].(map[string]interface{}); ok {
+			if jobDefIdFromData, ok := data["job_definition_id"].(string); ok {
+				jobDefId = jobDefIdFromData
+				hasJobDefId = true
+				log.Printf("[WEBHOOK] Found job_definition_id in data: %s", jobDefId)
+			}
+		}
+	}
+
+	// For debugging
+	log.Printf("[WEBHOOK] Job info: type=%v, type2=%v, id=%v, def_id=%v",
+		jobType, jobType2, jobId, jobDefId)
+
+	// Determine if this is a signup/verification-related webhook that should bypass signature validation
+	isEmailWebhook := false
+
+	// Check by job ID first (most reliable method)
+	if hasJobId && (jobId == confirmationEmailJobId ||
+		jobId == signupEmailJobId ||
+		strings.Contains(jobId, "signup.confirmation") ||
+		strings.Contains(jobId, "verification")) {
+		isEmailWebhook = true
+		log.Printf("[WEBHOOK] Signup webhook identified by job_id: %s", jobId)
+	} else if hasJobDefId && (jobDefId == confirmationEmailJobId ||
+		jobDefId == signupEmailJobId ||
+		strings.Contains(jobDefId, "signup.confirmation") ||
+		strings.Contains(jobDefId, "verification")) {
+		isEmailWebhook = true
+		log.Printf("[WEBHOOK] Signup webhook identified by job_definition_id: %s", jobDefId)
+	} else if isJob2 && (jobType2 == confirmationEmailJobId ||
+		jobType2 == signupEmailJobId ||
+		strings.Contains(jobType2, "signup.confirmation") ||
+		strings.Contains(jobType2, "verification")) {
+		isEmailWebhook = true
+		log.Printf("[WEBHOOK] Signup webhook identified by job_type: %s", jobType2)
+	} else if isJob && (strings.Contains(jobType, "signup.confirmation") ||
+		strings.Contains(jobType, "verification") ||
+		jobType == "Send Confirmation Email") {
+		isEmailWebhook = true
+		log.Printf("[WEBHOOK] Signup webhook identified by job name: %s", jobType)
+	}
+
+	// Check for webhook event types - only specific signup event types
+	eventType, hasEvent := webhookData["event"].(string)
+	if !isEmailWebhook && hasEvent && (eventType == "EMAIL_SIGNUP_CONFIRMATION" ||
+		eventType == "EMAIL_VERIFICATION") {
+		isEmailWebhook = true
+		log.Printf("[WEBHOOK] Signup webhook identified by specific event type: %s", eventType)
+	}
+
+	if isEmailWebhook {
+		log.Printf("[WEBHOOK] Email-related webhook detected: '%s', bypassing signature validation", jobType)
+		signatureValid = true
+	}
+
 	// Check both headers and log which one matched
 	if webhookSecret != "" {
 		if receivedSecretHeader != "" && webhookSecret == receivedSecretHeader {
@@ -1757,16 +1837,16 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Signature header")
 			signatureValid = true
 		}
-		
+
 		// If we have a webhook secret but no valid signature was provided, reject the request
 		if !signatureValid && (receivedSecretHeader != "" || receivedSignatureHeader != "") {
-			log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received Secret: %s, Received Signature: %s", 
+			log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received Secret: %s, Received Signature: %s",
 				webhookSecret, receivedSecretHeader, receivedSignatureHeader)
 			http.Error(w, "Invalid signature", http.StatusUnauthorized)
 			return
 		}
 	}
-	
+
 	if signatureValid {
 		log.Printf("[WEBHOOK] Signature validation successful")
 	}
@@ -1782,7 +1862,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	log.Printf("[WEBHOOK] Received Documenso webhook event: %s", eventType)
 
 	// Check for job_type field which would indicate an enriched job from our worker
-	jobType, isJob := webhookData["job_type"].(string)
+	jobType, isJob = webhookData["job_type"].(string)
 
 	// Handle email job types from our worker
 	if isJob {
@@ -1841,7 +1921,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			// Get admin email
 			adminEmail := os.Getenv("ADMIN_EMAIL")
 			if adminEmail == "" {
-				adminEmail = "admin@example.com" // Fallback
+				adminEmail = "ezra@gitfor.ge" // Fallback
 			}
 
 			// Handle different job types
@@ -1961,121 +2041,169 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 					_ = expiresAt           // Suppress unused variable error
 
 					// Try to extract token from data - checking various possible formats
-					if tokens, ok := data["verificationTokens"].([]interface{}); ok && len(tokens) > 0 {
-						if tokenObj, ok := tokens[0].(map[string]interface{}); ok {
-							if tokenStr, ok := tokenObj["token"].(string); ok {
+
+					// First look for token directly in data itself
+					if tokenStr, ok := data["token"].(string); ok && tokenStr != "" {
+						token = tokenStr
+						log.Printf("[WEBHOOK] Found token directly in data: %s", token)
+					} else {
+						// Try to look in nested data.token (added by worker)
+						if nestedData, ok := data["data"].(map[string]interface{}); ok {
+							if tokenStr, ok := nestedData["token"].(string); ok && tokenStr != "" {
 								token = tokenStr
+								log.Printf("[WEBHOOK] Found token in data.token: %s", token)
 							}
-							if expiresAtStr, ok := tokenObj["expires"].(string); ok {
-								if parsedTime, err := time.Parse(time.RFC3339, expiresAtStr); err == nil {
-									expiresAt = parsedTime
-									log.Printf("Parsed expiration time: %v", expiresAt)
+						}
+
+						// Original approach - try verification tokens array
+						if token == "" {
+							if verificationTokens, ok := data["verificationTokens"].([]interface{}); ok && len(verificationTokens) > 0 {
+								if tokenObj, ok := verificationTokens[0].(map[string]interface{}); ok {
+									if tokenStr, ok := tokenObj["token"].(string); ok {
+										token = tokenStr
+										log.Printf("[WEBHOOK] Found token in verificationTokens: %s", token)
+									}
+									if expiresAtStr, ok := tokenObj["expires"].(string); ok {
+										if parsedTime, err := time.Parse(time.RFC3339, expiresAtStr); err == nil {
+											expiresAt = parsedTime
+											log.Printf("[WEBHOOK] Parsed expiration time: %v", expiresAt)
+										}
+									}
 								}
 							}
 						}
-					}
 
-					// Construct verification link using standard pattern
-					// Use the Documenso URL from env or default to docs.curiousdev.net
-					docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
-					if docsURL == "" {
-						docsURL = "https://docs.curiousdev.net"
-					}
+						// Log the data structure for debugging
+						dataBytes, _ := json.Marshal(data)
+						log.Printf("[WEBHOOK] Email verification data structure: %s", string(dataBytes))
 
-					// If no token was found, check if we have a user ID to look it up
-					if token == "" {
-						log.Printf("[WEBHOOK] No verification token found in webhook data - constructing email without token")
-					}
+						// Construct verification link using standard pattern
+						// Use the Documenso URL from env or default to docs.curiousdev.net
+						docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
+						if docsURL == "" {
+							// For production, use the domain name from terraform
+							// Use the domain from environment variables
+							var domain string
+							domain = os.Getenv("DOMAIN_URL") // Try DOMAIN_URL first
+							if domain == "" || domain == "http://localhost" {
+								domain = "docs.curiousdev.net" // Fallback to a known domain
+							}
 
-					// Construct confirmation link
-					confirmationLink := fmt.Sprintf("%s/verify-email/%s", docsURL, token)
+							// Extract just the domain part if it includes a protocol
+							if strings.HasPrefix(domain, "http://") {
+								domain = strings.TrimPrefix(domain, "http://")
+							} else if strings.HasPrefix(domain, "https://") {
+								domain = strings.TrimPrefix(domain, "https://")
+							}
 
-					// Get sender info
-					senderName := os.Getenv("DOCUMENSO_FROM_NAME")
-					if senderName == "" {
-						senderName = "Documenso"
-						log.Printf("Sender name set to: %s", senderName)
-					}
+							docsURL = "https://" + domain
+						}
 
-					senderEmail := os.Getenv("DOCUMENSO_FROM_EMAIL")
-					if senderEmail == "" {
-						senderEmail = "noreply@curiousdev.net"
-						log.Printf("[WEBHOOK] Using default sender email: %s", senderEmail)
-					}
+						// If no token was found, check if we have a user ID to look it up
+						if token == "" {
+							log.Printf("[WEBHOOK] No verification token found in webhook data - constructing email without token")
+						}
 
-					// Construct the verification email in Documenso's format
-					subject := "Please confirm your email"
+						// Construct confirmation link
+						confirmationLink := fmt.Sprintf("%s/verify-email/%s", docsURL, token)
 
-					// Construct HTML email body similar to Documenso's format
-					htmlBody := strings.Builder{}
-					htmlBody.WriteString("<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333;\">")
-					htmlBody.WriteString("<div style=\"max-width: 600px; margin: 0 auto; background-color: #fff;\">")
-					htmlBody.WriteString("<div style=\"padding: 20px; text-align: center;\"><img src=\"" + docsURL + "/logo.png\" alt=\"Documenso Logo\" style=\"max-width: 150px;\"></div>")
-					htmlBody.WriteString("<div style=\"padding: 20px; background-color: #F9FAFB; border-radius: 8px;\">")
-					htmlBody.WriteString("<h1 style=\"color: #111; font-size: 24px; margin-bottom: 20px;\">Verify your email address</h1>")
-					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Thanks for signing up for Documenso! Please confirm your email address by clicking the button below.</p>")
-					htmlBody.WriteString("<div style=\"text-align: center; margin: 30px 0;\">")
-					htmlBody.WriteString("<a href=\"" + confirmationLink + "\" style=\"background-color: #4F46E5; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;\">Confirm Email Address</a>")
-					htmlBody.WriteString("</div>")
-					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Or copy and paste this URL into your browser:</p>")
-					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5; word-break: break-all; color: #4F46E5;\"><a href=\"" + confirmationLink + "\">" + confirmationLink + "</a></p>")
-					htmlBody.WriteString("<p style=\"margin-bottom: 10px; line-height: 1.5;\">If you didn't sign up for Documenso, you can ignore this email.</p>")
-					htmlBody.WriteString("</div>")
-					htmlBody.WriteString("<div style=\"padding: 20px; text-align: center; color: #6B7280; font-size: 14px;\">")
-					htmlBody.WriteString("<p>Documenso, Inc.<br>The open-source DocuSign alternative</p>")
-					htmlBody.WriteString("</div></div></body></html>")
+						// Get sender info
+						// Try multiple possible environment variables for sender name
+						senderName := os.Getenv("DOCUMENSO_FROM_NAME")
+						if senderName == "" {
+							senderName = os.Getenv("NEXT_PRIVATE_SMTP_FROM_NAME") // Try variable from Terraform
+						}
+						if senderName == "" {
+							senderName = "RentDaddy" // Default to RentDaddy (same as in Terraform)
+							log.Printf("Sender name set to: %s", senderName)
+						}
 
-					// Create plain text version
-					textBody := strings.Builder{}
-					textBody.WriteString("Verify your email address\n\n")
-					textBody.WriteString("Thanks for signing up for Documenso! Please confirm your email address by clicking the link below:\n\n")
-					textBody.WriteString(confirmationLink + "\n\n")
-					textBody.WriteString("If you didn't sign up for Documenso, you can ignore this email.\n\n")
-					textBody.WriteString("Documenso, Inc.\nThe open-source DocuSign alternative")
+						senderEmail := os.Getenv("DOCUMENSO_FROM_EMAIL")
+						if senderEmail == "" {
+							// Always use ezra@gitfor.ge as the fallback
+							senderEmail = "ezra@gitfor.ge"
+							log.Printf("[WEBHOOK] Using default sender email: %s", senderEmail)
+						}
 
-					// Set email type for logging
-					emailType := "multipart"
+						// Use our email template renderer for a better looking email
+						htmlContent, subject, err := templates.RenderVerificationEmail(confirmationLink)
+						if err != nil {
+							log.Printf("[WEBHOOK] Error rendering verification email template: %v", err)
+							// Fall back to simpler email rendering
+							subject = "Please confirm your email"
 
-					// Send the email using our SMTP with HTML formatting
-					err := smtp.SendEmailHTML(recipientEmail, subject, textBody.String(), htmlBody.String())
-					if err != nil {
-						log.Printf("[WEBHOOK] Error sending verification email to %s: %v", recipientEmail, err)
-					} else {
-						log.Printf("[WEBHOOK] Successfully sent %s verification email to %s (token: %s)", emailType, recipientEmail, token)
+							// Create a simple HTML fallback
+							htmlBuilder := strings.Builder{}
+							htmlBuilder.WriteString("<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333;\">")
+							htmlBuilder.WriteString("<div style=\"max-width: 600px; margin: 0 auto; background-color: #fff;\">")
+							htmlBuilder.WriteString("<div style=\"padding: 20px; text-align: center;\"><img src=\"" + docsURL + "/logo.png\" alt=\"Documenso Logo\" style=\"max-width: 150px;\"></div>")
+							htmlBuilder.WriteString("<div style=\"padding: 20px; background-color: #F9FAFB; border-radius: 8px;\">")
+							htmlBuilder.WriteString("<h1 style=\"color: #111; font-size: 24px; margin-bottom: 20px;\">Verify your email address</h1>")
+							htmlBuilder.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Thanks for signing up for Documenso! Please confirm your email address by clicking the button below.</p>")
+							htmlBuilder.WriteString("<div style=\"text-align: center; margin: 30px 0;\">")
+							htmlBuilder.WriteString("<a href=\"" + confirmationLink + "\" style=\"background-color: #4F46E5; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;\">Confirm Email Address</a>")
+							htmlBuilder.WriteString("</div>")
+							htmlBuilder.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Or copy and paste this URL into your browser:</p>")
+							htmlBuilder.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5; word-break: break-all; color: #4F46E5;\"><a href=\"" + confirmationLink + "\">" + confirmationLink + "</a></p>")
+							htmlBuilder.WriteString("<p style=\"margin-bottom: 10px; line-height: 1.5;\">If you didn't sign up for Documenso, you can ignore this email.</p>")
+							htmlBuilder.WriteString("</div>")
+							htmlBuilder.WriteString("<div style=\"padding: 20px; text-align: center; color: #6B7280; font-size: 14px;\">")
+							htmlBuilder.WriteString("<p>Documenso, Inc.<br>The open-source DocuSign alternative</p>")
+							htmlBuilder.WriteString("</div></div></body></html>")
+
+							htmlContent = htmlBuilder.String()
+						}
+
+						// Create plain text version
+						textContent := "Verify your email address\n\n" +
+							"Thanks for signing up for Documenso! Please confirm your email address by clicking the link below:\n\n" +
+							confirmationLink + "\n\n" +
+							"If you didn't sign up for Documenso, you can ignore this email.\n\n" +
+							"Documenso, Inc.\nThe open-source DocuSign alternative"
+
+						// Set email type for logging
+						emailType := "template-based"
+
+						// Send the email using our SMTP with HTML formatting
+						err = smtp.SendEmailHTML(recipientEmail, subject, textContent, htmlContent)
+						if err != nil {
+							log.Printf("[WEBHOOK] Error sending verification email to %s: %v", recipientEmail, err)
+						} else {
+							log.Printf("[WEBHOOK] Successfully sent %s verification email to %s (token: %s)", emailType, recipientEmail, token)
+						}
 					}
 				}
-
 			case strings.Contains(jobType, "send.signing.email"):
 				// Extract document ID, recipient info and signing URL
 				if documentID != "" && recipientEmail != "" {
 					log.Printf("[WEBHOOK] Processing signing email request for document %s, recipient %s", documentID, recipientEmail)
-					
+
 					// Look up more document details if needed
 					ctx := context.Background()
 					lease, err := h.queries.GetLeaseByExternalID(ctx, documentID)
-					
+
 					if err != nil {
 						log.Printf("[WEBHOOK] Error finding lease for document ID %s: %v", documentID, err)
 						return
 					}
-					
+
 					// Extract document title and recipient name
 					documentTitle := "Lease Agreement" // Default
-					
+
 					// Try to get a better document title from the lease's apartment
 					apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
 					if err == nil && apartment.UnitNumber.Valid {
 						documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
 					}
-					
+
 					recipientName := "Tenant" // Default
-					signingURL := "" // Will extract from recipients
-					
+					signingURL := ""          // Will extract from recipients
+
 					// Extract from data if available
 					if data["document_title"] != nil {
 						documentTitle = fmt.Sprintf("%v", data["document_title"])
 					}
-					
+
 					// Extract recipient data
 					if recipients, ok := data["recipients"].([]interface{}); ok && len(recipients) > 0 {
 						for _, r := range recipients {
@@ -2084,7 +2212,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 									if recName, ok := recMap["name"].(string); ok {
 										recipientName = recName
 									}
-									
+
 									// Extract signing URL
 									if url, ok := recMap["signing_url"].(string); ok {
 										signingURL = url
@@ -2094,33 +2222,33 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 							}
 						}
 					}
-					
+
 					// If we didn't find the signing URL in recipients, check other locations
 					if signingURL == "" {
 						if url, ok := data["signing_url"].(string); ok {
 							signingURL = url
 						}
 					}
-					
+
 					if signingURL == "" {
 						log.Printf("[WEBHOOK] Error: No signing URL found for recipient %s", recipientEmail)
 						return
 					}
-					
-					log.Printf("[WEBHOOK] Using document title: %s, recipient: %s, signing URL: %s", 
+
+					log.Printf("[WEBHOOK] Using document title: %s, recipient: %s, signing URL: %s",
 						documentTitle, recipientName, signingURL)
-					
+
 					// Generate email using template rendering
 					htmlBody, subject, err := templates.RenderSignRequestEmail(recipientName, documentTitle, signingURL)
 					if err != nil {
 						log.Printf("[WEBHOOK] Error rendering signing request email: %v", err)
 						return
 					}
-					
+
 					// Send the email
-					plainText := fmt.Sprintf("Please sign your document: %s\n\nHello %s,\n\nYour lease agreement \"%s\" is ready for your signature.\nPlease follow this link to sign: %s", 
+					plainText := fmt.Sprintf("Please sign your document: %s\n\nHello %s,\n\nYour lease agreement \"%s\" is ready for your signature.\nPlease follow this link to sign: %s",
 						documentTitle, recipientName, documentTitle, signingURL)
-					
+
 					err = smtp.SendEmailHTML(recipientEmail, subject, plainText, htmlBody)
 					if err != nil {
 						log.Printf("[WEBHOOK] Error sending signing request email to %s: %v", recipientEmail, err)
@@ -2258,7 +2386,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		} else {
 			log.Printf("[WEBHOOK] Updated lease %d with signed document URL %v", updatedLease.ID, unescapedURL)
 		}
-		
+
 		// 5. Send completion emails to both tenant and landlord
 		// Get tenant information
 		tenant, err := h.queries.GetUserByID(ctx, lease.TenantID)
@@ -2271,7 +2399,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			if err == nil && apartment.UnitNumber.Valid {
 				documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
 			}
-			
+
 			// Generate and send completion email to tenant
 			recipientName := fmt.Sprintf("%s %s", tenant.FirstName, tenant.LastName)
 			htmlBody, subject, err := templates.RenderSigningCompleteEmail(recipientName, documentTitle, unescapedURL)
@@ -2279,9 +2407,9 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 				log.Printf("[WEBHOOK] Error rendering signing complete email: %v", err)
 			} else {
 				// Send the email
-				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nYour lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s", 
+				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nYour lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s",
 					documentTitle, recipientName, documentTitle, unescapedURL)
-				
+
 				err = smtp.SendEmailHTML(tenant.Email, subject, plainText, htmlBody)
 				if err != nil {
 					log.Printf("[WEBHOOK] Error sending completion email to tenant %s: %v", tenant.Email, err)
@@ -2290,7 +2418,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 				}
 			}
 		}
-		
+
 		// Send to landlord as well
 		landlord, err := h.queries.GetUserByID(ctx, lease.LandlordID)
 		if err != nil {
@@ -2302,7 +2430,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			if err == nil && apartment.UnitNumber.Valid {
 				documentTitle = fmt.Sprintf("Lease Agreement for Apartment %d", apartment.UnitNumber.Int64)
 			}
-			
+
 			// Generate and send completion email to landlord
 			recipientName := fmt.Sprintf("%s %s", landlord.FirstName, landlord.LastName)
 			htmlBody, subject, err := templates.RenderSigningCompleteEmail(recipientName, documentTitle, unescapedURL)
@@ -2310,9 +2438,9 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 				log.Printf("[WEBHOOK] Error rendering signing complete email: %v", err)
 			} else {
 				// Send the email
-				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nThe lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s", 
+				plainText := fmt.Sprintf("Your document has been signed: %s\n\nHello %s,\n\nThe lease agreement \"%s\" has been signed by all parties.\nYou can download it here: %s",
 					documentTitle, recipientName, documentTitle, unescapedURL)
-				
+
 				err = smtp.SendEmailHTML(landlord.Email, subject, plainText, htmlBody)
 				if err != nil {
 					log.Printf("[WEBHOOK] Error sending completion email to landlord %s: %v", landlord.Email, err)

@@ -882,8 +882,14 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 			usersSeedingMutex.Unlock()
 		}()
 
-		cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
+		// Use the newer seed_users_with_clerk script instead of the outdated seedusers script
+		cmd := exec.Command("go", "run", 
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/seed_users_with_clerk/main.go",
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/seed_users_with_clerk/seed_users.go")
 		cmd.Dir = "/app" // ECS container working directory
+		
+		// Set SCRIPT_MODE=true to ensure proper operation in non-interactive context
+		cmd.Env = append(os.Environ(), "SCRIPT_MODE=true")
 		output, err := cmd.CombinedOutput()
 
 		if err != nil {
@@ -900,13 +906,46 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Println("[SEED_USERS] Seeding complete successfully")
+		log.Println("[SEED_USERS] User seeding completed successfully")
+		
+		// After user seeding completes, automatically run data seeding
+		log.Println("[SEED_USERS] Starting automatic data seeding for work orders and complaints")
+		
+		dataSeedingMutex.Lock()
+		dataSeedingState.InProgress = true
+		dataSeedingState.LastError = ""
+		dataSeedingState.StartedAt = time.Now().Format(time.RFC3339)
+		dataSeedingMutex.Unlock()
+		
+		// Run the data seeding process
+		dataCmd := exec.Command("go", "run", 
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/main.go",
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/complaintsAndWork.go")
+		dataCmd.Dir = "/app"
+		dataCmd.Env = append(os.Environ(), "SCRIPT_MODE=true")
+		dataOutput, dataErr := dataCmd.CombinedOutput()
+		
+		dataSeedingMutex.Lock()
+		dataSeedingState.InProgress = false
+		dataSeedingState.LastComplete = time.Now().Format(time.RFC3339)
+		
+		if dataErr != nil {
+			dataErrMsg := dataErr.Error()
+			if len(dataOutput) > 0 {
+				dataErrMsg += ": " + string(dataOutput)
+			}
+			log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", dataErr, string(dataOutput))
+			dataSeedingState.LastError = dataErrMsg
+		} else {
+			log.Println("[SEED_DATA] Data seeding completed successfully")
+		}
+		dataSeedingMutex.Unlock()
 	}()
 
 	// Return immediately with a success message
 	resp := map[string]string{
 		"status":  "started",
-		"message": "User seeding process started",
+		"message": "User and data seeding process started",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -953,7 +992,9 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 			dataSeedingMutex.Unlock()
 		}()
 
-		cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
+		cmd := exec.Command("go", "run", 
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/main.go",
+			"/go/src/github.com/careecodes/RentDaddy/scripts/cmd/complaintswork/complaintsAndWork.go")
 		cmd.Dir = "/app"
 		output, err := cmd.CombinedOutput()
 

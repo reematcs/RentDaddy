@@ -57,13 +57,15 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.Logger)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"*"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		// Specify exact origins instead of wildcard
+		AllowedOrigins: []string{"https://app.curiousdev.net", "http://localhost:5173"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		// Add more headers if needed by your frontend
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"},
+		ExposedHeaders: []string{"Link"},
+		// Set this to true if your frontend needs to send credentials
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
 	// // Added to make this work for testing.
 	// r.Use(clerkhttp.WithHeaderAuthorization())
@@ -88,6 +90,7 @@ func main() {
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+	buildingHandler := handlers.NewBuildingHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
@@ -96,7 +99,7 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
-	
+
 	// Cron job endpoints
 	r.Route("/cron", func(r chi.Router) {
 		r.Use(middleware.CronAuthMiddleware) // Apply cron auth middleware
@@ -192,6 +195,13 @@ func main() {
 				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
 			// End of Apartment Handlers
+
+			// Buildings handlers
+			r.Route("/buildings", func(r chi.Router) {
+				r.Route("/{id}", func(r chi.Router) {
+					r.Put("/", buildingHandler.UpdateBuildingHandler)
+				})
+			})
 
 			// Complaint
 			r.Route("/complaints", func(r chi.Router) {
