@@ -57,6 +57,10 @@ if command -v go >/dev/null 2>&1; then
   mkdir -p $GOPATH/src/github.com/careecodes
   ln -sf /app $GOPATH/src/github.com/careecodes/RentDaddy
   
+  # Ensure the vendor directory permissions are correct
+  echo "Ensuring vendor directory permissions..."
+  chmod -R 755 /app/vendor 2>/dev/null || true
+  
   # Install necessary packages for scripts
   echo "Installing dependencies for scripts..."
   go mod download github.com/bxcodec/faker/v4

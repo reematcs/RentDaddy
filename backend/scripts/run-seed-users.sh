@@ -65,8 +65,25 @@ log "Using CLERK_SECRET_KEY from environment"
 log "Running go mod vendor to ensure dependencies are available..."
 go mod vendor
 
-# Run the program with vendor directory
+# Fix permissions on vendor directory
+log "Fixing permissions on vendor directory..."
+chmod -R 755 vendor
+
+# Ensure the internal packages are directly accessible
+log "Ensuring internal packages are directly accessible..."
+mkdir -p vendor/github.com/careecodes/RentDaddy/internal/
+if [ ! -d "vendor/github.com/careecodes/RentDaddy/internal/db" ]; then
+  log "Copying internal/db to vendor directory..."
+  cp -r internal/db vendor/github.com/careecodes/RentDaddy/internal/
+fi
+
+if [ ! -d "vendor/github.com/careecodes/RentDaddy/internal/utils" ]; then
+  log "Copying internal/utils to vendor directory..."
+  cp -r internal/utils vendor/github.com/careecodes/RentDaddy/internal/
+fi
+
+# Run the program with vendor directory and path correctly set
 log "Executing $PROGRAM_NAME..."
-SCRIPT_MODE=true GO111MODULE=on go run -mod=vendor $SOURCE_FILES
+SCRIPT_MODE=true GO111MODULE=on GOFLAGS="-mod=vendor" go run $SOURCE_FILES
 
 log "$PROGRAM_NAME program completed"
