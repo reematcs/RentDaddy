@@ -753,13 +753,22 @@ func forwardJobToBackend(ctx context.Context, client *http.Client, webhookURL, w
 			"raw_data": string(payload),
 		}
 	}
+	
+	// Map job names to standardized job IDs
+	jobID := mapJobNameToID(jobType)
+	
 	// Create a new payload with additional context
 	enrichedPayload := map[string]interface{}{
-		"event":     jobType,           // Use job type as event name
-		"data":      originalPayload,   // Original payload as data
-		"job_type":  jobType,           // Add explicit job type field
-		"timestamp": time.Now().Unix(), // Add processing timestamp
+		"event":            jobID,             // Use standardized job ID as the event name
+		"data":             originalPayload,   // Original payload as data
+		"job":              jobID,             // Use standardized job ID
+		"job_type":         jobID,             // Use standardized job ID  
+		"job_id":           jobID,             // Add standardized job ID
+		"job_definition_id": jobID,            // Add job definition ID (same as job ID)
+		"original_job_name": jobType,          // Keep original job name for reference
+		"timestamp":        time.Now().Unix(), // Add processing timestamp
 	}
+	
 	// Handle document.completed payloads - make sure to include document ID
 	// directly in the enriched payload since it will be accessed in the webhook handler
 	if strings.Contains(jobType, "document.completed") {
@@ -768,13 +777,15 @@ func forwardJobToBackend(ctx context.Context, client *http.Client, webhookURL, w
 			enrichedPayload["documentId"] = docID
 		}
 	}
+	
 	// Marshal the enriched payload
 	enrichedPayloadBytes, err := json.Marshal(enrichedPayload)
 	if err != nil {
 		log.Printf("Error creating enriched payload: %v", err)
 		return false
 	}
-	log.Printf("Forwarding %s job to %s", jobType, webhookURL)
+	log.Printf("Forwarding job %s (mapped to ID: %s) to %s with event=%s job_type=%s", 
+		jobType, jobID, webhookURL, enrichedPayload["event"], enrichedPayload["job_type"])
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewReader(enrichedPayloadBytes))
 	if err != nil {
@@ -783,7 +794,9 @@ func forwardJobToBackend(ctx context.Context, client *http.Client, webhookURL, w
 	}
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Documenso-Job-Type", jobType) // Add job type header
+	req.Header.Set("X-Documenso-Job-Type", jobType)       // Add job type header
+	req.Header.Set("X-Documenso-Job-ID", jobID)           // Add job ID header
+	req.Header.Set("X-Documenso-Job-Definition-ID", jobID) // Add job definition ID header
 	if webhookSecret != "" {
 		// Use the correct header name that the backend expects: X-Documenso-Secret
 		req.Header.Set("X-Documenso-Secret", webhookSecret)
@@ -870,6 +883,49 @@ func extractDocumentID(obj map[string]interface{}) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// mapJobNameToID converts human-readable job names to standardized job IDs
+// These IDs match the constants defined in the Documenso codebase
+func mapJobNameToID(jobName string) string {
+	// Map of known job types to their standardized IDs
+	jobIDMap := map[string]string{
+		"Send Confirmation Email":         "send.signup.confirmation.email",
+		"send.signup.confirmation.email":  "send.signup.confirmation.email",
+		"signup.confirmation":             "send.signup.confirmation.email",
+		"confirmation.email":              "send.signup.confirmation.email",
+		"send.signup.email":               "send.signup.email",
+		"send.signing.email":              "send.signing.email",
+		"document.signed":                 "document.signed",
+		"document.completed":              "document.completed",
+		"send.recipient.signed.email":     "send.recipient.signed.email",
+		"send.document.completed.email":   "send.document.completed.email",
+	}
+	
+	// First check for exact match
+	if id, ok := jobIDMap[jobName]; ok {
+		return id
+	}
+	
+	// If no exact match, check for partial match
+	for name, id := range jobIDMap {
+		if strings.Contains(strings.ToLower(jobName), strings.ToLower(name)) {
+			return id
+		}
+	}
+	
+	// If no match found, use best guess based on content
+	if strings.Contains(strings.ToLower(jobName), "confirmation") || 
+	   strings.Contains(strings.ToLower(jobName), "verify") {
+		return "send.signup.confirmation.email"
+	} else if strings.Contains(strings.ToLower(jobName), "sign") {
+		return "send.signing.email"
+	} else if strings.Contains(strings.ToLower(jobName), "complet") {
+		return "document.completed"
+	}
+	
+	// Fallback - return original name but in ID format
+	return strings.ToLower(strings.ReplaceAll(jobName, " ", "."))
 }
 
 // Function to look up verification tokens by email
