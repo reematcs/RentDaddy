@@ -5,6 +5,7 @@ import { CardComponent } from '../components/reusableComponents/CardComponent';
 import ButtonComponent from '../components/reusableComponents/ButtonComponent';
 import { useAuth } from '@clerk/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { SERVER_API_URL } from '../utils/apiConfig';
 
 // Define UI state types
 interface LeaseCardState {
@@ -18,8 +19,7 @@ const LeaseCard = () => {
     const [isLeaseModalVisible, setIsLeaseModalVisible] = useState(false);
     const [leaseDocument, setLeaseDocument] = useState<Blob | null>(null);
     const { userId, getToken } = useAuth();
-    const serverUrl = import.meta.env.VITE_SERVER_URL;
-    const absoluteServerUrl = `${serverUrl}`;
+    const absoluteServerUrl = SERVER_API_URL;
 
     // UI state management
     const [uiState, setUiState] = useState<LeaseCardState>({

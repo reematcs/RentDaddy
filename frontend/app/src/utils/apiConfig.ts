@@ -70,8 +70,10 @@ export const getApiUrl = (path: string): string => {
  * - Uses VITE_BACKEND_URL in production
  */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://api.curiousdev.net';
+// Development URL with fallback
+const DEV_URL = SERVER_URL || 'http://localhost:8080';
 // Remove trailing slash if present to properly handle path concatenation
-export const SERVER_API_URL = (MODE === 'development' ? SERVER_URL : BACKEND_URL).replace(/\/$/, '');
+export const SERVER_API_URL = (MODE === 'development' && SERVER_URL) ? DEV_URL : BACKEND_URL.replace(/\/$/, '');
 
 // Debug the final SERVER_API_URL
 console.log('Final SERVER_API_URL:', SERVER_API_URL);

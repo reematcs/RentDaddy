@@ -13,9 +13,9 @@ import { useAuth } from "@clerk/clerk-react";
 import { generateAccessCode } from "../lib/utils";
 import { toast } from "sonner";
 import { Parking } from "../types/types";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const absoluteServerUrl = SERVER_API_URL;
 
 // interface Locker {
 //     id: number;

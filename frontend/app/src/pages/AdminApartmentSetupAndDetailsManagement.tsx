@@ -7,9 +7,9 @@ import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useAuth } from "@clerk/clerk-react";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const absoluteServerUrl = SERVER_API_URL;
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
 // The user can add multiple locations
@@ -125,12 +125,37 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     const { mutate: editLocations } = useMutation({
         mutationFn: async (buildingData: Building) => {
             console.log(editBuildingObj, "editBuildingObj in tanstack mutation");
-            // TODO: James, when you finish the backend route, change the variable endpoint to the right one.
-            const res = await fetch(`${absoluteServerUrl}/admins/buildings/{id}`, {
+            // Use the admin/setup endpoint since there's no dedicated building endpoint
+            const token = await getToken();
+
+            // Format request to use the existing admin/setup endpoint
+            // We don't know the actual parking values, so use values from the building object if available
+            const setupData = {
+                buildings: [buildingData],
+                parkingTotal: adminSetupObject.parkingTotal || 0,
+                perUserParking: adminSetupObject.perUserParking || 0,
+                lockerCount: 0  // No new lockers needed for an update
+            };
+
+            const res = await fetch(`${absoluteServerUrl}/admin/setup`, {
+                method: "POST",  // Admin setup uses POST method
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(setupData),
+            });
+
+            /* 
+            const res = await fetch(`${absoluteServerUrl}/admin/buildings/{id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${await getToken()}`,
+                },
                 body: JSON.stringify(buildingData),
             });
+            */
 
             if (!res.ok) {
                 throw new Error("Failed to update location");

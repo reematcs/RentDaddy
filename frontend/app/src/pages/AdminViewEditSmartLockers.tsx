@@ -10,9 +10,9 @@ import { Button, Dropdown, Form, InputNumber, MenuProps, Modal, Select } from "a
 import { generateAccessCode } from "../lib/utils";
 import { TableRowSelection } from "antd/es/table/interface";
 import { toast } from "sonner";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const absoluteServerUrl = SERVER_API_URL;
 
 type Locker = {
     id: number;
@@ -60,7 +60,7 @@ const AdminViewEditSmartLockers = () => {
     });
 
     // Query for fetching lockers
-    const { data: lockers } = useQuery<Locker[]>({
+    const { data: lockers, isLoading: isLoadingLockers } = useQuery<Locker[]>({
         queryKey: ["lockers"],
         queryFn: async () => {
             // console.log("Fetching lockers...");

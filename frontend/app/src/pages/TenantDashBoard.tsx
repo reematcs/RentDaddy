@@ -1,20 +1,21 @@
 import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
-import ModalComponent from "../components/ModalComponent";
+import LeaseCardComponent from "../components/LeaseCardComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
+
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
 import { toast } from "sonner";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const absoluteServerUrl = SERVER_API_URL;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
@@ -202,20 +203,7 @@ export const TenantDashBoard = () => {
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <CardComponent
-                    title="Lease"
-                    description="View or Resign your lease"
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View Lease"
-                            content="Lease should go here"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
-                    }
-                />
+                <LeaseCardComponent />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}
@@ -237,7 +225,7 @@ export const TenantDashBoard = () => {
                 title="Action Required: Lease Signing"
                 open={isSigningModalVisible}
                 onOk={handleOk}
-                onCancel={() => {}} // Empty function prevents closing
+                onCancel={() => { }} // Empty function prevents closing
                 maskClosable={false} // Prevents closing when clicking outside
                 keyboard={false} // Prevents closing with ESC key
                 closable={false} // Removes the X button
@@ -403,7 +391,7 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
                 className="p-3 flex-wrap-row"
                 title={<h3>Work Orders</h3>}
                 open={internalModalOpen}
-                onOk={() => {}}
+                onOk={() => { }}
                 onCancel={handleCancel}
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>

@@ -8,10 +8,9 @@ import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import dayjs from "dayjs";
 import { toast } from "sonner";
 
-const isDevelopment = import.meta.env.MODE === 'development';
-const absoluteServerUrl = isDevelopment
-    ? import.meta.env.VITE_SERVER_URL
-    : '/api';
+import { SERVER_API_URL } from "../utils/apiConfig";
+
+const absoluteServerUrl = SERVER_API_URL;
 
 export default function WorkOrders() {
     const { getToken } = useAuth();

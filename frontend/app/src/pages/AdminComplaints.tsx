@@ -13,9 +13,9 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { toast } from "sonner";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const absoluteServerUrl = SERVER_API_URL;
 
 export default function AdminComplaints() {
     const [selectedItem, setSelectedItem] = useState<ComplaintsData | null>(null);
