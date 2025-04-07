@@ -364,7 +364,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
       environment = [
         # API configuration
-        { name = "VITE_BACKEND_URL", value = "https://api.curiousdev.net" },
+        { name = "VITE_SERVER_URL", value = "https://api.curiousdev.net" },
         # Frontend Configuration
         { name = "FRONTEND_PORT", value = "5173" },
         # Optional Documenso integration

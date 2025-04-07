@@ -81,10 +81,10 @@ locals {
   app_domain          = "${var.app_subdomain}.${var.domain_name}"
   api_domain          = "${var.api_subdomain}.${var.domain_name}"
   docs_domain         = "${var.docs_subdomain}.${var.domain_name}"
-  ecr_backend_image   = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/backend:latest"
-  ecr_frontend_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/frontend:prod"
+  ecr_backend_image   = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/backend"
+  ecr_frontend_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/frontend"
   ecr_postgres_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy-main:postgres-15-amd64"
-  ecr_docworker_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/documenso-worker:latest"
+  ecr_docworker_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/documenso-worker"
 }
 
 # VPC and Networking
@@ -379,12 +379,12 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-  cpu                      = "512" 
-  memory                   = "2048"
+  cpu                      = "1024"
+  memory                   = "3072"
   container_definitions = jsonencode([
     {
       name      = "backend"
-      image     = local.ecr_backend_image
+      image     = "${local.ecr_backend_image}:latest"
       essential = true
       links     = ["main-postgres"],
       environment = [
@@ -403,7 +403,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "SMTP_PORT", value = "587" },
         { name = "SMTP_ENDPOINT_ADDRESS", value = "email-smtp.${var.aws_region}.amazonaws.com" },
         { name = "SMTP_TLS_MODE", value = "starttls" },
-        { name = "SMTP_FROM", value = "noreply@${var.domain_name}" },
+        { name = "SMTP_FROM", value = "ezra@gitfor.ge" },
         { name = "SMTP_TEST_EMAIL", value = "admin@${var.domain_name}" },
         # Documenso Integration
         { name = "DOCUMENSO_HOST", value = "documenso" },
@@ -416,7 +416,9 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "ADMIN_EMAIL", value = "admin@${var.domain_name}" },
         # Application Environment
         { name = "ENV", value = "production" },
-        { name = "DEBUG_MODE", value = var.debug_mode }
+        { name = "DEBUG_MODE", value = var.debug_mode },
+        # Force redeployment
+        { name = "FORCE_REDEPLOY", value = var.deploy_version }
       ]
       portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }]
       secrets = [
@@ -444,12 +446,19 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           awslogs-stream-prefix = "backend"
         }
       }
-      memoryReservation = 768,
-      memory            = 768,
+      memoryReservation = 1024,
+      memory            = 1536,
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+        interval    = 30
+        timeout     = 10  # Increased timeout
+        retries     = 5   # Increased retry attempts
+        startPeriod = 120 # Doubled start period to allow for proper initialization
+      }
     },
     {
       name         = "frontend"
-      image        = local.ecr_frontend_image
+      image        = "${local.ecr_frontend_image}:prod"
       essential    = true
       portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
       environment = [
@@ -462,7 +471,9 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         # Application Environment
         { name = "VITE_ENV", value = "production" },
         { name = "ENV", value = "production" },
-        { name = "DEBUG_MODE", value = "false" }
+        { name = "DEBUG_MODE", value = "false" },
+        # Force redeployment
+        { name = "FORCE_REDEPLOY", value = var.deploy_version }
       ]
       secrets = [
         # Clerk Authentication (Frontend only needs publishable key)
@@ -476,8 +487,15 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           awslogs-stream-prefix = "frontend"
         }
       }
-      memoryReservation = 256,
-      memory            = 512,
+      memoryReservation = 512,
+      memory            = 768,
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:5173/healthz || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
     },
     {
       name      = "main-postgres"
@@ -514,8 +532,15 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           "awslogs-stream-prefix" = "postgres"
         }
       }
-      memoryReservation = 256,
-      memory            = 512,
+      memoryReservation = 512,
+      memory            = 768,
+      healthCheck = {
+        command     = ["CMD-SHELL", "pg_isready -U appuser || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
     },
   ])
 
@@ -541,8 +566,8 @@ resource "aws_ecs_task_definition" "documenso" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
-  cpu    = "384"
-  memory = "1024"
+  cpu    = "768"
+  memory = "2048"
 
   container_definitions = jsonencode([
     {
@@ -579,7 +604,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.${var.aws_region}.amazonaws.com" },
         { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
         { name = "NEXT_PRIVATE_SMTP_IGNORE_TLS", value = "false" },
-        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "noreply@${var.domain_name}" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "ezra@gitfor.ge" },
         { name = "NEXT_PRIVATE_SMTP_APIKEY_USER", value = "" },
         { name = "NEXT_PRIVATE_SMTP_APIKEY", value = "" },
         { name = "NEXT_PRIVATE_SMTP_SERVICE", value = "" },
@@ -608,6 +633,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
         { name = "DATABASE_HOST", value = "documenso-postgres" },
         { name = "DATABASE_PORT", value = "5432" },
+        { name = "FORCE_REDEPLOY", value = var.deploy_version }
       ]
       secrets = [
         { name = "POSTGRES_PASSWORD", valueFrom = "${var.documenso_secret_arn}:POSTGRES_PASSWORD::" },
@@ -626,6 +652,15 @@ resource "aws_ecs_task_definition" "documenso" {
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "documenso"
         }
+      }
+      memoryReservation = 768,
+      memory            = 1024,
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+        interval    = 60
+        timeout     = 10
+        retries     = 3
+        startPeriod = 120
       }
     },
     {
@@ -671,10 +706,12 @@ resource "aws_ecs_task_definition" "documenso" {
           "awslogs-stream-prefix" = "postgres"
         }
       }
+      memoryReservation = 512,
+      memory            = 768,
     },
     {
       name      = "documenso-worker"
-      image     = local.ecr_docworker_image
+      image     = "${local.ecr_docworker_image}:latest"
       essential = true
       links     = ["documenso-postgres", "documenso"],
       dependsOn = [
@@ -727,6 +764,10 @@ resource "aws_ecs_task_definition" "documenso" {
         {
           name  = "DEBUG"
           value = "true"
+        },
+        {
+          name  = "FORCE_REDEPLOY"
+          value = var.deploy_version
         }
       ]
       secrets = [
@@ -740,6 +781,15 @@ resource "aws_ecs_task_definition" "documenso" {
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "worker"
         }
+      }
+      memoryReservation = 256,
+      memory            = 512,
+      healthCheck = {
+        command     = ["CMD-SHELL", "test -f /app/documenso-worker || exit 1"]
+        interval    = 60
+        timeout     = 10
+        retries     = 3
+        startPeriod = 120
       }
     }
   ])
@@ -769,7 +819,7 @@ resource "aws_ecs_service" "backend_with_frontend" {
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.backend_with_frontend.arn
   desired_count                      = 1
-  health_check_grace_period_seconds  = 30
+  health_check_grace_period_seconds  = 180
   enable_execute_command             = true
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
@@ -785,7 +835,7 @@ resource "aws_ecs_service" "backend_with_frontend" {
     container_port   = 8080
   }
 
-  # Place app service in availability zone a (same as documenso)
+  # Keep app service in availability zone a to ensure separation from documenso
   placement_constraints {
     type       = "memberOf"
     expression = "attribute:ecs.availability-zone == ${var.aws_region}a"
@@ -801,7 +851,7 @@ resource "aws_ecs_service" "documenso" {
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.documenso.arn
   desired_count                      = 1
-  health_check_grace_period_seconds  = 120
+  health_check_grace_period_seconds  = 300
   enable_execute_command             = true
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
@@ -811,7 +861,13 @@ resource "aws_ecs_service" "documenso" {
     field = "memory"
   }
 
-  # Place documenso service in availability zone b
+  load_balancer {
+    target_group_arn = aws_lb_target_group.documenso.arn
+    container_name   = "documenso"
+    container_port   = 3000
+  }
+
+  # Keep documenso service in availability zone b to ensure separation from main app
   placement_constraints {
     type       = "memberOf"
     expression = "attribute:ecs.availability-zone == ${var.aws_region}b"
@@ -840,6 +896,30 @@ data "aws_instances" "ecs_instances" {
   depends_on = [
     aws_autoscaling_group.ecs_asg
   ]
+}
+
+# Get instance in availability zone A (for main app)
+data "aws_instances" "zone_a_instances" {
+  filter {
+    name   = "availability-zone"
+    values = ["${var.aws_region}a"]
+  }
+  
+  filter {
+    name   = "tag:AmazonECSManaged"
+    values = [""]
+  }
+
+  depends_on = [
+    aws_autoscaling_group.ecs_asg
+  ]
+}
+
+# Associate EIP with the instance in availability zone A
+resource "aws_eip_association" "main_app_eip_assoc" {
+  count         = length(data.aws_instances.zone_a_instances.ids) > 0 ? 1 : 0
+  allocation_id = aws_eip.main_app_eip.id
+  instance_id   = data.aws_instances.zone_a_instances.ids[0]
 }
 
 # Route 53 Configuration
@@ -1127,4 +1207,47 @@ output "api_url" {
 output "docs_url" {
   description = "URL for Documenso"
   value       = "https://${local.docs_domain}"
+}
+
+
+
+
+resource "aws_route53_record" "clerk_api" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clerk.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["frontend-api.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_accounts" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "accounts.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["accounts.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_dkim1" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clk._domainkey.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim1.fpd2ed3v56gb.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_dkim2" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clk2._domainkey.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim2.fpd2ed3v56gb.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_mail" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clkmail.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["mail.fpd2ed3v56gb.clerk.services"]
 }
