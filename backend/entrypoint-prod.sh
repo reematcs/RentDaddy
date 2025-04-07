@@ -61,6 +61,18 @@ if command -v go >/dev/null 2>&1; then
   echo "Ensuring vendor directory permissions..."
   chmod -R 755 /app/vendor 2>/dev/null || true
   
+  # Copy internal packages to vendor directory to ensure they're available for scripts
+  echo "Setting up internal packages in vendor directory..."
+  mkdir -p /app/vendor/github.com/careecodes/RentDaddy/internal/
+  if [ ! -d "/app/vendor/github.com/careecodes/RentDaddy/internal/db" ]; then
+    echo "Copying internal/db to vendor directory..."
+    cp -r /app/internal/db /app/vendor/github.com/careecodes/RentDaddy/internal/
+  fi
+  if [ ! -d "/app/vendor/github.com/careecodes/RentDaddy/internal/utils" ]; then
+    echo "Copying internal/utils to vendor directory..."
+    cp -r /app/internal/utils /app/vendor/github.com/careecodes/RentDaddy/internal/
+  fi
+  
   # Install necessary packages for scripts
   echo "Installing dependencies for scripts..."
   go mod download github.com/bxcodec/faker/v4
