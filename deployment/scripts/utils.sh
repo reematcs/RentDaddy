@@ -42,8 +42,26 @@ load_env() {
       # Skip comments and empty lines
       [[ "$line" =~ ^[[:space:]]*# || -z "$line" ]] && continue
       
-      # Export the variable
-      export "$line"
+      # Extract key and value (handle quoted values correctly)
+      if [[ "$line" =~ ^[[:space:]]*([A-Za-z0-9_]+)[[:space:]]*=[[:space:]]*(.*) ]]; then
+        local key="${BASH_REMATCH[1]}"
+        local raw_value="${BASH_REMATCH[2]}"
+        
+        # Remove quotes if present
+        if [[ "$raw_value" =~ ^\"(.*)\"$ || "$raw_value" =~ ^\'(.*)\'$ ]]; then
+          value="${BASH_REMATCH[1]}"
+        else
+          value="$raw_value"
+        fi
+        
+        # Export the variable
+        log "Setting $key=${value:0:3}..."
+        export "$key=$value"
+      else
+        # If line doesn't match pattern, try exporting it directly (legacy support)
+        log "Direct export: ${line:0:10}..."
+        export "$line"
+      fi
     done < "$env_file"
     
     set +a

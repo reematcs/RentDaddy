@@ -95,6 +95,28 @@ Several scripts have been recently improved:
 | `cmd/seed_users_data/` | Basic seed user data |
 | `cmd/seed_users_with_clerk/` | Seed users with Clerk authentication |
 
+## Main Project Scripts (`/scripts/`)
+
+| Script | Description | Usage |
+|--------|-------------|-------|
+| `setup.sh` | Initial project setup | `./setup.sh` |
+| `setup-local-documenso.sh` | Set up local Documenso instance | `./setup-local-documenso.sh` |
+| `test-production.sh` | Test production builds locally | `./test-production.sh [--clean] [--rebuild] [--log] [--symlinks]` |
+
+The `test-production.sh` script is particularly useful for validating production container changes locally before deploying to AWS. It includes a special `--symlinks` option to quickly test just the symlink functionality without a full build.
+
+Examples:
+```bash
+# Quick test of just the symlink functionality
+./scripts/test-production.sh --symlinks
+
+# Full build and logs
+./scripts/test-production.sh --rebuild --log
+
+# Clean environment and rebuild
+./scripts/test-production.sh --clean --rebuild
+```
+
 ## Best Practices for Script Development
 
 1. **Consistency**:
@@ -122,3 +144,8 @@ Several scripts have been recently improved:
    - Test on both macOS and Linux
    - Use conditional logic for OS-specific commands
    - Check for required tools and provide feedback
+
+6. **Local Testing**:
+   - Test production builds locally before pushing to ECR
+   - Isolate specific functionality to test (like symlinks) for quicker iteration
+   - Use architecture-specific builds for faster testing

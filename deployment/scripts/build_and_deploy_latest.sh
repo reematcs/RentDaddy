@@ -1,404 +1,190 @@
 #!/bin/bash
-#
-# Build and deploy RentDaddy Docker images to AWS ECR and force new ECS deployment
-#
-# This script builds the backend, frontend, and/or documenso-worker Docker images
-# and pushes them to Amazon ECR. It can also force a new deployment of the ECS services.
-#
-# Requirements: docker, aws-cli, buildx enabled
-#
 
-# Load utility functions
-source "$(dirname "$0")/utils.sh"
+set -euo pipefail
 
-# Initialize
+# ================================================
+# RentDaddy Build and Deploy Script
+# ================================================
+
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+source "$PROJECT_ROOT/deployment/scripts/utils.sh"
 init_script "RentDaddy Build and Deploy" docker aws
 
-# Find project root directly to avoid capturing banner output
-PROJECT_ROOT=$(find_project_root)
+# === ENV Loading ===
+load_env "$PROJECT_ROOT/backend/.env.production.local"
+load_env "$PROJECT_ROOT/frontend/app/.env.production.local"
 
-# Function to build and push backend image
-build_backend() {
-  local tag="${1:-latest}"
-  log "Building backend with tag: $tag"
-  
-  # Load backend environment variables
-  if [ -f "$PROJECT_ROOT/backend/.env.production.local" ]; then
-    load_env "$PROJECT_ROOT/backend/.env.production.local"
-  else
-    log "Error: Cannot find backend/.env.production.local in expected locations"
-    exit 1
-  fi
-  
-  # Ensure required variables are set
-  if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
-    log "Error: AWS_ACCOUNT_ID and AWS_REGION must be set in backend/.env.production.local"
-    exit 1
-  fi
-  
-  # Authenticate with ECR
-  ecr_login
-  
-  log "Starting backend build..."
-  
-  # Record the start time
-  local start_time=$(date +%s)
-  
-  # Get absolute path to backend directory
-  local backend_dir="$PROJECT_ROOT/backend"
-  log "Using backend directory: $backend_dir"
-  
-  # Build and push backend
-  set +e  # Temporarily disable error exit to capture exit code
-  
-  # Use a separate buildx builder to avoid issues
-  log "Creating dedicated builder for this build..."
-  docker buildx rm backend-builder 2>/dev/null || true
-  docker buildx create --name backend-builder --use --bootstrap || true
-  
-  # Build directly with push but use optimized flags
-  log "Building and pushing to ECR in optimized mode..."
-  docker buildx build \
-    --platform linux/amd64 \
-    --builder backend-builder \
-    --push \
-    --max-concurrent-uploads 10 \
-    --build-arg BUILDKIT_INLINE_CACHE=1 \
-    --progress=plain \
-    -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
-    -f $backend_dir/Dockerfile.prod \
-    $backend_dir | tee "$PROJECT_ROOT/deployment/backend-build.log"
-  
-  local build_exit_code=$?
-  set -e  # Re-enable error exit
-  
-  # Calculate build duration
-  local end_time=$(date +%s)
-  local duration=$((end_time - start_time))
-  
-  if [ $build_exit_code -ne 0 ]; then
-    log "ERROR: Backend build failed after ${duration}s (exit code: $build_exit_code)"
-    log "See $PROJECT_ROOT/deployment/backend-build.log for details"
-    return 1
-  else
-    log "Backend build completed in ${duration}s"
-    log "Backend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag"
-  fi
+# === Validate Required ENV ===
+: "${AWS_ACCOUNT_ID:?Missing AWS_ACCOUNT_ID}"
+: "${AWS_REGION:?Missing AWS_REGION}"
+
+ECR_BASE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+# === Utility ===
+ensure_ecr_repo() {
+  local repo=$1
+  aws ecr describe-repositories --repository-names "$repo" --region "$AWS_REGION" >/dev/null 2>&1 || {
+    log "Creating ECR repository: $repo"
+    aws ecr create-repository --repository-name "$repo" --region "$AWS_REGION"
+  }
 }
 
-# Function to build and push frontend
-build_frontend() {
-  local tag="${1:-prod}"
-  log "Building frontend with tag: $tag"
-  
-  # Load frontend environment variables
-  if [ -f "$PROJECT_ROOT/frontend/app/.env.production.local" ]; then
-    load_env "$PROJECT_ROOT/frontend/app/.env.production.local"
-  else
-    log "Error: Cannot find frontend/app/.env.production.local in expected locations"
-    exit 1
-  fi
-  
-  # Ensure required variables are set
-  if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
-    log "Error: AWS_ACCOUNT_ID and AWS_REGION must be set in frontend/app/.env.production.local"
-    exit 1
-  fi
-  
-  if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ] || [ -z "$VITE_BACKEND_URL" ]; then
-    log "Error: VITE_CLERK_PUBLISHABLE_KEY and VITE_BACKEND_URL must be set in frontend/app/.env.production.local"
-    exit 1
-  fi
-  
-  # Authenticate with ECR
-  ecr_login
-  
-  log "Starting frontend build..."
-  
-  # Record the start time
-  local start_time=$(date +%s)
-  
-  # Get absolute path to frontend directory
-  local frontend_dir="$PROJECT_ROOT/frontend/app"
-  log "Using frontend directory: $frontend_dir"
-  
-  # Build and push frontend
-  set +e  # Temporarily disable error exit to capture exit code
-  
-  # Use a separate buildx builder for frontend
-  log "Creating dedicated builder for frontend build..."
-  docker buildx rm frontend-builder 2>/dev/null || true
-  docker buildx create --name frontend-builder --use --bootstrap || true
-  
-  # Build with optimized flags
-  docker buildx build \
-    --platform linux/amd64 \
-    --builder frontend-builder \
-    --push \
-    --max-concurrent-uploads 10 \
-    --build-arg BUILDKIT_INLINE_CACHE=1 \
-    --progress=plain \
-    --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY" \
-    --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL" \
-    --build-arg VITE_DOCUMENSO_PUBLIC_URL="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.${DOMAIN_NAME:-curiousdev.net}}" \
-    --build-arg VITE_ENV="${VITE_ENV:-production}" \
-    -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag \
-    -f $frontend_dir/Dockerfile.prod \
-    $frontend_dir | tee "$PROJECT_ROOT/deployment/frontend-build.log"
-  
-  local build_exit_code=$?
-  set -e  # Re-enable error exit
-  
-  # Calculate build duration
-  local end_time=$(date +%s)
-  local duration=$((end_time - start_time))
-  
-  if [ $build_exit_code -ne 0 ]; then
-    log "ERROR: Frontend build failed after ${duration}s (exit code: $build_exit_code)"
-    log "See $PROJECT_ROOT/deployment/frontend-build.log for details"
-    return 1
-  else
-    log "Frontend build completed in ${duration}s"
-    log "Frontend image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag"
-  fi
+ecr_login() {
+  log "Logging into ECR..."
+  aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_BASE"
 }
 
-# Function to build and push documenso-worker
-build_worker() {
-  local tag="${1:-latest}"
-  log "Building documenso-worker with tag: $tag"
-  
-  # Remember original directory
-  local original_dir=$(pwd)
-  
-  # Load backend environment variables for AWS credentials
-  load_env "$PROJECT_ROOT/backend/.env.production.local"
-  
-  # Ensure required variables are set
-  if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
-    log "Error: AWS_ACCOUNT_ID and AWS_REGION must be set in backend/.env.production.local"
-    exit 1
-  fi
-  
-  # Make sure we're logged in to ECR
+build_component() {
+  local name=$1
+  local path=$2
+  local dockerfile=$3
+  local tag=$4
+  local full_repo=$5
+
+  log "=== Building $name ==="
+  ensure_ecr_repo "$full_repo"
   ecr_login
-  
-  log "Starting documenso-worker build..."
-  
-  # Record the start time
-  local start_time=$(date +%s)
-  
-  # Check if repository exists, create if not
-  log "Checking if repository exists..."
-  if ! aws ecr describe-repositories --repository-names "rentdaddy/documenso-worker" &>/dev/null; then
-    log "Creating ECR repository rentdaddy/documenso-worker..."
-    aws ecr create-repository --repository-name "rentdaddy/documenso-worker" --image-scanning-configuration scanOnPush=true
+
+  local builder="${name}-builder"
+  docker buildx rm "$builder" >/dev/null 2>&1 || true
+  docker buildx create --name "$builder" --use --bootstrap
+
+  # Base build command
+  local build_cmd=(
+    docker buildx build
+    --platform linux/amd64
+    --builder "$builder"
+    --push
+    --build-arg BUILDKIT_INLINE_CACHE=1
+    --progress=plain
+  )
+
+  # Add component-specific build args
+  if [ "$name" = "frontend" ]; then
+    log "Adding frontend-specific build args..."
+    
+    # Make sure these variables are exported so they're available
+    : "${VITE_CLERK_PUBLISHABLE_KEY:?Missing VITE_CLERK_PUBLISHABLE_KEY}"
+    : "${VITE_BACKEND_URL:?Missing VITE_BACKEND_URL}"
+    
+    # Add frontend-specific build args
+    build_cmd+=(
+      --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY"
+      --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL"
+      --build-arg VITE_ENV="production"
+    )
+    
+    # Add VITE_DOCUMENSO_PUBLIC_URL if it exists
+    if [ -n "${VITE_DOCUMENSO_PUBLIC_URL:-}" ]; then
+      build_cmd+=(--build-arg VITE_DOCUMENSO_PUBLIC_URL="$VITE_DOCUMENSO_PUBLIC_URL")
+    else
+      # Default value if not set
+      build_cmd+=(--build-arg VITE_DOCUMENSO_PUBLIC_URL="https://docs.curiousdev.net")
+    fi
+    
+    log "Frontend build env vars:"
+    log "- VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:0:5}..."
+    log "- VITE_BACKEND_URL: $VITE_BACKEND_URL"
+    log "- VITE_DOCUMENSO_PUBLIC_URL: ${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
+    log "- VITE_ENV: production"
   fi
-  
-  # Find the worker directory using the utility function
-  WORKER_DIR=$(get_worker_dir "$PROJECT_ROOT")
-  if [ $? -ne 0 ] || [ -z "$WORKER_DIR" ]; then
-    log "Error: Could not find documenso-worker directory"
-    exit 1
-  fi
-  
-  log "Using worker directory: $WORKER_DIR"
-  
-  # Build and push worker
-  log "Building Docker image..."
-  set +e  # Temporarily disable error exit to capture exit code
-  
-  # Use a specific builder instance for more control
-  docker buildx rm workerbuilder 2>/dev/null || true
-  docker buildx create --name workerbuilder --use --bootstrap || true
-  
-  # Build with optimized flags
-  docker buildx build \
-    --platform linux/amd64 \
-    --builder workerbuilder \
-    --push \
-    --max-concurrent-uploads 10 \
-    --build-arg BUILDKIT_INLINE_CACHE=1 \
-    --progress=plain \
-    -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag \
-    -f "$WORKER_DIR/Dockerfile" \
-    "$WORKER_DIR" | tee "$PROJECT_ROOT/deployment/worker-build.log"
-  
-  local build_exit_code=$?
-  set -e  # Re-enable error exit
-  
-  # Calculate build duration
-  local end_time=$(date +%s)
-  local duration=$((end_time - start_time))
-  
-  if [ $build_exit_code -ne 0 ]; then
-    log "ERROR: Documenso worker build failed after ${duration}s (exit code: $build_exit_code)"
-    log "See $PROJECT_ROOT/deployment/worker-build.log for details"
-    return 1
-  else
-    log "Documenso worker build completed in ${duration}s"
-    log "Worker image pushed to: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag"
-  fi
-  
-  # Return to original directory
-  cd "$original_dir"
+
+  # Add tag and path to build command
+  build_cmd+=(
+    -t "$ECR_BASE/$full_repo:$tag"
+    -f "$dockerfile"
+    "$path"
+  )
+
+  # Run the build command
+  "${build_cmd[@]}" | tee "$PROJECT_ROOT/deployment/${name}-build.log"
+
+  docker buildx rm "$builder" >/dev/null 2>&1 || true
+
+  log "✅ $name pushed to: $ECR_BASE/$full_repo:$tag"
 }
 
-# Function to force new deployment
-force_deployment() {
-  log "Forcing new deployment of all services..."
-  
-  # Ensure AWS credentials are set
-  if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
-    log "Loading AWS configuration for deployment..."
-    load_aws_config "$PROJECT_ROOT"
-  fi
-  
-  # Create directory to store deployment info
+force_ecs_deploy() {
+  log "Forcing new ECS deployments..."
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local deploy_dir="$PROJECT_ROOT/deployment/simplified_terraform/ecs_deployment_$timestamp"
   mkdir -p "$deploy_dir"
-  
-  # Force new deployment for all services
+
   for svc_arn in $(aws ecs list-services --cluster rentdaddy-cluster --query "serviceArns[]" --output text); do
     local svc_name=$(basename "$svc_arn")
-    log "📦 Forcing new deployment for $svc_name..."
+    log "📦 Forcing deployment: $svc_name"
     aws ecs update-service \
       --cluster rentdaddy-cluster \
       --service "$svc_name" \
       --force-new-deployment \
       > "$deploy_dir/${svc_name}.json"
   done
-  
-  log "All deployments have been initiated. Check AWS ECS console for status."
 }
 
-# Display help
-show_help() {
-  echo "Usage: $0 [OPTIONS]"
-  echo ""
-  echo "Options:"
-  echo "  -b, --backend    Build and push backend image only"
-  echo "  -f, --frontend   Build and push frontend image only"
-  echo "  -w, --worker     Build and push documenso-worker image only"
-  echo "  -a, --all        Build and push all images (default)"
-  echo "  -d, --deploy     Force new deployment after building"
-  echo "  -t, --tag TAG    Specify a custom tag (default: latest for backend/worker, prod for frontend)"
-  echo "  -h, --help       Show this help message"
-  echo ""
-  echo "Example:"
-  echo "  $0 --all --deploy         # Build all and deploy"
-  echo "  $0 --backend --tag v1.2.0 # Build backend only with specific tag"
-  echo "  $0 --worker               # Build documenso-worker only"
-  echo ""
-  echo "Note: This script loads environment variables from:"
-  echo "  - backend/.env.production.local (for backend builds)"
-  echo "  - frontend/app/.env.production.local (for frontend builds)"
-  echo ""
-  echo "Required variables in the environment files:"
-  echo "  - AWS_ACCOUNT_ID: Your AWS account ID"
-  echo "  - AWS_REGION: AWS region (e.g., us-east-2)"
-  echo "  - VITE_CLERK_PUBLISHABLE_KEY: Clerk publishable key (for frontend)"
-  echo "  - VITE_BACKEND_URL: Backend URL (for frontend)"
-}
-
-# Default values
+# === CLI Flags ===
 BUILD_BACKEND=false
 BUILD_FRONTEND=false
 BUILD_WORKER=false
 DEPLOY=false
-BACKEND_TAG="latest"
-FRONTEND_TAG="prod"
-WORKER_TAG="latest"
+TAG_BACKEND="latest"
+TAG_FRONTEND="prod"
+TAG_WORKER="latest"
 
-# Parse command line arguments
 if [ $# -eq 0 ]; then
-  # Default behavior if no args: build all
   BUILD_BACKEND=true
   BUILD_FRONTEND=true
   BUILD_WORKER=true
 else
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -b|--backend)
-        BUILD_BACKEND=true
-        shift
-        ;;
-      -f|--frontend)
-        BUILD_FRONTEND=true
-        shift
-        ;;
-      -w|--worker)
-        BUILD_WORKER=true
-        shift
-        ;;
-      -a|--all)
-        BUILD_BACKEND=true
-        BUILD_FRONTEND=true
-        BUILD_WORKER=true
-        shift
-        ;;
-      -d|--deploy)
-        DEPLOY=true
-        shift
-        ;;
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -b|--backend) BUILD_BACKEND=true; shift ;;
+      -f|--frontend) BUILD_FRONTEND=true; shift ;;
+      -w|--worker) BUILD_WORKER=true; shift ;;
+      -a|--all) BUILD_BACKEND=true; BUILD_FRONTEND=true; BUILD_WORKER=true; shift ;;
+      -d|--deploy) DEPLOY=true; shift ;;
       -t|--tag)
-        BACKEND_TAG="$2"
-        FRONTEND_TAG="$2"
-        WORKER_TAG="$2"
-        shift 2
-        ;;
+        TAG_BACKEND="$2"
+        TAG_FRONTEND="$2"
+        TAG_WORKER="$2"
+        shift 2 ;;
       -h|--help)
-        show_help
-        exit 0
-        ;;
-      *)
-        echo "Unknown option: $1"
-        show_help
-        exit 1
-        ;;
+        echo "Usage: $0 [-b|-f|-w|-a] [-t TAG] [--deploy]"
+        exit 0 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
     esac
   done
 fi
 
-# Track overall build success
+# === Builds ===
 BUILD_SUCCESS=true
 
-# Build the specified components
-if [ "$BUILD_BACKEND" = true ]; then
-  if ! build_backend $BACKEND_TAG; then
-    log "ERROR: Backend build failed"
+$BUILD_BACKEND && {
+  if ! build_component "backend" "$PROJECT_ROOT/backend" "$PROJECT_ROOT/backend/Dockerfile.prod" "$TAG_BACKEND" "rentdaddy/backend"; then
+    log "❌ Backend build failed"
     BUILD_SUCCESS=false
   fi
-fi
+}
 
-if [ "$BUILD_FRONTEND" = true ]; then
-  if ! build_frontend $FRONTEND_TAG; then
-    log "ERROR: Frontend build failed"
+$BUILD_FRONTEND && {
+  if ! build_component "frontend" "$PROJECT_ROOT/frontend/app" "$PROJECT_ROOT/frontend/app/Dockerfile.prod" "$TAG_FRONTEND" "rentdaddy/frontend"; then
+    log "❌ Frontend build failed"
     BUILD_SUCCESS=false
   fi
-fi
+}
 
-if [ "$BUILD_WORKER" = true ]; then
-  if ! build_worker $WORKER_TAG; then
-    log "ERROR: Documenso worker build failed"
+$BUILD_WORKER && {
+  if ! build_component "documenso-worker" "$PROJECT_ROOT/worker/documenso-worker" "$PROJECT_ROOT/worker/documenso-worker/Dockerfile" "$TAG_WORKER" "rentdaddy/documenso-worker"; then
+    log "❌ Worker build failed"
     BUILD_SUCCESS=false
   fi
-fi
+}
 
-# Only proceed with deployment if all builds succeeded and deployment was requested
-if [ "$DEPLOY" = true ]; then
-  if [ "$BUILD_SUCCESS" = true ]; then
-    force_deployment
-  else
-    log "ERROR: Skipping deployment due to build failures"
-    exit 1
-  fi
-fi
-
-if [ "$BUILD_SUCCESS" = true ]; then
-  log "Build and deployment process completed successfully!"
-else
-  log "ERROR: Build process encountered one or more failures"
+# === Optional Deploy ===
+if $DEPLOY && $BUILD_SUCCESS; then
+  force_ecs_deploy
+elif $DEPLOY && ! $BUILD_SUCCESS; then
+  log "❌ Skipping deployment: one or more builds failed"
   exit 1
 fi
+
+$BUILD_SUCCESS && log "🎉 All builds and optional deployment completed successfully!"

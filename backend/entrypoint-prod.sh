@@ -57,10 +57,67 @@ mkdir -p /app/internal/db/migrations
 
 # Run the migrations
 set +e
-# Use migrate command directly
-migrate -path /app/internal/db/migrations -database "$PG_URL" -verbose up
+
+# Check if task command is available
+if command -v task >/dev/null 2>&1; then
+    echo "Using Task CLI for migrations..."
+    # First attempt with Task CLI (preferred method)
+    cd /app && task migrate:up
+    MIGRATION_STATUS=$?
+    
+    # If Task failed, try with direct migrate command
+    if [ $MIGRATION_STATUS -ne 0 ]; then
+        echo "Task migration failed, trying with direct migrate command..."
+        PGPASSWORD="$POSTGRES_PASSWORD" migrate -path /app/internal/db/migrations -database "$PG_URL" -verbose up
+        MIGRATION_STATUS=$?
+    fi
+else
+    echo "Task command not found, using direct migrate command..."
+    # Try direct migrate command first
+    PGPASSWORD="$POSTGRES_PASSWORD" migrate -path /app/internal/db/migrations -database "$PG_URL" -verbose up
+    MIGRATION_STATUS=$?
+    
+    # If direct migrate failed and Task not found, install Task
+    if [ $MIGRATION_STATUS -ne 0 ]; then
+        echo "Direct migration failed, installing Task CLI..."
+        
+        # Install Task CLI
+        wget -O task.tar.gz https://github.com/go-task/task/releases/download/v3.33.1/task_linux_amd64.tar.gz && \
+        tar -xzvf task.tar.gz && \
+        mv task /usr/local/bin/task && \
+        chmod +x /usr/local/bin/task && \
+        rm task.tar.gz
+        
+        # Try migration with Task
+        echo "Running migrations with newly installed Task CLI..."
+        cd /app && task migrate:up
+        MIGRATION_STATUS=$?
+    fi
+fi
+
+# Check final migration status
+if [ $MIGRATION_STATUS -ne 0 ]; then
+    echo "❌ ERROR: All migration attempts failed!"
+    
+    # Try to get migration status
+    echo "Checking current migration status..."
+    PGPASSWORD="$POSTGRES_PASSWORD" migrate -path /app/internal/db/migrations -database "$PG_URL" version
+    
+    # Check if database is dirty
+    DIRTY_STATUS=$(PGPASSWORD="$POSTGRES_PASSWORD" migrate -path /app/internal/db/migrations -database "$PG_URL" version | grep -c "dirty")
+    if [ $DIRTY_STATUS -gt 0 ]; then
+        echo "Database appears to be in a dirty state. Attempting to fix..."
+        PGPASSWORD="$POSTGRES_PASSWORD" migrate -path /app/internal/db/migrations -database "$PG_URL" force 1
+        echo "Retrying migrations after force-fixing dirty state..."
+        cd /app && task migrate:up
+    else
+        echo "Database is not in a dirty state, but migrations still failed."
+    fi
+else
+    echo "✅ Database migrations completed successfully."
+fi
+
 set -e
-echo "Database migrations complete."
 
 # Create config directory if it doesn't exist
 mkdir -p /app/config
@@ -97,16 +154,53 @@ if command -v go >/dev/null 2>&1; then
   echo "Creating symlinks for internal packages..."
   ln -sfn /app/internal /app/vendor/github.com/careecodes/RentDaddy/
   
-  # Verify the symlink was created correctly
+  # Add symlink for pkg directory if it doesn't exist
+  if [ ! -e "/app/vendor/github.com/careecodes/RentDaddy/pkg" ]; then
+    echo "Setting up pkg package symlink..."
+    ln -sfn /app/pkg /app/vendor/github.com/careecodes/RentDaddy/
+  fi
+  
+  # Create symlink for utils package to ensure it's available for scripts
+  if [ ! -e "/app/vendor/github.com/careecodes/RentDaddy/internal/utils" ]; then
+    echo "Ensuring internal/utils directory exists..."
+    mkdir -p /app/internal/utils
+  fi
+  
+  # Verify the symlinks were created correctly
   echo "Verifying symlink creation..."
-  if [ -L "/app/vendor/github.com/careecodes/RentDaddy/internal" ]; then
-    echo "✅ Symlink created successfully"
+  if [ -L "/app/vendor/github.com/careecodes/RentDaddy/internal" ] && [ -d "/app/internal/utils" ]; then
+    echo "✅ Symlinks created successfully"
     ls -la /app/vendor/github.com/careecodes/RentDaddy/
     ls -la /app/vendor/github.com/careecodes/RentDaddy/internal/
+    
+    # Check if utils directory is accessible through symlink
+    if [ -d "/app/vendor/github.com/careecodes/RentDaddy/internal/utils" ]; then
+      echo "✅ internal/utils directory is accessible through symlink"
+    else
+      echo "❌ internal/utils directory is not accessible through symlink"
+      exit 1
+    fi
   else
-    echo "❌ Failed to create symlink"
+    echo "❌ Failed to create symlinks"
     ls -la /app/vendor/github.com/careecodes/RentDaddy/
     exit 1
+  fi
+  
+  # Ensure vendor directory is consistent
+  echo "Ensuring vendor directory is consistent..."
+  if [ -d "/app/vendor" ]; then
+    # Fix vendor consistency issues by regenerating the vendor directory
+    echo "Regenerating vendor directory for consistency..."
+    cd /app && go mod vendor
+    if [ $? -ne 0 ]; then
+      echo "❌ Failed to run go mod vendor, trying to fix..."
+      # If vendor fails, try removing vendor directory and recreating
+      rm -rf /app/vendor
+      go mod vendor
+    fi
+  else
+    echo "Creating vendor directory..."
+    cd /app && go mod vendor
   fi
   
   # Install necessary packages for scripts
