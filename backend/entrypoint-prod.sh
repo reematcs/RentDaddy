@@ -7,6 +7,8 @@ echo "[ENTRYPOINT-PROD] Backend starting..."
 # (e.g., container platform, Kubernetes, etc.)
 
 echo "[ENTRYPOINT-PROD] POSTGRES_HOST: $POSTGRES_HOST"
+echo "[ENTRYPOINT-PROD] POSTGRES_USER: $POSTGRES_USER"
+echo "[ENTRYPOINT-PROD] POSTGRES_DB: $POSTGRES_DB"
 echo "[ENTRYPOINT-PROD] PORT: $PORT"
 
 # Set up database connection string
@@ -18,7 +20,8 @@ echo "Verifying PostgreSQL connection..."
 attempt=0
 max_attempts=30
 
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+# First try connecting to postgres default database to ensure the server is up
+until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "postgres" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
   attempt=$((attempt+1))
   echo "PostgreSQL connection attempt $attempt/$max_attempts"
   sleep 2
@@ -26,6 +29,24 @@ done
 
 if [ $attempt -eq $max_attempts ]; then
   echo "Error: Could not connect to PostgreSQL after multiple attempts"
+  exit 1
+fi
+
+# Create the database if it doesn't exist
+echo "Ensuring database ${POSTGRES_DB} exists..."
+PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_DB}'" | grep -q 1 || \
+  PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE ${POSTGRES_DB}"
+
+# Now connect to the application database to verify it
+attempt=0
+until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+  attempt=$((attempt+1))
+  echo "Application database connection attempt $attempt/$max_attempts"
+  sleep 2
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "Error: Could not connect to application database after multiple attempts"
   exit 1
 fi
 
