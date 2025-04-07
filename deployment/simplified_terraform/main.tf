@@ -449,11 +449,11 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       memoryReservation = 1024,
       memory            = 1536,
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/healthz || exit 1"]
+        command     = ["CMD-SHELL", "wget -q -O - http://localhost:8080/healthz || exit 1"]
         interval    = 30
-        timeout     = 10  # Increased timeout
-        retries     = 5   # Increased retry attempts
-        startPeriod = 120 # Doubled start period to allow for proper initialization
+        timeout     = 5
+        retries     = 3
+        startPeriod = 120 # Keep the same start period
       }
     },
     {

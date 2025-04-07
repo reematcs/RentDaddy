@@ -68,12 +68,31 @@ if [ ! -f "/app/Taskfile.yaml" ]; then
     exit 1
 fi
 
-# Run migrations directly with migrate command
-echo "Running migrations with migrate tool..."
-migrate -path /app/internal/db/migrations -database "${PG_URL}" -verbose up
+# Simple approach: run migrations using Task CLI, which is installed and defined in Taskfile.yaml
+echo "Running migrations with Task CLI..."
+# Export variables explicitly for Task CLI
+export POSTGRES_HOST="${POSTGRES_HOST}"
+export POSTGRES_PORT="5432"
+export POSTGRES_USER="${POSTGRES_USER}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+export POSTGRES_DB="${POSTGRES_DB}"
+# Export the full PG_URL to override any hardcoded values in Taskfile
+export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 
-# Continue regardless of migration status to maintain compatibility with previous behavior
-echo "✅ Database migrations completed."
+echo "Using database URL: ${PG_URL}"
+set +e
+# Run migrations with explicit variables
+task migrate:up
+MIGRATION_STATUS=$?
+set -e
+
+# Check if migrations succeeded
+if [ $MIGRATION_STATUS -ne 0 ]; then
+    echo "❌ ERROR: Migrations failed"
+    exit 1
+else
+    echo "✅ Database migrations completed successfully."
+fi
 
 set -e
 
