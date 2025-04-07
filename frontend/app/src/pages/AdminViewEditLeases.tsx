@@ -146,14 +146,14 @@ export default function AdminViewEditLeases() {
                                 throw new Error('DOCUMENSO_NOT_CONFIGURED');
                             }
                         }
-                        
+
                         // For auth failures, try again
                         if (response.status === 401) {
                             console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
                             if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                             continue;
                         }
-                        
+
                         throw new Error(`Failed to fetch leases: ${response.statusText}`);
                     }
 
@@ -162,7 +162,7 @@ export default function AdminViewEditLeases() {
                     console.log("Sample lease data:", data[0]);
                     extractStatusFilters(data);
                     return data || [];
-                    
+
                 } catch (err) {
                     // If this is the last attempt or it's a Documenso configuration error, throw the error
                     if (attempt === 2 || (err instanceof Error && err.message === 'DOCUMENSO_NOT_CONFIGURED')) {
@@ -607,7 +607,7 @@ export default function AdminViewEditLeases() {
                                 <ButtonComponent
                                     type="primary"
                                     title="Go to Admin Setup"
-                                    onClick={() => window.location.href = '/admin/init-apartment-complex'}
+                                    onClick={() => window.location.href = '/admin/settings'}
                                 />
                             </div>
                         </div>

@@ -1,4 +1,3 @@
-import { UserOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router";
 
 {

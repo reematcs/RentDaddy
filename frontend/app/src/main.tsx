@@ -22,6 +22,9 @@ import { ConfigProvider } from "antd";
 // Clerk
 import { ClerkProvider, SignedOut, SignIn } from "@clerk/react-router";
 
+// API Context
+import { ApiProvider } from "./utils/apiContext";
+
 // Pages
 import App from "./App.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
@@ -37,6 +40,7 @@ import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
 import { Toaster } from "sonner";
 import AdminComplaints from "./pages/AdminComplaints.tsx";
+import AdminSettings from "./pages/AdminSettings.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -84,11 +88,13 @@ createRoot(document.getElementById("root")!).render(
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
-                        signInFallbackRedirectUrl="/">
-                        {/* Routes: Container for all Route definitions */}
-                        <Routes>
-                            {/* Example and Explanation of Routes */}
-                            {/*
+                        signInFallbackRedirectUrl="/"
+                    >
+                        <ApiProvider>
+                            {/* Routes: Container for all Route definitions */}
+                            <Routes>
+                                {/* Example and Explanation of Routes */}
+                                {/*
             Routes are used to define the paths and components that will be rendered when a user navigates to a specific URL.
             They are placed inside the BrowserRouter component.
             Each Route component has a path prop that specifies the URL path, and an element prop that specifies the component to render.
@@ -100,115 +106,121 @@ createRoot(document.getElementById("root")!).render(
             // Docs for Navigation: https://reactrouter.com/start/library/navigating
           */}
 
-                            {/* Main Route (Landing Page) */}
-                            {/* Pre-authentication Layout Group */}
-                            <Route element={<PreAuthedLayout />}>
-                                <Route
-                                    path="/healthz"
-                                    element={<div>ok</div>}
-                                />
-                                {/* Landing Page */}
-                                <Route
-                                    index
-                                    element={<App />}
-                                />
+                                {/* Main Route (Landing Page) */}
+                                {/* Pre-authentication Layout Group */}
+                                <Route element={<PreAuthedLayout />}>
+                                    <Route
+                                        path="/healthz"
+                                        element={<div>ok</div>}
+                                    />
+                                    {/* Landing Page */}
+                                    <Route
+                                        index
+                                        element={<App />}
+                                    />
 
-                                {/* Reusable Components Route */}
-                                <Route
-                                    path="reusable-components"
-                                    element={<ReusableComponents />}
-                                />
-                                <Route
-                                    path="/auth/sign-in/*"
-                                    element={
-                                        <div
-                                            style={{ height: "calc(100vh - 5rem)" }}
-                                            className="d-flex justify-content-center mt-5">
-                                            <SignIn />
-                                        </div>
-                                    }></Route>
-                                <Route
-                                    path="/auth/sign-out/"
-                                    element={
-                                        <div className="d-flex justify-content-center align-items-start min-vh-100 my-5">
-                                            <SignedOut />
-                                        </div>
-                                    }></Route>
-                            </Route>
-                            {/* End of Pre-authentication Layout Group */}
+                                    {/* Reusable Components Route */}
+                                    <Route
+                                        path="reusable-components"
+                                        element={<ReusableComponents />}
+                                    />
+                                    <Route
+                                        path="/auth/sign-in/*"
+                                        element={
+                                            <div
+                                                style={{ height: "calc(100vh - 5rem)" }}
+                                                className="d-flex justify-content-center mt-5">
+                                                <SignIn />
+                                            </div>
+                                        }></Route>
+                                    <Route
+                                        path="/auth/sign-out/"
+                                        element={
+                                            <div className="d-flex justify-content-center align-items-start min-vh-100 my-5">
+                                                <SignedOut />
+                                            </div>
+                                        }></Route>
+                                </Route>
+                                {/* End of Pre-authentication Layout Group */}
 
-                            {/* Protected Routes (Admin & Tenant) */}
-                            <Route element={<ProtectedRoutes />}>
-                                {/* Authenticated Layout Group */}
-                                <Route element={<AuthenticatedLayout />}>
-                                    {/* Admin Route Group */}
-                                    <Route path="admin">
-                                        <Route
-                                            index
-                                            element={<AdminDashboard />}
-                                        />
-                                        <Route
-                                            path="apartment"
-                                            element={<AdminApartmentSetupAndDetailsManagement />}
-                                        />
-                                        <Route
-                                            path="tenants"
-                                            element={<AddTenant />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-leases"
-                                            element={<AdminViewEditLeases />}
-                                        />
-                                        <Route
-                                            path="work-orders"
-                                            element={<AdminWorkOrder />}
-                                        />
-                                        <Route
-                                            path="complaints"
-                                            element={<AdminComplaints />}
-                                        />
-                                        <Route
-                                            path="lockers"
-                                            element={<AdminViewEditSmartLockers />}
-                                        />
-                                    </Route>
+                                {/* Protected Routes (Admin & Tenant) */}
+                                <Route element={<ProtectedRoutes />}>
+                                    {/* Authenticated Layout Group */}
+                                    <Route element={<AuthenticatedLayout />}>
+                                        {/* Admin Route Group */}
+                                        <Route path="admin">
+                                            <Route
+                                                index
+                                                element={<AdminDashboard />}
+                                            />
+                                            <Route
+                                                path="apartment"
+                                                element={<AdminApartmentSetupAndDetailsManagement />}
+                                            />
+                                            <Route
+                                                path="tenants"
+                                                element={<AddTenant />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-leases"
+                                                element={<AdminViewEditLeases />}
+                                            />
+                                            <Route
+                                                path="work-orders"
+                                                element={<AdminWorkOrder />}
+                                            />
+                                            <Route
+                                                path="complaints"
+                                                element={<AdminComplaints />}
+                                            />
+                                            <Route
+                                                path="lockers"
+                                                element={<AdminViewEditSmartLockers />}
+                                            />
+                                            <Route
+                                                path="settings"
+                                                element={<AdminSettings />}
+                                            />
+                                        </Route>
 
-                                    {/* Tenant Route Group */}
-                                    <Route path="tenant">
-                                        <Route
-                                            index
-                                            element={<TenantDashBoard />}
-                                        />
-                                        {/* <Route */}
-                                        {/*     path="guest-parking" */}
-                                        {/*     element={<h1>Guest Parking</h1>} */}
-                                        {/* /> */}
-                                        <Route
-                                            path="leases"
-                                            element={<h1>Digital Documents</h1>}
-                                        />
-                                        <Route
-                                            path="work-orders"
-                                            element={<TenantWorkOrders />}
-                                        />
-                                        <Route
-                                            path="complaints"
-                                            element={<TenantComplaints />}
-                                        />
+                                        {/* Tenant Route Group */}
+                                        <Route path="tenant">
+                                            <Route
+                                                index
+                                                element={<TenantDashBoard />}
+                                            />
+                                            {/* <Route */}
+                                            {/*     path="guest-parking" */}
+                                            {/*     element={<h1>Guest Parking</h1>} */}
+                                            {/* /> */}
+                                            <Route
+                                                path="leases"
+                                                element={<h1>Digital Documents</h1>}
+                                            />
+                                            <Route
+                                                path="work-orders"
+                                                element={<TenantWorkOrders />}
+                                            />
+                                            <Route
+                                                path="complaints"
+                                                element={<TenantComplaints />}
+                                            />
+                                        </Route>
                                     </Route>
                                 </Route>
-                            </Route>
-                            {/* End of Protected Routes (Admin & Tenant) */}
+                                {/* End of Protected Routes (Admin & Tenant) */}
 
-                            {/* 404 Route - Always place at the end to catch unmatched routes */}
-                            <Route
-                                path="*"
-                                element={<ErrorNotFound />}
-                            />
-                        </Routes>
+                                {/* 404 Route - Always place at the end to catch unmatched routes */}
+                                <Route
+                                    path="*"
+                                    element={<ErrorNotFound />}
+                                />
+                            </Routes>
+                        </ApiProvider>
                     </ClerkProvider>
+
                 </BrowserRouter>
             </QueryClientProvider>
         </ConfigProvider>
-    </StrictMode>
+    </StrictMode >
 );

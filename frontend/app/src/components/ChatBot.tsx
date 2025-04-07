@@ -32,9 +32,7 @@ const MyChatBot: React.FC<MyChatBotProps> = ({
             setBackendUrl(apiEndpoint);
         } else {
             // Otherwise construct from base URL
-            const baseUrl = import.meta.env.VITE_BACKEND_URL ||
-                window.VITE_BACKEND_URL ||
-                "https://api.curiousdev.net";
+            const baseUrl = import.meta.env.VITE_BACKEND_URL ?? "https://api.curiousdev.net";
 
             // Ensure we don't double up on /api/chat
             const endpoint = baseUrl.endsWith('/api/chat') ?
