@@ -14,7 +14,6 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/godotenv v1.5.1
 	github.com/jung-kurt/gofpdf v1.16.2
-	github.com/lib/pq v1.10.9
 	github.com/svix/svix-webhooks v1.61.3
 )
 
