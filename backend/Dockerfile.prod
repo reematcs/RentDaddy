@@ -58,7 +58,8 @@ RUN mkdir -p /app/temp /app/config /go/pkg/mod /go/src/github.com/careecodes
 # Copy the binary and supporting files from builder
 COPY --from=builder /app/server .
 COPY --from=builder /app/entrypoint-prod.sh .
-COPY --from=builder /app/internal/db/migrations /app/internal/db/migrations
+# Copy the entire internal directory to ensure all packages are available
+COPY --from=builder /app/internal /app/internal
 COPY --from=builder /app/scripts /app/scripts
 COPY --from=builder /app/go.mod /app/go.sum ./
 # Copy the Go modules cache to ensure dependencies are available
