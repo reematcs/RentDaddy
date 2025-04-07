@@ -8,13 +8,8 @@ WORKDIR /app
 
 # Copy go module files first for better layer caching
 COPY go.mod go.sum ./
-
-# We won't copy the existing vendor directory to avoid inconsistency issues
-# Instead, we'll recreate it from scratch for better consistency
+COPY vendor/ ./vendor/
 RUN go mod download
-
-# Recreate the vendor directory to ensure consistency
-RUN go mod vendor
 
 # Download specific dependencies needed for scripts
 RUN go mod download github.com/bxcodec/faker/v4 && \
@@ -30,10 +25,6 @@ RUN wget https://github.com/sqlc-dev/sqlc/releases/download/v1.28.0/sqlc_1.28.0_
     rm sqlc_1.28.0_linux_amd64.tar.gz
 
 RUN sqlc generate
-
-# Clean cache and recreate vendor directory to avoid inconsistencies
-RUN go clean -cache -modcache
-RUN go mod vendor
 
 # Build the Go application
 RUN CGO_ENABLED=0 GOOS=linux go build -o server -ldflags="-s -w" ./server.go
@@ -71,13 +62,9 @@ RUN wget -O task.tar.gz https://github.com/go-task/task/releases/download/v3.33.
 # Create runtime directories
 RUN mkdir -p /app/temp /app/config /go/pkg/mod /go/src/github.com/careecodes
 
-# Copy the binary and supporting files from builder
-COPY --from=builder /app/server .
-COPY --from=builder /app/entrypoint-prod.sh .
-# Copy the entire internal directory to ensure all packages are available
-COPY --from=builder /app/internal /app/internal
-COPY --from=builder /app/scripts /app/scripts
-COPY --from=builder /app/go.mod /app/go.sum ./
+# Copy everything from the builder stage for a complete environment
+COPY --from=builder /app/ .
+
 # Copy the Go modules cache to ensure dependencies are available
 COPY --from=builder /go/pkg/mod/ /go/pkg/mod/
 

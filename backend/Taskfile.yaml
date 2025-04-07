@@ -6,7 +6,7 @@ dotenv: [".env.development.local", ".env.production.local", ".env", "../.env"]
 vars:
   MPATH: "internal/db/migrations/"
   # Using URL format without password to avoid exposing it in logs
-  PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
   DATABASE_URL: "{{.PG_URL}}"
 tasks:
   # 🧑‍💻 Local Docker Compose: Default naming

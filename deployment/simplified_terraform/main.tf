@@ -449,7 +449,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       memoryReservation = 1024,
       memory            = 1536,
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+        command     = ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/healthz || exit 1"]
         interval    = 30
         timeout     = 10  # Increased timeout
         retries     = 5   # Increased retry attempts
@@ -904,7 +904,7 @@ data "aws_instances" "zone_a_instances" {
     name   = "availability-zone"
     values = ["${var.aws_region}a"]
   }
-  
+
   filter {
     name   = "tag:AmazonECSManaged"
     values = [""]
