@@ -34,7 +34,7 @@ import (
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/internal/utils"
+	utils "github.com/careecodes/RentDaddy/internal/utils"
 	clerk "github.com/clerk/clerk-sdk-go/v2"
 	clerkuser "github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/jackc/pgx/v5/pgtype"
