@@ -53,20 +53,21 @@ build_backend() {
   
   # Use a separate buildx builder to avoid issues
   log "Creating dedicated builder for this build..."
+  docker buildx rm backend-builder 2>/dev/null || true
   docker buildx create --name backend-builder --use --bootstrap || true
   
-  # Build image using simpler flags
+  # Build directly with push but use optimized flags
+  log "Building and pushing to ECR in optimized mode..."
   docker buildx build \
     --platform linux/amd64 \
     --builder backend-builder \
+    --push \
+    --max-concurrent-uploads 10 \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --progress=plain \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag \
     -f $backend_dir/Dockerfile.prod \
-    --load \
     $backend_dir | tee "$PROJECT_ROOT/deployment/backend-build.log"
-  
-  # Push the image separately
-  log "Pushing image to ECR..."
-  docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/backend:$tag | tee -a "$PROJECT_ROOT/deployment/backend-build.log"
   
   local build_exit_code=$?
   set -e  # Re-enable error exit
@@ -123,8 +124,19 @@ build_frontend() {
   
   # Build and push frontend
   set +e  # Temporarily disable error exit to capture exit code
+  
+  # Use a separate buildx builder for frontend
+  log "Creating dedicated builder for frontend build..."
+  docker buildx rm frontend-builder 2>/dev/null || true
+  docker buildx create --name frontend-builder --use --bootstrap || true
+  
+  # Build with optimized flags
   docker buildx build \
     --platform linux/amd64 \
+    --builder frontend-builder \
+    --push \
+    --max-concurrent-uploads 10 \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
     --progress=plain \
     --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY" \
     --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL" \
@@ -132,7 +144,6 @@ build_frontend() {
     --build-arg VITE_ENV="${VITE_ENV:-production}" \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/frontend:$tag \
     -f $frontend_dir/Dockerfile.prod \
-    --push \
     $frontend_dir | tee "$PROJECT_ROOT/deployment/frontend-build.log"
   
   local build_exit_code=$?
@@ -197,17 +208,20 @@ build_worker() {
   log "Building Docker image..."
   set +e  # Temporarily disable error exit to capture exit code
   
-  # Use a specific builder instance for more control and disable buildx's automatic platform detection
-  docker buildx create --name workerbuilder --use --driver docker-container --driver-opt image=moby/buildkit:buildx-stable-1 || true
-  docker buildx inspect --bootstrap
+  # Use a specific builder instance for more control
+  docker buildx rm workerbuilder 2>/dev/null || true
+  docker buildx create --name workerbuilder --use --bootstrap || true
   
+  # Build with optimized flags
   docker buildx build \
     --platform linux/amd64 \
     --builder workerbuilder \
+    --push \
+    --max-concurrent-uploads 10 \
     --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --progress=plain \
     -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/rentdaddy/documenso-worker:$tag \
     -f "$WORKER_DIR/Dockerfile" \
-    --push \
     "$WORKER_DIR" | tee "$PROJECT_ROOT/deployment/worker-build.log"
   
   local build_exit_code=$?
