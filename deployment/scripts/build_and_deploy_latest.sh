@@ -166,6 +166,10 @@ $BUILD_BACKEND && {
 }
 
 $BUILD_FRONTEND && {
+  # Clean dist directory before building to prevent stale built files from being included
+  log "Cleaning frontend dist directory..."
+  rm -rf "$PROJECT_ROOT/frontend/app/dist"
+  
   if ! build_component "frontend" "$PROJECT_ROOT/frontend/app" "$PROJECT_ROOT/frontend/app/Dockerfile.prod" "$TAG_FRONTEND" "rentdaddy/frontend"; then
     log "❌ Frontend build failed"
     BUILD_SUCCESS=false
