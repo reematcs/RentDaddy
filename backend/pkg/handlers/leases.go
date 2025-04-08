@@ -1745,6 +1745,18 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	receivedSecretHeader := r.Header.Get("X-Documenso-Secret")
 	receivedSignatureHeader := r.Header.Get("X-Documenso-Signature")
 
+	// Detailed debug logging
+	log.Printf("[WEBHOOK] Headers received: Secret='%s', Signature='%s', Expected Secret='%s'",
+		receivedSecretHeader, receivedSignatureHeader, webhookSecret)
+	log.Printf("[WEBHOOK] FULL REQUEST URI: %s", r.RequestURI)
+	log.Printf("[WEBHOOK] FULL PAYLOAD BODY: %s", string(body))
+
+	// Log all headers for debugging
+	log.Printf("[WEBHOOK] All request headers:")
+	for name, values := range r.Header {
+		log.Printf("[WEBHOOK]   %s: %v", name, values)
+	}
+
 	// Use either header that matches
 	var signatureValid bool
 
@@ -1826,24 +1838,29 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	if isEmailWebhook {
 		log.Printf("[WEBHOOK] Email-related webhook detected: '%s', bypassing signature validation", jobType)
 		signatureValid = true
-	}
+		// For email-related webhooks, we bypass signature validation completely,
+		// regardless of whether the headers are present or not
+	} else {
+		// Only for non-email webhooks, we perform signature validation
 
-	// Check both headers and log which one matched
-	if webhookSecret != "" {
-		if receivedSecretHeader != "" && webhookSecret == receivedSecretHeader {
-			log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Secret header")
-			signatureValid = true
-		} else if receivedSignatureHeader != "" && webhookSecret == receivedSignatureHeader {
-			log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Signature header")
-			signatureValid = true
-		}
+		// Check both headers and log which one matched
+		if webhookSecret != "" {
+			if receivedSecretHeader != "" && webhookSecret == receivedSecretHeader {
+				log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Secret header")
+				signatureValid = true
+			} else if receivedSignatureHeader != "" && webhookSecret == receivedSignatureHeader {
+				log.Printf("[WEBHOOK] Signature validation successful via X-Documenso-Signature header")
+				signatureValid = true
+			}
 
-		// If we have a webhook secret but no valid signature was provided, reject the request
-		if !signatureValid && (receivedSecretHeader != "" || receivedSignatureHeader != "") {
-			log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received Secret: %s, Received Signature: %s",
-				webhookSecret, receivedSecretHeader, receivedSignatureHeader)
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
-			return
+			// If we have a webhook secret but no valid signature was provided, reject the request
+			// But ONLY for non-email webhooks
+			if !signatureValid && (receivedSecretHeader != "" || receivedSignatureHeader != "") {
+				log.Printf("[WEBHOOK] Invalid signature. Expected: %s, Received Secret: %s, Received Signature: %s",
+					webhookSecret, receivedSecretHeader, receivedSignatureHeader)
+				http.Error(w, "Invalid signature", http.StatusUnauthorized)
+				return
+			}
 		}
 	}
 
@@ -1861,14 +1878,14 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	log.Printf("[WEBHOOK] Received Documenso webhook event: %s", eventType)
 
-	// Check for job_type field which would indicate an enriched job from our worker
+	// Check for job_type field which would indicate a special job type
 	jobType, isJob = webhookData["job_type"].(string)
 
-	// Handle email job types from our worker
+	// Handle specialized job types if present
 	if isJob {
 		log.Printf("[WEBHOOK] Processing job type: %s", jobType)
 
-		// Process job in a goroutine to allow immediate acknowledgement back to worker
+		// Process job in a goroutine to allow immediate acknowledgement
 		go func() {
 			// Extract data from job payload
 			data, ok := webhookData["data"].(map[string]interface{})
@@ -2047,7 +2064,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 						token = tokenStr
 						log.Printf("[WEBHOOK] Found token directly in data: %s", token)
 					} else {
-						// Try to look in nested data.token (added by worker)
+						// Try to look in nested data structure
 						if nestedData, ok := data["data"].(map[string]interface{}); ok {
 							if tokenStr, ok := nestedData["token"].(string); ok && tokenStr != "" {
 								token = tokenStr
@@ -2072,7 +2089,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 								}
 							}
 						}
-						
+
 						// Look for token in id field which some versions of Documenso use
 						if token == "" {
 							if idStr, ok := data["id"].(string); ok && idStr != "" {
@@ -2112,7 +2129,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 							log.Printf("[WEBHOOK] Error: No verification token found in webhook data - cannot proceed without token")
 							return
 						}
-						
+
 						// Construct confirmation link with required token
 						confirmationLink := fmt.Sprintf("%s/verify-email/%s", docsURL, token)
 						log.Printf("[WEBHOOK] Generated confirmation link with token: %s", confirmationLink)
@@ -2124,7 +2141,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 							senderName = os.Getenv("NEXT_PRIVATE_SMTP_FROM_NAME") // Try variable from Terraform
 						}
 						if senderName == "" {
-							senderName = "RentDaddy" // Default to RentDaddy (same as in Terraform)
+							senderName = "Ezra" // Default to Ezra (same as in Terraform)
 							log.Printf("Sender name set to: %s", senderName)
 						}
 
@@ -2245,7 +2262,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 						log.Printf("[WEBHOOK] Error: No signing URL found for recipient %s in document %s", recipientEmail, documentID)
 						return
 					}
-					
+
 					log.Printf("[WEBHOOK] Using document title: %s, recipient: %s, signing URL: %s",
 						documentTitle, recipientName, signingURL)
 
@@ -2253,7 +2270,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 					htmlBody, subject, err := templates.RenderSignRequestEmail(recipientName, documentTitle, signingURL)
 					if err != nil {
 						log.Printf("[WEBHOOK] Error rendering signing request email: %v, falling back to simple template", err)
-						
+
 						// Create a fallback email with proper HTML attributes if template rendering fails
 						subject = "Please sign your lease agreement"
 						htmlBody = fmt.Sprintf(`<!DOCTYPE html>

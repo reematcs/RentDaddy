@@ -566,15 +566,73 @@ func main() {
 	tenants, err := queries.ListUsersByRole(ctx, db.RoleTenant)
 	if err != nil {
 		log.Printf("[SEED_USERS] Failed checking tenant count: %v", err)
-	} else if len(tenants) == 0 {
-		log.Println("[SEED_USERS] No tenants found after Clerk sync, creating demo tenants...")
-		for i := 0; i < 3; i++ {
+		return
+	}
+	
+	// Define constants for tenant seeding
+	const MAX_TENANTS = 20          // Maximum number of tenants to create
+	const BATCH_SIZE = 10           // Number of tenants to create in each batch
+	const INITIAL_TENANTS = 3       // Number of tenants to create initially if none exist
+	
+	// Case 1: No tenants exist - create initial set
+	if len(tenants) == 0 {
+		log.Println("[SEED_USERS] No tenants found after Clerk sync, creating initial tenants...")
+		for i := 0; i < INITIAL_TENANTS; i++ {
 			if err := createTenant(ctx); err != nil {
 				log.Printf("[SEED_USERS] Tenant %d failed: %v", i+1, err)
+			} else {
+				log.Printf("[SEED_USERS] Created initial tenant %d", i+1)
 			}
 		}
+		return
+	}
+	
+	// Case 2: We have tenants but less than the maximum - check if all have leases
+	if len(tenants) < MAX_TENANTS {
+		log.Printf("[SEED_USERS] %d tenants found, checking for tenants without leases...", len(tenants))
+		
+		// Check for tenants without leases by querying the database
+		// This query gets the count of tenants that don't have a lease entry
+		var tenantsWithoutLeaseCount int
+		err := pool.QueryRow(ctx, `
+			SELECT COUNT(*) FROM users 
+			WHERE role = 'tenant' 
+			AND id NOT IN (SELECT tenant_id FROM leases)
+		`).Scan(&tenantsWithoutLeaseCount)
+		
+		if err != nil {
+			log.Printf("[SEED_USERS] Error checking tenants without leases: %v", err)
+			return
+		}
+		
+		log.Printf("[SEED_USERS] Found %d tenants without leases", tenantsWithoutLeaseCount)
+		
+		// If all tenants have leases and we're below the maximum, create a new batch
+		if tenantsWithoutLeaseCount == 0 {
+			// Calculate how many tenants to create (up to BATCH_SIZE, but not exceeding MAX_TENANTS)
+			toCreate := BATCH_SIZE
+			if len(tenants) + toCreate > MAX_TENANTS {
+				toCreate = MAX_TENANTS - len(tenants)
+			}
+			
+			if toCreate > 0 {
+				log.Printf("[SEED_USERS] All existing tenants have leases. Creating %d more tenants...", toCreate)
+				
+				for i := 0; i < toCreate; i++ {
+					if err := createTenant(ctx); err != nil {
+						log.Printf("[SEED_USERS] Additional tenant %d failed: %v", i+1, err)
+					} else {
+						log.Printf("[SEED_USERS] Created additional tenant %d of %d", i+1, toCreate)
+					}
+				}
+			} else {
+				log.Printf("[SEED_USERS] Maximum tenant limit (%d) reached, not creating more tenants", MAX_TENANTS)
+			}
+		} else {
+			log.Printf("[SEED_USERS] Some tenants still don't have leases. Not creating more tenants until all have leases")
+		}
 	} else {
-		log.Printf("[SEED_USERS] %d tenants found — skipping tenant seeding", len(tenants))
+		log.Printf("[SEED_USERS] Maximum number of tenants (%d) already reached", MAX_TENANTS)
 	}
 
 	// Call utils.SeedDB to seed additional data:

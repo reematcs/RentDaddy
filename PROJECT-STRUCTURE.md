@@ -23,8 +23,6 @@ RentDaddy/
 │       └── cmd/       # Command-line utilities
 │           ├── cron/  # Cron job scripts
 │           └── seed_users_with_clerk/ # User seeding
-├── worker/            # Worker applications
-│   └── documenso-worker/ # Document signing worker
 ├── deployment/        # Deployment configuration
 │   └── scripts/       # Deployment scripts
 ├── docker/            # Docker configuration
@@ -53,7 +51,6 @@ RentDaddy/
 ### Services
 
 - **Documenso**: Document signing service with its own database
-- **Documenso Worker**: Handles communication between backend and Documenso
 - **Postgres**: Main database for application data
 - **Clerk**: Authentication service (external)
 
@@ -79,7 +76,7 @@ The production environment is deployed to AWS using:
 ## Key Connection Points
 
 1. **Backend ↔ Frontend**: REST API communication
-2. **Backend ↔ Documenso**: API integration via the Documenso worker
+2. **Backend ↔ Documenso**: Direct API integration and webhook handling
 3. **Backend ↔ Database**: Direct SQL through generated code
 4. **All Services ↔ Authentication**: Clerk integration
 

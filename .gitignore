@@ -27,6 +27,8 @@ backend/vendor
 
 # Wildcard ignore for any .env files
 **/*.env
+**/*.env.production.local
+**/*.env.development.local
 
 # Backend
 # Do we need this here btw for the backend?
