@@ -2055,11 +2055,11 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 							}
 						}
 
-						// Original approach - try verification tokens array
+						// Try verification tokens array
 						if token == "" {
 							if verificationTokens, ok := data["verificationTokens"].([]interface{}); ok && len(verificationTokens) > 0 {
 								if tokenObj, ok := verificationTokens[0].(map[string]interface{}); ok {
-									if tokenStr, ok := tokenObj["token"].(string); ok {
+									if tokenStr, ok := tokenObj["token"].(string); ok && tokenStr != "" {
 										token = tokenStr
 										log.Printf("[WEBHOOK] Found token in verificationTokens: %s", token)
 									}
@@ -2070,6 +2070,14 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 										}
 									}
 								}
+							}
+						}
+						
+						// Look for token in id field which some versions of Documenso use
+						if token == "" {
+							if idStr, ok := data["id"].(string); ok && idStr != "" {
+								token = idStr
+								log.Printf("[WEBHOOK] Using id as token: %s", token)
 							}
 						}
 
@@ -2099,13 +2107,15 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 							docsURL = "https://" + domain
 						}
 
-						// If no token was found, check if we have a user ID to look it up
+						// Check if token exists before constructing the confirmation link
 						if token == "" {
-							log.Printf("[WEBHOOK] No verification token found in webhook data - constructing email without token")
+							log.Printf("[WEBHOOK] Error: No verification token found in webhook data - cannot proceed without token")
+							return
 						}
-
-						// Construct confirmation link
+						
+						// Construct confirmation link with required token
 						confirmationLink := fmt.Sprintf("%s/verify-email/%s", docsURL, token)
+						log.Printf("[WEBHOOK] Generated confirmation link with token: %s", confirmationLink)
 
 						// Get sender info
 						// Try multiple possible environment variables for sender name
@@ -2230,19 +2240,48 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 						}
 					}
 
+					// Ensure signing URL is valid before proceeding
 					if signingURL == "" {
-						log.Printf("[WEBHOOK] Error: No signing URL found for recipient %s", recipientEmail)
+						log.Printf("[WEBHOOK] Error: No signing URL found for recipient %s in document %s", recipientEmail, documentID)
 						return
 					}
-
+					
 					log.Printf("[WEBHOOK] Using document title: %s, recipient: %s, signing URL: %s",
 						documentTitle, recipientName, signingURL)
 
 					// Generate email using template rendering
 					htmlBody, subject, err := templates.RenderSignRequestEmail(recipientName, documentTitle, signingURL)
 					if err != nil {
-						log.Printf("[WEBHOOK] Error rendering signing request email: %v", err)
-						return
+						log.Printf("[WEBHOOK] Error rendering signing request email: %v, falling back to simple template", err)
+						
+						// Create a fallback email with proper HTML attributes if template rendering fails
+						subject = "Please sign your lease agreement"
+						htmlBody = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .button { display: inline-block; background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Your Lease Agreement is Ready to Sign</h2>
+    </div>
+    <p>Hello %s,</p>
+    <p>Your lease agreement <strong>%s</strong> is ready for your signature.</p>
+    <p>Please review the document carefully before signing.</p>
+    <div style="text-align: center;">
+      <a href="%s" class="button">Sign Document Now</a>
+    </div>
+    <p>If you have any questions, please contact your property manager.</p>
+    <p>Thank you,<br>The RentDaddy Team</p>
+  </div>
+</body>
+</html>`, recipientName, documentTitle, signingURL)
 					}
 
 					// Send the email

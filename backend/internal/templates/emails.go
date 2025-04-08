@@ -8,14 +8,10 @@ import (
 	"strings"
 )
 
-// Use EmailTemplateData from manager.go
-
-// Email handling functions
-var DefaultManager *EmailTemplateManager
-
-// InitializeDefaultManager sets up the global template manager
-func InitializeDefaultManager() error {
-	// Get logo URL from environment
+// getLogoURL returns the URL for the RentDaddy logo
+// This is a central function to ensure consistent logo URL construction
+func getLogoURL() string {
+	// Try to get logo URL from environment
 	frontendURL := os.Getenv("FRONTEND_URL")
 	if frontendURL == "" {
 		// Try to derive from backend URL
@@ -23,31 +19,53 @@ func InitializeDefaultManager() error {
 		if backendURL != "" {
 			// Extract domain from backend URL
 			backendDomain := strings.TrimPrefix(strings.TrimPrefix(backendURL, "https://"), "http://")
-			if strings.HasPrefix(backendDomain, "api.") {
-				backendDomain = backendDomain[4:] // Remove "api." prefix if present
-			}
+			// Remove "api." prefix if present - using TrimPrefix for simplicity
+			backendDomain = strings.TrimPrefix(backendDomain, "api.")
 			frontendURL = "https://app." + backendDomain
 		} else {
-			// Default fallback
-			frontendURL = "https://app.curiousdev.net"
+			// Try additional environment variables
+			frontendURL = os.Getenv("VITE_FRONTEND_URL")
+			if frontendURL == "" {
+				// Default fallback
+				frontendURL = "https://app.curiousdev.net"
+			}
 		}
 	}
-	
-	logoURL := frontendURL + "/logo.png"
+
+	// Ensure frontendURL has a protocol
+	if !strings.HasPrefix(frontendURL, "http") {
+		frontendURL = "https://" + frontendURL
+	}
+
+	// Ensure no trailing slash
+	frontendURL = strings.TrimSuffix(frontendURL, "/")
+
+	return frontendURL + "/logo.png"
+}
+
+// Use EmailTemplateData from manager.go
+
+// Email handling functions
+var DefaultManager *EmailTemplateManager
+
+// InitializeDefaultManager sets up the global template manager
+func InitializeDefaultManager() error {
+	// Get logo URL using the helper function
+	logoURL := getLogoURL()
 	log.Printf("Email template manager initializing with logo URL: %s", logoURL)
-	
+
 	// Look for templates in a standard location
 	templatePath := filepath.Join("internal", "templates", "emails")
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
 		// Try alternate path
 		templatePath = filepath.Join(".", "internal", "templates", "emails")
 		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-			return fmt.Errorf("template directory not found at %s or %s", 
+			return fmt.Errorf("template directory not found at %s or %s",
 				filepath.Join("internal", "templates", "emails"),
 				filepath.Join(".", "internal", "templates", "emails"))
 		}
 	}
-	
+
 	var err error
 	DefaultManager, err = NewEmailTemplateManager(templatePath)
 	return err
@@ -57,23 +75,23 @@ func InitializeDefaultManager() error {
 func RenderSignRequestEmail(recipientName, documentTitle, signingURL string) (string, string, error) {
 	if DefaultManager == nil {
 		if err := InitializeDefaultManager(); err != nil {
-			return getFallbackSignRequestEmail(recipientName, documentTitle, signingURL), 
+			return getFallbackSignRequestEmail(recipientName, documentTitle, signingURL),
 				"Please sign your RentDaddy lease agreement", nil
 		}
 	}
-	
+
 	data := EmailTemplateData{
 		RecipientName: recipientName,
 		DocumentTitle: documentTitle,
 		SigningURL:    signingURL,
 	}
-	
+
 	html, err := DefaultManager.RenderTemplate("sign_request", data)
 	if err != nil {
-		return getFallbackSignRequestEmail(recipientName, documentTitle, signingURL), 
+		return getFallbackSignRequestEmail(recipientName, documentTitle, signingURL),
 			"Please sign your RentDaddy lease agreement", nil
 	}
-	
+
 	subject := DefaultManager.GetTemplateSubject("sign_request")
 	return html, subject, nil
 }
@@ -82,35 +100,41 @@ func RenderSignRequestEmail(recipientName, documentTitle, signingURL string) (st
 func RenderSigningCompleteEmail(recipientName, documentTitle, downloadURL string) (string, string, error) {
 	if DefaultManager == nil {
 		if err := InitializeDefaultManager(); err != nil {
-			return getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL), 
+			return getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL),
 				"Your RentDaddy lease agreement has been signed", nil
 		}
 	}
-	
+
 	data := EmailTemplateData{
 		RecipientName: recipientName,
 		DocumentTitle: documentTitle,
 		DownloadURL:   downloadURL,
 	}
-	
+
 	html, err := DefaultManager.RenderTemplate("signing_complete", data)
 	if err != nil {
-		return getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL), 
+		return getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL),
 			"Your RentDaddy lease agreement has been signed", nil
 	}
-	
+
 	subject := DefaultManager.GetTemplateSubject("signing_complete")
 	return html, subject, nil
 }
 
 // Fallback templates
 func getFallbackSignRequestEmail(recipientName, documentTitle, signingURL string) string {
-	logoURL := os.Getenv("FRONTEND_URL")
-	if logoURL == "" {
-		logoURL = "https://app.curiousdev.net"
+	// Get logo URL using the helper function
+	logoURL := getLogoURL()
+
+	// Log that we're using fallback template
+	log.Printf("Using fallback sign request email template with URL: %s and logo: %s", signingURL, logoURL)
+
+	// Ensure the signing URL is not empty
+	if signingURL == "" {
+		log.Printf("WARNING: Empty signing URL in email template")
+		signingURL = "#missing-url" // Provide fallback to avoid broken links
 	}
-	logoURL += "/logo.png"
-	
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -155,12 +179,11 @@ func getFallbackSignRequestEmail(recipientName, documentTitle, signingURL string
 }
 
 func getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL string) string {
-	logoURL := os.Getenv("FRONTEND_URL")
-	if logoURL == "" {
-		logoURL = "https://app.curiousdev.net"
-	}
-	logoURL += "/logo.png"
-	
+	// Get logo URL using the helper function
+	logoURL := getLogoURL()
+
+	log.Printf("Using fallback signing complete email template with logo: %s", logoURL)
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -207,16 +230,10 @@ func getFallbackSigningCompleteEmail(recipientName, documentTitle, downloadURL s
 </html>`, logoURL, recipientName, documentTitle, downloadURL)
 }
 
-// RenderVerificationEmail renders the email verification template
-func RenderVerificationEmail(verificationURL string) (string, string, error) {
-	if DefaultManager == nil {
-		if err := InitializeDefaultManager(); err != nil {
-			return getFallbackVerificationEmail(verificationURL), 
-				"Please confirm your Documenso email address", nil
-		}
-	}
-	
-	// Get logo URL - use Documenso URL for logo
+// getDocumensoLogoURL returns the URL for the Documenso logo
+// This is used specifically for verification emails that are forwarded
+// from Documenso directly
+func getDocumensoLogoURL() string {
 	docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
 	if docsURL == "" {
 		// Get domain from environment
@@ -224,57 +241,74 @@ func RenderVerificationEmail(verificationURL string) (string, string, error) {
 		if domain == "" || domain == "http://localhost" {
 			domain = "docs.curiousdev.net"
 		}
-		
+
 		// Extract just the domain part
 		if strings.HasPrefix(domain, "http://") {
 			domain = strings.TrimPrefix(domain, "http://")
 		} else if strings.HasPrefix(domain, "https://") {
 			domain = strings.TrimPrefix(domain, "https://")
 		}
-		
+
 		docsURL = "https://" + domain
 	}
-	
+
+	// Ensure no trailing slash
+	docsURL = strings.TrimSuffix(docsURL, "/")
+
 	logoURL := docsURL + "/logo.png"
-	
+	return logoURL
+}
+
+// RenderVerificationEmail renders the email verification template
+func RenderVerificationEmail(verificationURL string) (string, string, error) {
+	if DefaultManager == nil {
+		if err := InitializeDefaultManager(); err != nil {
+			return getFallbackVerificationEmail(verificationURL),
+				"Please confirm your Documenso email address", nil
+		}
+	}
+
+	// Verify that the verificationURL has a token
+	if verificationURL == "" || !strings.Contains(verificationURL, "/verify-email/") {
+		log.Printf("WARNING: Invalid verification URL detected: %s", verificationURL)
+		return "", "", fmt.Errorf("invalid verification URL: missing token")
+	}
+
+	// For verification email, we use Documenso logo since this is forwarded from Documenso
+	logoURL := getDocumensoLogoURL()
+	log.Printf("Using Documenso logo URL for verification email: %s", logoURL)
+
 	data := EmailTemplateData{
 		VerificationURL: verificationURL,
-		LogoURL: logoURL,
+		LogoURL:         logoURL,
 	}
-	
+
 	html, err := DefaultManager.RenderTemplate("verification_email", data)
 	if err != nil {
-		return getFallbackVerificationEmail(verificationURL), 
+		return getFallbackVerificationEmail(verificationURL),
 			"Please confirm your Documenso email address", nil
 	}
-	
+
 	subject := DefaultManager.GetTemplateSubject("verification_email")
 	return html, subject, nil
 }
 
 // Fallback template for verification emails
 func getFallbackVerificationEmail(verificationURL string) string {
-	// Use Documenso URL for logo
-	docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
-	if docsURL == "" {
-		// Get domain from environment
-		domain := os.Getenv("DOMAIN_URL")
-		if domain == "" || domain == "http://localhost" {
-			domain = "docs.curiousdev.net"
-		}
-		
-		// Extract just the domain part
-		if strings.HasPrefix(domain, "http://") {
-			domain = strings.TrimPrefix(domain, "http://")
-		} else if strings.HasPrefix(domain, "https://") {
-			domain = strings.TrimPrefix(domain, "https://")
-		}
-		
-		docsURL = "https://" + domain
+	// Ensure the verification URL is not empty
+	if verificationURL == "" {
+		log.Printf("WARNING: Empty verification URL in email template")
+		verificationURL = "#missing-verification-url" // Provide a fallback
 	}
-	
-	logoURL := docsURL + "/logo.png"
-	
+
+	// Get logo URL - use Documenso URL for this specific email
+	// as it's forwarded from Documenso
+	logoURL := getDocumensoLogoURL()
+	log.Printf("Using Documenso logo URL for verification email: %s", logoURL)
+
+	// Log that we're using the fallback template
+	log.Printf("Using fallback verification email template with URL: %s", verificationURL)
+
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>

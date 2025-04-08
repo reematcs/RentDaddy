@@ -85,7 +85,7 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
-		createUser(w, r, clerkUserData, pool, queries)
+		createUser(w, r, clerkUserData, queries)
 	case "user.updated":
 		updateUser(w, r, clerkUserData, queries)
 	case "user.deleted":
@@ -93,7 +93,9 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	default:
 		log.Printf("[CLERK_WEBHOOK] Unhandled event: %s", payload.Type)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"received"}`))
+		if _, err := w.Write([]byte(`{"status":"received"}`)); err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed writing response: %v", err)
+		}
 		return
 	}
 }
@@ -119,7 +121,7 @@ func Verify(payload []byte, headers http.Header) bool {
 	return true
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool, queries *db.Queries) {
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
@@ -230,7 +232,7 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		log.Printf("[CLERK_WEBHOOK] User %s not found, creating new user instead of updating", userData.ID)
 
 		// Call createUser to handle the creation logic
-		createUser(w, r, userData, nil, queries)
+		createUser(w, r, userData, queries)
 		return
 	}
 

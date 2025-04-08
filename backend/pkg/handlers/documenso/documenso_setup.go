@@ -93,10 +93,10 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 
 	// Run the script with a timeout
 	log.Printf("[DOCUMENSO_SETUP] Running signup script for %s", setupReq.Email)
-	
+
 	cmd := exec.Command("node", scriptPath)
 	cmd.Env = env
-	
+
 	// Capture stdout and stderr
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -110,7 +110,7 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 	// Check for config file created by the script
 	configFilePath := "/tmp/documenso_config.json"
 	configData := make(map[string]AdminConfig)
-	
+
 	// Try to read the config file, with a short retry loop
 	var configFile []byte
 	maxRetries := 5
@@ -122,7 +122,7 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[DOCUMENSO_SETUP] Config file not found yet, retry %d/%d: %v", i+1, maxRetries, err)
 		time.Sleep(1 * time.Second)
 	}
-	
+
 	if err != nil {
 		log.Printf("[DOCUMENSO_SETUP] Failed to read config file after retries: %v", err)
 		// Continue anyway, as the account might have been created successfully
@@ -133,17 +133,17 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 			// Continue anyway
 		} else {
 			config := configData["documenso"]
-			log.Printf("[DOCUMENSO_SETUP] Successfully extracted config: admin=%s, webhook created=%v, API token created=%v", 
-				config.AdminEmail, 
-				config.WebhookSecret != "", 
+			log.Printf("[DOCUMENSO_SETUP] Successfully extracted config: admin=%s, webhook created=%v, API token created=%v",
+				config.AdminEmail,
+				config.WebhookSecret != "",
 				config.APIToken != "")
-			
+
 			// Update environment variables with the new values
 			if config.WebhookSecret != "" {
 				os.Setenv("DOCUMENSO_WEBHOOK_SECRET", config.WebhookSecret)
 				log.Printf("[DOCUMENSO_SETUP] Updated DOCUMENSO_WEBHOOK_SECRET environment variable")
 			}
-			
+
 			if config.APIToken != "" {
 				os.Setenv("DOCUMENSO_API_KEY", config.APIToken)
 				log.Printf("[DOCUMENSO_SETUP] Updated DOCUMENSO_API_KEY environment variable")
@@ -152,9 +152,9 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if signup was successful by scanning the output
-	success := strings.Contains(string(output), "SUCCESS") || 
-	           strings.Contains(string(output), "PARTIAL SUCCESS") ||
-	           strings.Contains(string(output), "Config written to")
+	success := strings.Contains(string(output), "SUCCESS") ||
+		strings.Contains(string(output), "PARTIAL SUCCESS") ||
+		strings.Contains(string(output), "Config written to")
 
 	if !success {
 		log.Println("[DOCUMENSO_SETUP] Signup appears to have failed based on output")
@@ -169,7 +169,7 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 		"message": "Documenso admin account setup completed",
 		"email":   setupReq.Email,
 	}
-	
+
 	// Add config data if available
 	if len(configData) > 0 {
 		config := configData["documenso"]
@@ -177,7 +177,11 @@ func AutomateDocumensoSignup(w http.ResponseWriter, r *http.Request) {
 		response["webhook_created"] = config.WebhookSecret != ""
 		response["api_token_created"] = config.APIToken != ""
 	}
-	
-	json.NewEncoder(w).Encode(response)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[DOCUMENSO_SETUP] Error encoding response: %v", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
 	log.Println("[DOCUMENSO_SETUP] Documenso setup completed successfully")
 }

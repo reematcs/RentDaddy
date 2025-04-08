@@ -7,9 +7,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
-	"strings"
 )
 
 // TemplateConfig holds configuration for email templates
@@ -25,13 +23,13 @@ type TemplateInfo struct {
 
 // EmailTemplateData holds the data for email template rendering
 type EmailTemplateData struct {
-	LogoURL          string
-	RecipientName    string
-	DocumentTitle    string
-	SigningURL       string
-	DownloadURL      string
-	VerificationURL  string
-	AdditionalData   map[string]interface{}
+	LogoURL         string
+	RecipientName   string
+	DocumentTitle   string
+	SigningURL      string
+	DownloadURL     string
+	VerificationURL string
+	AdditionalData  map[string]interface{}
 }
 
 // EmailTemplateManager loads and manages email templates
@@ -49,25 +47,8 @@ func NewEmailTemplateManager(basePath string) (*EmailTemplateManager, error) {
 		Templates: make(map[string]*template.Template),
 	}
 
-	// Try to get logo URL from environment
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		// Try to derive from backend URL
-		backendURL := os.Getenv("BACKEND_URL")
-		if backendURL != "" {
-			// Extract domain from backend URL
-			backendDomain := strings.TrimPrefix(strings.TrimPrefix(backendURL, "https://"), "http://")
-			if strings.HasPrefix(backendDomain, "api.") {
-				backendDomain = backendDomain[4:] // Remove "api." prefix if present
-			}
-			frontendURL = "https://app." + backendDomain
-		} else {
-			// Default fallback
-			frontendURL = "https://app.curiousdev.net"
-		}
-	}
-	
-	manager.LogoURL = frontendURL + "/logo.png"
+	// Use the helper function to get the logo URL
+	manager.LogoURL = getLogoURL()
 	log.Printf("Email template manager initialized with logo URL: %s", manager.LogoURL)
 
 	// Load template configuration
@@ -129,7 +110,7 @@ func LoadOrDefault(basePath string) *EmailTemplateManager {
 	if err != nil {
 		log.Printf("Warning: Failed to initialize email template manager: %v", err)
 		log.Printf("Using default in-memory templates")
-		
+
 		// Create a minimal in-memory manager with no templates
 		defaultManager := &EmailTemplateManager{
 			BasePath:  basePath,
@@ -138,16 +119,13 @@ func LoadOrDefault(basePath string) *EmailTemplateManager {
 				Templates: make(map[string]TemplateInfo),
 			},
 		}
-		
-		// Set logo URL from environment or default
-		frontendURL := os.Getenv("FRONTEND_URL")
-		if frontendURL == "" {
-			frontendURL = "https://app.curiousdev.net"
-		}
-		defaultManager.LogoURL = frontendURL + "/logo.png"
-		
+
+		// Use the helper function to get the logo URL
+		defaultManager.LogoURL = getLogoURL()
+		log.Printf("Default email template manager initialized with logo URL: %s", defaultManager.LogoURL)
+
 		return defaultManager
 	}
-	
+
 	return manager
 }

@@ -86,22 +86,31 @@ func SendEmailHTML(to string, subject string, textBody string, htmlBody string) 
 	from := os.Getenv("SMTP_FROM")
 	boundary := "NextPart_" + fmt.Sprintf("%d", time.Now().UnixNano())
 
-	// Build MIME multipart message
+	// Add proper Content-Type header for HTML emails
+	// Important: We need to ensure the HTML content has properly formatted attributes
+	// with "=" between attribute names and values
+	
+	// Log a sample of the HTML body to check for attribute format
+	if len(htmlBody) > 100 {
+		log.Printf("HTML email sample (first 100 chars): %s", htmlBody[:100])
+	}
+
+	// Build MIME multipart message with clear boundaries
 	msg := []byte("From: " + from + "\r\n" +
 		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n" +
 		"MIME-Version: 1.0\r\n" +
-		"Content-Type: multipart/alternative; boundary=" + boundary + "\r\n" +
+		"Content-Type: multipart/alternative; boundary=\"" + boundary + "\"\r\n" +
 		"\r\n" +
 		"--" + boundary + "\r\n" +
-		"Content-Type: text/plain; charset=utf-8\r\n" +
-		"Content-Transfer-Encoding: quoted-printable\r\n" +
+		"Content-Type: text/plain; charset=\"utf-8\"\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\n" +
 		"\r\n" +
 		textBody + "\r\n" +
 		"\r\n" +
 		"--" + boundary + "\r\n" +
-		"Content-Type: text/html; charset=utf-8\r\n" +
-		"Content-Transfer-Encoding: quoted-printable\r\n" +
+		"Content-Type: text/html; charset=\"utf-8\"\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\n" +
 		"\r\n" +
 		htmlBody + "\r\n" +
 		"\r\n" +

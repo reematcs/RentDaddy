@@ -46,7 +46,7 @@ func (h *ComplaintHandler) GetComplaintHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("\n\ncomplaints count ===============================\n")
+	log.Print("\n\nComplaints count ===============================\n\n")
 	complaints, err := h.queries.ListComplaints(r.Context())
 	if err != nil {
 		log.Println("error:", err)
