@@ -45,9 +45,23 @@ build_component() {
   ensure_ecr_repo "$full_repo"
   ecr_login
 
+  # Create a fresh builder or reuse existing one depending on flag
   local builder="${name}-builder"
-  docker buildx rm "$builder" >/dev/null 2>&1 || true
-  docker buildx create --name "$builder" --use --bootstrap
+  if [ "$USE_FRESH_BUILDER" = "true" ]; then
+    log "Using a fresh builder for $name..."
+    docker buildx rm "$builder" >/dev/null 2>&1 || true
+    docker buildx create --name "$builder" --use --bootstrap
+  else
+    log "Checking for existing builder or creating one..."
+    docker buildx inspect "$builder" >/dev/null 2>&1 || docker buildx create --name "$builder" --use --bootstrap
+    docker buildx use "$builder"
+  fi
+
+  # Try to pull the latest image for cache
+  if [ "$USE_REGISTRY_CACHE" = "true" ]; then
+    log "Pulling latest image for cache: $ECR_BASE/$full_repo:$tag"
+    docker pull "$ECR_BASE/$full_repo:$tag" >/dev/null 2>&1 || log "No previous image found for cache, will build from scratch"
+  fi
 
   # Base build command
   local build_cmd=(
@@ -58,6 +72,11 @@ build_component() {
     --build-arg BUILDKIT_INLINE_CACHE=1
     --progress=plain
   )
+  
+  # Add cache-from if using registry cache
+  if [ "$USE_REGISTRY_CACHE" = "true" ]; then
+    build_cmd+=(--cache-from "$ECR_BASE/$full_repo:$tag")
+  fi
 
   # Add component-specific build args
   if [ "$name" = "frontend" ]; then
@@ -99,7 +118,11 @@ build_component() {
   # Run the build command
   "${build_cmd[@]}" | tee "$PROJECT_ROOT/deployment/${name}-build.log"
 
-  docker buildx rm "$builder" >/dev/null 2>&1 || true
+  # Only remove the builder if we're using fresh builders
+  if [ "$USE_FRESH_BUILDER" = "true" ]; then
+    log "Removing temporary builder: $builder"
+    docker buildx rm "$builder" >/dev/null 2>&1 || true
+  fi
 
   log "✅ $name pushed to: $ECR_BASE/$full_repo:$tag"
 }
@@ -129,6 +152,8 @@ DEPLOY=false
 TAG_BACKEND="latest"
 TAG_FRONTEND="prod"
 TAG_WORKER="latest"
+USE_FRESH_BUILDER=true     # Default to using a fresh builder each time
+USE_REGISTRY_CACHE=true    # Default to using registry cache
 
 if [ $# -eq 0 ]; then
   BUILD_BACKEND=true
@@ -147,8 +172,30 @@ else
         TAG_FRONTEND="$2"
         TAG_WORKER="$2"
         shift 2 ;;
+      --reuse-builder) USE_FRESH_BUILDER=false; shift ;;
+      --fresh-builder) USE_FRESH_BUILDER=true; shift ;;
+      --no-cache) USE_REGISTRY_CACHE=false; shift ;;
+      --use-cache) USE_REGISTRY_CACHE=true; shift ;;
       -h|--help)
-        echo "Usage: $0 [-b|-f|-w|-a] [-t TAG] [--deploy]"
+        echo "Usage: $0 [-b|-f|-w|-a] [-t TAG] [--deploy] [--reuse-builder|--fresh-builder] [--use-cache|--no-cache]"
+        echo ""
+        echo "Build Options:"
+        echo "  -b, --backend         Build backend only"
+        echo "  -f, --frontend        Build frontend only"
+        echo "  -w, --worker          Build worker only"
+        echo "  -a, --all             Build all components (default if no component specified)"
+        echo ""
+        echo "Tag Options:"
+        echo "  -t, --tag TAG         Specify tag for all images (defaults: backend=latest, frontend=prod, worker=latest)"
+        echo ""
+        echo "Deployment Options:"
+        echo "  -d, --deploy          Force ECS deployment after build"
+        echo ""
+        echo "Cache Control Options:"
+        echo "  --reuse-builder       Reuse existing Docker builder if available (better local caching)"
+        echo "  --fresh-builder       Use a fresh builder for each component (default)"
+        echo "  --use-cache           Use registry cache by pulling latest image (default)"
+        echo "  --no-cache            Don't use registry cache"
         exit 0 ;;
       *) echo "Unknown option: $1"; exit 1 ;;
     esac
