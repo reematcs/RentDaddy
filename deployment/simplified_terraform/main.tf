@@ -657,7 +657,7 @@ resource "aws_ecs_task_definition" "documenso" {
       memoryReservation = 768,
       memory            = 1024,
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+        command     = ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health || exit 1"]
         interval    = 60
         timeout     = 10
         retries     = 3
