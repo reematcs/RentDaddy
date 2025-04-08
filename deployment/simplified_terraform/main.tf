@@ -785,7 +785,7 @@ resource "aws_ecs_task_definition" "documenso" {
       memoryReservation = 256,
       memory            = 512,
       healthCheck = {
-        command     = ["CMD-SHELL", "test -f /app/documenso-worker || exit 1"]
+        command     = ["CMD-SHELL", "ps aux | grep documenso-worker | grep -v grep || exit 1"]
         interval    = 60
         timeout     = 10
         retries     = 3

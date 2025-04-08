@@ -86,39 +86,64 @@ fi
 # Find all JS files and replace environment variables
 echo "Processing JS files for environment variables..."
 find ${APP_DIR} -type f -name "*.js" | while read file; do
-  if grep -q "import.meta.env.VITE_" "$file"; then
+  # Make sure we have the env variables or fallbacks
+  CLERK_KEY="${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk}"
+  BACKEND="${VITE_BACKEND_URL:-https://api.curiousdev.net}"
+  DOCUMENSO="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
+  
+  # Replace environment variables with proper escaping for sed
+  CLERK_KEY_ESCAPED=$(echo "$CLERK_KEY" | sed 's/[\/&]/\\&/g')
+  BACKEND_ESCAPED=$(echo "$BACKEND" | sed 's/[\/&]/\\&/g')
+  DOCUMENSO_ESCAPED=$(echo "$DOCUMENSO" | sed 's/[\/&]/\\&/g')
+  
+  # Check for different patterns of environment variables and hardcoded URLs
+  if grep -q -E "import\.meta\.env\.VITE_|\"http://localhost|'http://localhost|return \"http://localhost|return 'http://localhost" "$file"; then
     echo "Processing file: $file"
-    
-    # Make sure we have the env variables or fallbacks
-    CLERK_KEY="${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk}"
-    BACKEND="${VITE_BACKEND_URL:-https://api.curiousdev.net}"
-    DOCUMENSO="${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
-    
     echo "Using values: CLERK_KEY=${CLERK_KEY}, BACKEND=${BACKEND}, DOCUMENSO=${DOCUMENSO}"
     
-    # Replace environment variables with proper escaping for sed
-    CLERK_KEY_ESCAPED=$(echo "$CLERK_KEY" | sed 's/[\/&]/\\&/g')
-    BACKEND_ESCAPED=$(echo "$BACKEND" | sed 's/[\/&]/\\&/g')
-    DOCUMENSO_ESCAPED=$(echo "$DOCUMENSO" | sed 's/[\/&]/\\&/g')
-    
-    # Replace environment variables
+    # Replace standard import.meta.env variables
     sed -i "s|import.meta.env.VITE_CLERK_PUBLISHABLE_KEY|\"${CLERK_KEY_ESCAPED}\"|g" "$file"
     sed -i "s|import.meta.env.VITE_BACKEND_URL|\"${BACKEND_ESCAPED}\"|g" "$file"
     
-    # Handle additional environment variables if needed
     if grep -q "import.meta.env.VITE_DOCUMENSO_PUBLIC_URL" "$file"; then
       sed -i "s|import.meta.env.VITE_DOCUMENSO_PUBLIC_URL|\"${DOCUMENSO_ESCAPED}\"|g" "$file"
     fi
     
+    # Replace hardcoded localhost URLs with production URLs when in a fallback context
+    # First, look for fallbacks that might be in quotes
+    sed -i "s|\"http://localhost:8080\"|\"${BACKEND_ESCAPED}\"|g" "$file"
+    sed -i "s|'http://localhost:8080'|'${BACKEND_ESCAPED}'|g" "$file"
+    
+    # Next, look for return statements that might include hardcoded localhost URLs
+    sed -i "s|return \"http://localhost:8080\"|return \"${BACKEND_ESCAPED}\"|g" "$file"
+    sed -i "s|return 'http://localhost:8080'|return '${BACKEND_ESCAPED}'|g" "$file"
+    
     # Also add window.VITE_* variables for runtime access
     if grep -q "window.VITE_" "$file"; then
       echo "Updating window.VITE_* variables"
+    fi
+    
+    # Check if we've missed any localhost references
+    if grep -q "localhost" "$file"; then
+      echo "WARNING: File still contains localhost references after processing: $file"
+      grep -n "localhost" "$file" | head -5
     else
-      # Sample detected environment variables in the output
-      grep -o "import.meta.env.VITE_[A-Z_]*" "$file" | head -3
+      echo "✅ No localhost references found in file after processing"
     fi
   fi
 done
+
+# Final verification - check for any remaining localhost references
+echo "Final verification for localhost references in JS files..."
+LOCALHOST_FILES=$(find ${APP_DIR} -type f -name "*.js" -exec grep -l "localhost" {} \;)
+if [ -n "$LOCALHOST_FILES" ]; then
+  echo "⚠️ WARNING: The following files still contain localhost references:"
+  echo "$LOCALHOST_FILES"
+  echo "First few instances:"
+  find ${APP_DIR} -type f -name "*.js" -exec grep -n "localhost" {} \; | head -5
+else
+  echo "✅ No localhost references found in any JS files"
+fi
 
 # Create a small script to expose environment variables to the browser as a fallback
 # This is a backup in case Vite's build-time replacement doesn't work

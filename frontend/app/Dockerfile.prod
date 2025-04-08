@@ -24,9 +24,33 @@ RUN NODE_ENV=development npm ci
 # Copy all source files after installing dependencies (better Docker caching)
 COPY . .
 
-# Build with environment variables
-# For production builds, we'll use the full build command
-RUN npm run build
+# Ensure environment variables are correctly set for production
+RUN echo "Building with these environment variables:" && \
+    echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" && \
+    echo "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}" && \
+    echo "VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}" && \
+    echo "VITE_ENV=${VITE_ENV}" && \
+    echo "NODE_ENV=${NODE_ENV}"
+
+# Create a build-time environment file to ensure Vite picks up the variables
+RUN echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > .env.production.local && \
+    echo "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}" >> .env.production.local && \
+    echo "VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}" >> .env.production.local && \
+    echo "VITE_ENV=production" >> .env.production.local
+
+# Force touch the apiConfig file to ensure it's rebuilt with the latest env vars
+RUN touch src/utils/apiConfig.ts
+
+# Run a clean build with explicit environment variables
+RUN NODE_ENV=production VITE_ENV=production npm run build
+
+# Verify build - check for localhost references in built files
+RUN echo "Checking for localhost references in built files..." && \
+    if grep -r "localhost" /app/dist/assets/*.js; then \
+        echo "WARNING: Found localhost references in built files"; \
+    else \
+        echo "No localhost references found - build is clean"; \
+    fi
 
 # Serve stage
 FROM nginx:alpine AS production

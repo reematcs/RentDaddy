@@ -86,11 +86,12 @@ build_component() {
     : "${VITE_CLERK_PUBLISHABLE_KEY:?Missing VITE_CLERK_PUBLISHABLE_KEY}"
     : "${VITE_BACKEND_URL:?Missing VITE_BACKEND_URL}"
     
-    # Add frontend-specific build args
+    # Standard frontend-specific build args
     build_cmd+=(
       --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY"
       --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL"
       --build-arg VITE_ENV="production"
+      --build-arg NODE_ENV="production"
     )
     
     # Add VITE_DOCUMENSO_PUBLIC_URL if it exists
@@ -100,12 +101,33 @@ build_component() {
       # Default value if not set
       build_cmd+=(--build-arg VITE_DOCUMENSO_PUBLIC_URL="https://docs.curiousdev.net")
     fi
+
+    # Add VITE_DOMAIN_URL and VITE_PORT if they exist (to ensure all variables used in apiConfig are set)
+    if [ -n "${VITE_DOMAIN_URL:-}" ]; then
+      build_cmd+=(--build-arg VITE_DOMAIN_URL="$VITE_DOMAIN_URL")
+      log "- VITE_DOMAIN_URL: $VITE_DOMAIN_URL"
+    fi
+    
+    if [ -n "${VITE_PORT:-}" ]; then
+      build_cmd+=(--build-arg VITE_PORT="$VITE_PORT")
+      log "- VITE_PORT: $VITE_PORT"
+    fi
+    
+    if [ -n "${VITE_SERVER_URL:-}" ]; then
+      build_cmd+=(--build-arg VITE_SERVER_URL="$VITE_SERVER_URL")
+      log "- VITE_SERVER_URL: $VITE_SERVER_URL"
+    fi
+    
+    # Set no-cache for frontend builds to ensure clean builds each time
+    log "Ensuring a clean frontend build without caching issues"
+    build_cmd+=(--no-cache)
     
     log "Frontend build env vars:"
     log "- VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:0:5}..."
     log "- VITE_BACKEND_URL: $VITE_BACKEND_URL"
     log "- VITE_DOCUMENSO_PUBLIC_URL: ${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
     log "- VITE_ENV: production"
+    log "- NODE_ENV: production"
   fi
 
   # Add tag and path to build command

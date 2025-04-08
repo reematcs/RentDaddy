@@ -89,8 +89,7 @@ createRoot(document.getElementById("root")!).render(
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl={"/"}
                         signInFallbackRedirectUrl={"/"}
-                        // Explicitly set routing strategy for reliability
-                        routing="path"
+                        // Routing strategy is handled automatically
                     >
                         <ApiProvider>
                             {/* Routes: Container for all Route definitions */}

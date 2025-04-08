@@ -70,26 +70,44 @@ export const getApiUrl = (path: string): string => {
  * - Uses VITE_BACKEND_URL in production
  */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://api.curiousdev.net';
-// Development URL with fallback
-const DEV_URL = SERVER_URL || 'http://localhost:8080';
-// Remove trailing slash if present to properly handle path concatenation
-
-// Always ensure we have a valid URL - NEVER use 'undefined' as a URL component
-export const SERVER_API_URL = (() => {
-  // First, check if we have a valid development server URL
-  if (MODE === 'development' && SERVER_URL && SERVER_URL !== 'undefined') {
-    return DEV_URL.replace(/\/$/, '');
+// Environment-appropriate URL selection
+// This uses a build-time conditional that will be evaluated during the Vite build
+// rather than at runtime, ensuring proper URL values in the built code
+const getEnvironmentAppropriateServerUrl = (): string => {
+  // For production builds, prioritize backend URL and never fallback to localhost
+  if (MODE === 'production' || ENV === 'production' || import.meta.env.PROD === true) {
+    console.log('🌎 Using production API URL configuration');
+    
+    // Use the backend URL if available
+    if (BACKEND_URL && BACKEND_URL !== 'undefined') {
+      return BACKEND_URL.replace(/\/$/, '');
+    }
+    
+    // Production-safe fallback - never use localhost in production
+    console.warn('⚠️ No valid backend URL found in production, using production fallback');
+    return 'https://api.curiousdev.net';
   }
   
-  // Use backend URL if available and not "undefined"
+  // For development builds, we can use more flexible options
+  console.log('🧪 Using development API URL configuration');
+  
+  // Try SERVER_URL first for local development
+  if (SERVER_URL && SERVER_URL !== 'undefined') {
+    return SERVER_URL.replace(/\/$/, '');
+  }
+  
+  // Then try BACKEND_URL
   if (BACKEND_URL && BACKEND_URL !== 'undefined') {
     return BACKEND_URL.replace(/\/$/, '');
   }
   
-  // Final fallback to ensure we never have an undefined URL
-  console.warn('⚠️ No valid backend URL found, falling back to default API URL');
-  return 'https://api.curiousdev.net';
-})();
+  // Only in development do we fallback to localhost
+  console.warn('⚠️ No valid backend URL found in development, falling back to localhost');
+  return 'http://localhost:8080';
+};
+
+// Always ensure we have a valid URL - NEVER use 'undefined' as a URL component
+export const SERVER_API_URL = getEnvironmentAppropriateServerUrl();
 
 // Debug the final SERVER_API_URL
 console.log('Final SERVER_API_URL:', SERVER_API_URL);
