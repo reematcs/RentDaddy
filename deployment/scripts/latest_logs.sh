@@ -20,7 +20,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Initialize
-PROJECT_ROOT=$(init_script "RentDaddy Log Retrieval" aws)
+PROJECT_ROOT=$(find_project_root)
+init_script "RentDaddy Log Retrieval" aws
 
 # Load AWS configuration
 load_aws_config "$PROJECT_ROOT"

@@ -4,7 +4,8 @@
 source "$(dirname "$0")/utils.sh"
 
 # Initialize
-PROJECT_ROOT=$(init_script "Documenso Webhook Testing Plan" aws)
+PROJECT_ROOT=$(find_project_root)
+init_script "Documenso Webhook Testing Plan" aws
 
 # Load AWS configuration
 load_aws_config "$PROJECT_ROOT"

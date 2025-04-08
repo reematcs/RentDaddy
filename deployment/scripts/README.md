@@ -34,8 +34,9 @@ When creating or updating scripts:
 
 2. Initialize your script properly with required tools:
    ```bash
-   # Initialize with project name and required tools
-   PROJECT_ROOT=$(init_script "My Script Name" aws docker terraform)
+   # Get project root and initialize script with required tools
+   PROJECT_ROOT=$(find_project_root)
+   init_script "My Script Name" aws docker terraform
    ```
 
 3. Load AWS configuration if needed:

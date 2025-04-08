@@ -223,6 +223,11 @@ print_banner() {
 }
 
 # Initialize script with standard setup
+# NOTE: This function does NOT return the project root!
+# You should use a separate call to find_project_root() for that.
+# Example:
+#   PROJECT_ROOT=$(find_project_root)
+#   init_script "My Script Name" aws docker
 init_script() {
   local script_name="$1"
   shift
@@ -237,8 +242,7 @@ init_script() {
   # Verify requirements
   verify_requirements "$@"
   
-  # Note: We no longer find or return the project root here
-  # That should be done separately before calling this function
+  # This function does not return anything, it only initializes the script environment
 }
 
 # Export variables and functions

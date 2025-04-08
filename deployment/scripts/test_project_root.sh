@@ -3,8 +3,9 @@
 # Load utility functions
 source "$(dirname "$0")/utils.sh"
 
-# Initialize to get PROJECT_ROOT
-PROJECT_ROOT=$(init_script "Test Project Root" docker aws)
+# Initialize
+PROJECT_ROOT=$(find_project_root)
+init_script "Test Project Root" docker aws
 
 # Test file existence
 ENV_FILE="$PROJECT_ROOT/backend/.env.production.local"
