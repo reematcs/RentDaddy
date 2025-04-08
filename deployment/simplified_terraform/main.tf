@@ -601,7 +601,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
         { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
         { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },
-        { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.${var.aws_region}.amazonaws.com" },
+        { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.us-east-2.amazonaws.com" },
         { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
         { name = "NEXT_PRIVATE_SMTP_IGNORE_TLS", value = "false" },
         { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "ezra@gitfor.ge" },
@@ -641,6 +641,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_ENCRYPTION_KEY", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_ENCRYPTION_KEY::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY::" },
         { name = "NEXT_PRIVATE_SIGNING_PASSPHRASE", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_SIGNING_PASSPHRASE::" },
+        { name = "NEXT_PRIVATE_SMTP_USERNAME", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_SMTP_USERNAME::" },
         { name = "NEXT_PRIVATE_SMTP_PASSWORD", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_SMTP_PASSWORD::" },
         { name = "NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY::" },
         { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", valueFrom = "${var.documenso_secret_arn}:NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID::" }
@@ -656,7 +657,7 @@ resource "aws_ecs_task_definition" "documenso" {
       memoryReservation = 768,
       memory            = 1024,
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
         interval    = 60
         timeout     = 10
         retries     = 3
