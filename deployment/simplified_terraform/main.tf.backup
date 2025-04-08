@@ -488,7 +488,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
         { name = "NEXT_PUBLIC_JOBS_URL", value = "http://documenso:3000/api/jobs" },
         { name = "NEXT_PUBLIC_API_URL", value = "https://docs.curiousdev.net" },
-        { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "Ezra" },
         { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
         { name = "NEXT_PRIVATE_SMTP_USERNAME", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
         { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },

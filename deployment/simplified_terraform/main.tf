@@ -77,14 +77,14 @@ variable "ecs_instance_size" {
 
 # Locals for derived values
 locals {
-  full_domain         = var.domain_name
-  app_domain          = "${var.app_subdomain}.${var.domain_name}"
-  api_domain          = "${var.api_subdomain}.${var.domain_name}"
-  docs_domain         = "${var.docs_subdomain}.${var.domain_name}"
-  ecr_backend_image   = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/backend"
-  ecr_frontend_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/frontend"
-  ecr_postgres_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy-main:postgres-15-amd64"
-  ecr_docworker_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/documenso-worker"
+  full_domain        = var.domain_name
+  app_domain         = "${var.app_subdomain}.${var.domain_name}"
+  api_domain         = "${var.api_subdomain}.${var.domain_name}"
+  docs_domain        = "${var.docs_subdomain}.${var.domain_name}"
+  ecr_backend_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/backend"
+  ecr_frontend_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/frontend"
+  ecr_postgres_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy-main:postgres-15-amd64"
+  # ecr_docworker_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/documenso-worker"
 }
 
 # VPC and Networking
@@ -411,9 +411,9 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "DOCUMENSO_API_URL", value = "https://${local.docs_domain}" },
         { name = "DOCUMENSO_PUBLIC_URL", value = "https://${local.docs_domain}" },
         # Admin information
-        { name = "ADMIN_FIRST_NAME", value = "Admin" },
-        { name = "ADMIN_LAST_NAME", value = "User" },
-        { name = "ADMIN_EMAIL", value = "admin@${var.domain_name}" },
+        { name = "ADMIN_FIRST_NAME", value = "First" },
+        { name = "ADMIN_LAST_NAME", value = "Landlord" },
+        { name = "ADMIN_EMAIL", value = "wrldconnect1@gmail.com" },
         # Application Environment
         { name = "ENV", value = "production" },
         { name = "DEBUG_MODE", value = var.debug_mode },
@@ -574,6 +574,12 @@ resource "aws_ecs_task_definition" "documenso" {
       name      = "documenso"
       image     = "documenso/documenso:latest"
       essential = true
+      # Use a command to preserve Documenso's entrypoint but set our env vars properly
+      command = [
+        "/bin/sh",
+        "-c",
+        "export CONTAINER_IP=$(hostname -i) && export NEXT_PRIVATE_INTERNAL_WEBAPP_URL=http://$CONTAINER_IP:3000 && export NEXT_PUBLIC_JOBS_URL=http://$CONTAINER_IP:3000/api/jobs && echo \"Container IP: $CONTAINER_IP\" && echo \"NEXT_PRIVATE_INTERNAL_WEBAPP_URL=$NEXT_PRIVATE_INTERNAL_WEBAPP_URL\" && echo \"NEXT_PUBLIC_JOBS_URL=$NEXT_PUBLIC_JOBS_URL\" && exec node apps/web/server.js"
+      ]
       portMappings = [
         {
           containerPort = 3000
@@ -595,14 +601,17 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "POSTGRES_DB", value = "documenso" },
         { name = "NEXT_PUBLIC_WEBAPP_URL", value = "https://${local.docs_domain}" },
         { name = "NEXTAUTH_URL", value = "https://${local.docs_domain}" },
-        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
-        { name = "NEXT_PUBLIC_JOBS_URL", value = "http://documenso:3000/api/jobs" },
+        # These are placeholder values that will be overridden by command script
+        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://localhost:3000" },
+        { name = "NEXT_PUBLIC_JOBS_URL", value = "http://localhost:3000/api/jobs" },
         { name = "NEXT_PUBLIC_API_URL", value = "https://${local.docs_domain}" },
         { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
+        { name = "SMTP_DEBUG", value = "true" },
         { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
         { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },
         { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.us-east-2.amazonaws.com" },
         { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
+        { name = "NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS", value = "false" },
         { name = "NEXT_PRIVATE_SMTP_IGNORE_TLS", value = "false" },
         { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "ezra@gitfor.ge" },
         { name = "NEXT_PRIVATE_SMTP_APIKEY_USER", value = "" },
@@ -616,10 +625,10 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_MAILCHANNELS_DKIM_PRIVATE_KEY", value = "" },
         { name = "PORT", value = "3000" },
         { name = "NEXT_PUBLIC_UPLOAD_TRANSPORT", value = "s3" },
-        { name = "NEXT_PRIVATE_UPLOAD_BUCKET", value = "rentdaddydocumenso-${var.aws_account_id}" },
-        { name = "NEXT_PRIVATE_UPLOAD_ENDPOINT", value = "https://s3.${var.aws_region}.amazonaws.com" },
+        { name = "NEXT_PRIVATE_UPLOAD_BUCKET", value = "rentdaddydocumenso" },
+        { name = "NEXT_PRIVATE_UPLOAD_ENDPOINT", value = "https://s3.us-east-1.amazonaws.com" },
         { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", value = "false" },
-        { name = "NEXT_PRIVATE_UPLOAD_REGION", value = var.aws_region },
+        { name = "NEXT_PRIVATE_UPLOAD_REGION", value = "us-east-1" },
         { name = "NEXT_PUBLIC_MARKETING_URL", value = "https://${local.docs_domain}" },
         { name = "NEXT_PUBLIC_DISABLE_SIGNUP", value = "false" },
         { name = "NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT", value = "10" },
@@ -633,7 +642,11 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
         { name = "DATABASE_HOST", value = "documenso-postgres" },
         { name = "DATABASE_PORT", value = "5432" },
-        { name = "FORCE_REDEPLOY", value = var.deploy_version }
+        { name = "FORCE_REDEPLOY", value = var.deploy_version },
+        { name = "NEXT_PRIVATE_JOBS_PROVIDER", value = "local" },
+        { name = "DEBUG", value = "true" },
+        { name = "NODE_DEBUG", value = "email,net,tls" },
+        { name = "NEXT_PRIVATE_JOBS_DEBUG", value = "true" }
       ]
       secrets = [
         { name = "POSTGRES_PASSWORD", valueFrom = "${var.documenso_secret_arn}:POSTGRES_PASSWORD::" },
@@ -657,7 +670,7 @@ resource "aws_ecs_task_definition" "documenso" {
       memoryReservation = 768,
       memory            = 1024,
       healthCheck = {
-        command     = ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/health || exit 1"]
+        command     = ["CMD-SHELL", "CONTAINER_IP=$(hostname -i) && wget -q -O - http://$CONTAINER_IP:3000/api/health || exit 1"]
         interval    = 60
         timeout     = 10
         retries     = 3
@@ -709,90 +722,91 @@ resource "aws_ecs_task_definition" "documenso" {
       }
       memoryReservation = 512,
       memory            = 768,
-    },
-    {
-      name      = "documenso-worker"
-      image     = "${local.ecr_docworker_image}:latest"
-      essential = true
-      links     = ["documenso-postgres", "documenso"],
-      dependsOn = [
-        {
-          containerName = "documenso-postgres"
-          condition     = "HEALTHY"
-        }
-      ],
-      environment = [
-        {
-          name  = "BACKEND_URL"
-          value = "https://${local.api_domain}"
-        },
-        {
-          name  = "WEBHOOK_PATH"
-          value = "/webhooks/documenso"
-        },
-        {
-          name  = "POLL_INTERVAL"
-          value = "15"
-        },
-        {
-          name  = "POSTGRES_USER"
-          value = "documenso"
-        },
-        {
-          name  = "POSTGRES_DB"
-          value = "documenso"
-        },
-        {
-          name  = "POSTGRES_HOST"
-          value = "documenso-postgres"
-        },
-        {
-          name  = "POSTGRES_PORT"
-          value = "5432"
-        },
-        {
-          name  = "STARTUP_DELAY"
-          value = "120"
-        },
-        {
-          name  = "MAX_CONNECTION_RETRIES"
-          value = "10"
-        },
-        {
-          name  = "DOCUMENSO_BASE_URL"
-          value = "http://documenso:3000"
-        },
-        {
-          name  = "DEBUG"
-          value = "true"
-        },
-        {
-          name  = "FORCE_REDEPLOY"
-          value = var.deploy_version
-        }
-      ]
-      secrets = [
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.documenso_secret_arn}:POSTGRES_PASSWORD::" },
-        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "${var.backend_secret_arn}:DOCUMENSO_WEBHOOK_SECRET::" }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs",
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.documenso_logs.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "worker"
-        }
-      }
-      memoryReservation = 256,
-      memory            = 512,
-      healthCheck = {
-        command     = ["CMD-SHELL", "ps aux | grep documenso-worker | grep -v grep || exit 1"]
-        interval    = 60
-        timeout     = 10
-        retries     = 3
-        startPeriod = 120
-      }
     }
+    # ,
+    # {
+    #   name      = "documenso-worker"
+    #   image     = "${local.ecr_docworker_image}:latest"
+    #   essential = true
+    #   links     = ["documenso-postgres", "documenso"],
+    #   dependsOn = [
+    #     {
+    #       containerName = "documenso-postgres"
+    #       condition     = "HEALTHY"
+    #     }
+    #   ],
+    #   environment = [
+    #     {
+    #       name  = "BACKEND_URL"
+    #       value = "https://${local.api_domain}"
+    #     },
+    #     {
+    #       name  = "WEBHOOK_PATH"
+    #       value = "/webhooks/documenso"
+    #     },
+    #     {
+    #       name  = "POLL_INTERVAL"
+    #       value = "15"
+    #     },
+    #     {
+    #       name  = "POSTGRES_USER"
+    #       value = "documenso"
+    #     },
+    #     {
+    #       name  = "POSTGRES_DB"
+    #       value = "documenso"
+    #     },
+    #     {
+    #       name  = "POSTGRES_HOST"
+    #       value = "documenso-postgres"
+    #     },
+    #     {
+    #       name  = "POSTGRES_PORT"
+    #       value = "5432"
+    #     },
+    #     {
+    #       name  = "STARTUP_DELAY"
+    #       value = "120"
+    #     },
+    #     {
+    #       name  = "MAX_CONNECTION_RETRIES"
+    #       value = "10"
+    #     },
+    #     {
+    #       name  = "DOCUMENSO_BASE_URL"
+    #       value = "http://documenso:3000"
+    #     },
+    #     {
+    #       name  = "DEBUG"
+    #       value = "true"
+    #     },
+    #     {
+    #       name  = "FORCE_REDEPLOY"
+    #       value = var.deploy_version
+    #     }
+    #   ]
+    #   secrets = [
+    #     { name = "POSTGRES_PASSWORD", valueFrom = "${var.documenso_secret_arn}:POSTGRES_PASSWORD::" },
+    #     { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "${var.backend_secret_arn}:DOCUMENSO_WEBHOOK_SECRET::" }
+    #   ]
+    #   logConfiguration = {
+    #     logDriver = "awslogs",
+    #     options = {
+    #       awslogs-group         = aws_cloudwatch_log_group.documenso_logs.name
+    #       awslogs-region        = var.aws_region
+    #       awslogs-stream-prefix = "worker"
+    #     }
+    #   }
+    #   memoryReservation = 256,
+    #   memory            = 512,
+    #   healthCheck = {
+    #     command     = ["CMD-SHELL", "ps aux | grep documenso-worker | grep -v grep || exit 1"]
+    #     interval    = 60
+    #     timeout     = 10
+    #     retries     = 3
+    #     startPeriod = 120
+    #   }
+    # }
   ])
 
   volume {

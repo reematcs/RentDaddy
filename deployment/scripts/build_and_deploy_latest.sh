@@ -169,46 +169,40 @@ force_ecs_deploy() {
 # === CLI Flags ===
 BUILD_BACKEND=false
 BUILD_FRONTEND=false
-BUILD_WORKER=false
 DEPLOY=false
 TAG_BACKEND="latest"
 TAG_FRONTEND="prod"
-TAG_WORKER="latest"
 USE_FRESH_BUILDER=true     # Default to using a fresh builder each time
 USE_REGISTRY_CACHE=true    # Default to using registry cache
 
 if [ $# -eq 0 ]; then
   BUILD_BACKEND=true
   BUILD_FRONTEND=true
-  BUILD_WORKER=true
 else
   while [[ $# -gt 0 ]]; do
     case $1 in
       -b|--backend) BUILD_BACKEND=true; shift ;;
       -f|--frontend) BUILD_FRONTEND=true; shift ;;
-      -w|--worker) BUILD_WORKER=true; shift ;;
-      -a|--all) BUILD_BACKEND=true; BUILD_FRONTEND=true; BUILD_WORKER=true; shift ;;
+      -a|--all) BUILD_BACKEND=true; BUILD_FRONTEND=true; shift ;;
       -d|--deploy) DEPLOY=true; shift ;;
       -t|--tag)
         TAG_BACKEND="$2"
         TAG_FRONTEND="$2"
-        TAG_WORKER="$2"
         shift 2 ;;
       --reuse-builder) USE_FRESH_BUILDER=false; shift ;;
       --fresh-builder) USE_FRESH_BUILDER=true; shift ;;
       --no-cache) USE_REGISTRY_CACHE=false; shift ;;
       --use-cache) USE_REGISTRY_CACHE=true; shift ;;
       -h|--help)
-        echo "Usage: $0 [-b|-f|-w|-a] [-t TAG] [--deploy] [--reuse-builder|--fresh-builder] [--use-cache|--no-cache]"
+        echo "Usage: $0 [-b|-f|-a] [-t TAG] [--deploy] [--reuse-builder|--fresh-builder] [--use-cache|--no-cache]"
         echo ""
         echo "Build Options:"
         echo "  -b, --backend         Build backend only"
         echo "  -f, --frontend        Build frontend only"
-        echo "  -w, --worker          Build worker only"
         echo "  -a, --all             Build all components (default if no component specified)"
         echo ""
         echo "Tag Options:"
-        echo "  -t, --tag TAG         Specify tag for all images (defaults: backend=latest, frontend=prod, worker=latest)"
+        echo "  -t, --tag TAG         Specify tag for all images (defaults: backend=latest, frontend=prod)"
         echo ""
         echo "Deployment Options:"
         echo "  -d, --deploy          Force ECS deployment after build"
@@ -245,12 +239,8 @@ $BUILD_FRONTEND && {
   fi
 }
 
-$BUILD_WORKER && {
-  if ! build_component "documenso-worker" "$PROJECT_ROOT/worker/documenso-worker" "$PROJECT_ROOT/worker/documenso-worker/Dockerfile" "$TAG_WORKER" "rentdaddy/documenso-worker"; then
-    log "❌ Worker build failed"
-    BUILD_SUCCESS=false
-  fi
-}
+# Worker build section removed
+# The documenso-worker is no longer needed in production
 
 # === Optional Deploy ===
 if $DEPLOY && $BUILD_SUCCESS; then

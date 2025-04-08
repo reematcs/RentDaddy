@@ -32,7 +32,6 @@ Create the necessary ECR repositories for your Docker images:
 aws ecr create-repository --repository-name rentdaddy/backend
 aws ecr create-repository --repository-name rentdaddy/frontend
 aws ecr create-repository --repository-name rentdaddy-main
-aws ecr create-repository --repository-name rentdaddy/documenso-worker
 ```
 
 ### Create an EC2 Key Pair for SSH Access
@@ -119,14 +118,7 @@ docker tag rentdaddy-main:postgres-15-amd64 YOURAWSACCOUNTID.dkr.ecr.us-east-2.a
 docker push YOURAWSACCOUNTID.dkr.ecr.us-east-2.amazonaws.com/rentdaddy-main:postgres-15-amd64
 ```
 
-### Documenso Worker Image
-
-```sh
-cd /path/to/RentDaddy/backend/cmd/documenso-worker
-docker build -t rentdaddy/documenso-worker:latest .
-docker tag rentdaddy/documenso-worker:latest YOURAWSACCOUNTID.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso-worker:latest
-docker push YOURAWSACCOUNTID.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso-worker:latest
-```
+<!-- Documenso Worker section removed as it's no longer needed -->
 
 Remember to replace `YOURAWSACCOUNTID` with your actual AWS account ID in all commands.
 

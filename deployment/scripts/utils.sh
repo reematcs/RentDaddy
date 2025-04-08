@@ -146,23 +146,7 @@ load_aws_config() {
   fi
 }
 
-# Find the location of the Documenso worker
-get_worker_dir() {
-  local PROJECT_ROOT="$1"
-  if [ -z "$PROJECT_ROOT" ]; then
-    PROJECT_ROOT=$(find_project_root)
-  fi
-  
-  # Check possible locations for the worker
-  if [ -d "$PROJECT_ROOT/backend/cmd/documenso-worker" ]; then
-    echo "$PROJECT_ROOT/backend/cmd/documenso-worker"
-  elif [ -d "$PROJECT_ROOT/worker/documenso-worker" ]; then
-    echo "$PROJECT_ROOT/worker/documenso-worker"
-  else
-    log "Error: Could not find documenso-worker directory"
-    return 1
-  fi
-}
+# Function removed as documenso-worker is no longer needed
 
 # Get current terraform variables
 get_terraform_var() {
@@ -251,7 +235,6 @@ export -f find_project_root
 export -f load_env
 export -f ecr_login
 export -f load_aws_config
-export -f get_worker_dir
 export -f get_terraform_var
 export -f verify_requirements
 export -f print_banner

@@ -16,7 +16,6 @@ Key functions:
 - `load_env()` - Load environment variables from a file
 - `load_aws_config()` - Load AWS credentials and configuration
 - `ecr_login()` - Authenticate with AWS ECR
-- `get_worker_dir()` - Find the documenso-worker directory
 - `get_terraform_var()` - Get a variable value from terraform.tfvars
 - `verify_requirements()` - Check for required commands
 - `print_banner()` - Print a stylized banner for script start
@@ -70,7 +69,6 @@ Usage:
 Options:
 - `--backend` - Build backend only
 - `--frontend` - Build frontend only
-- `--worker` - Build documenso-worker only
 - `--all` - Build all images (default)
 - `--deploy` - Force new deployment after building
 - `--tag TAG` - Specify a custom tag (default: latest/prod)
@@ -97,13 +95,7 @@ Usage:
 ./force_new_deployment_all.sh
 ```
 
-### monitor_documenso_worker.sh
-Monitor the Documenso worker logs.
-
-Usage:
-```bash
-./monitor_documenso_worker.sh
-```
+<!-- Section removed as documenso-worker is no longer needed -->
 
 ### describe_services.sh
 Describe the ECS services and their status.
@@ -169,7 +161,7 @@ python secrets_manager_main.py --backend-env PATH --frontend-env PATH [--secret-
 ## Testing Scripts
 
 ### test_documenso_webhooks.sh
-Test Documenso webhook functionality.
+Test Documenso webhook functionality directly with the backend.
 
 Usage:
 ```bash
@@ -210,8 +202,7 @@ The following improvements have been made to the script ecosystem:
 4. Fixed issues in several scripts:
    - Fixed timestamp handling in cleanup_older_logstreams.sh for better cross-platform compatibility
    - Corrected logical issues in cleanup_stopped_tasks.sh
-   - Improved AWS CLI version compatibility in monitor_documenso_worker.sh
-   - Enhanced worker directory detection in build_and_deploy_latest.sh
+   - Removed documenso-worker references as it's no longer needed
 
 ## Prerequisites
 

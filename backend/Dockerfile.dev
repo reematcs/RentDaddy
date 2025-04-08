@@ -8,22 +8,8 @@ RUN apk update && apk add --no-cache \
     curl \
     git \
     postgresql-client \
-    nodejs \
-    npm \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
     ca-certificates \
-    ttf-freefont \
     && rm -rf /var/cache/apk/*
-
-# Setup Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Install Puppeteer globally
-RUN npm install -g puppeteer
 
 # Install Task CLI
 RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task \

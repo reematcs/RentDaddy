@@ -179,5 +179,6 @@ else
   echo "Go not found, skipping module dependencies - continuing with server startup..."
 fi
 
-echo "Starting Go server..."
+# Start the server directly
+echo "[ENTRYPOINT-PROD] Starting Go server..."
 exec /app/server

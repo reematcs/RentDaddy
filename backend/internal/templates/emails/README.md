@@ -1,29 +1,23 @@
-# Email Templates for Documenso Worker
+# Email Templates for Documenso Integration
 
-This directory contains email templates used by the documenso-worker to send notifications for lease signing actions.
+These template files are maintained for historical reference, but are no longer actively used since Documenso now handles email sending directly.
 
-## Available Templates
+## Note on Current Email Handling
 
-1. `sign_request.html` - Email template for requesting a lease signature
-2. `signing_complete.html` - Email template for notifying when a lease has been signed
-3. `config.json` - Configuration for templates including subjects and filenames
+Documenso now manages all email notifications for document signing workflows:
+- Sending signature requests
+- Notifying when documents are signed
+- Providing download links for completed documents
 
-## Template Data Variables
+## Branding Options
 
-The following variables are available in templates:
+For custom branding in emails, Documenso offers configuration options through its Teams feature. See the Documenso documentation for details on customizing email appearance.
 
-- `{{.LogoURL}}` - URL to the RentDaddy logo
-- `{{.RecipientName}}` - Name of the recipient
-- `{{.DocumentTitle}}` - Title of the document
-- `{{.SigningURL}}` - URL for signing the document
-- `{{.DownloadURL}}` - URL for downloading the signed document
+## Previous Template Structure (Deprecated)
 
-## How to Add a New Template
+These files were previously used with the documenso-worker component:
+1. `sign_request.html` - Template for signature request emails
+2. `signing_complete.html` - Template for signing completion notifications
+3. `config.json` - Configuration for template subjects and filenames
 
-1. Create your HTML template file in this directory
-2. Add template configuration to `config.json`
-3. Update the template manager code in main.go to handle the new template type
-
-## Fallback Behavior
-
-If templates can't be loaded from this directory, the worker will fall back to using built-in templates.
+If custom email templates are needed in the future, refer to the Documenso API documentation for current integration options.
