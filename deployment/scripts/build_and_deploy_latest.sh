@@ -239,8 +239,10 @@ $BUILD_FRONTEND && {
   fi
 }
 
-# Worker build section removed
-# The documenso-worker is no longer needed in production
+# Worker build section has been completely removed
+# Architecture note: The documenso-worker component has been completely removed from production
+# Documenso integration now works through direct API calls and webhook handling in the backend
+# Manual configuration is required via the admin UI
 
 # === Optional Deploy ===
 if $DEPLOY && $BUILD_SUCCESS; then

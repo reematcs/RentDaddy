@@ -84,7 +84,7 @@ locals {
   ecr_backend_image  = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/backend"
   ecr_frontend_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/frontend"
   ecr_postgres_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy-main:postgres-15-amd64"
-  # ecr_docworker_image = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/rentdaddy/documenso-worker"
+  # Infrastructure has been simplified to remove the documenso-worker component
 }
 
 # VPC and Networking
@@ -723,90 +723,8 @@ resource "aws_ecs_task_definition" "documenso" {
       memoryReservation = 512,
       memory            = 768,
     }
-    # ,
-    # {
-    #   name      = "documenso-worker"
-    #   image     = "${local.ecr_docworker_image}:latest"
-    #   essential = true
-    #   links     = ["documenso-postgres", "documenso"],
-    #   dependsOn = [
-    #     {
-    #       containerName = "documenso-postgres"
-    #       condition     = "HEALTHY"
-    #     }
-    #   ],
-    #   environment = [
-    #     {
-    #       name  = "BACKEND_URL"
-    #       value = "https://${local.api_domain}"
-    #     },
-    #     {
-    #       name  = "WEBHOOK_PATH"
-    #       value = "/webhooks/documenso"
-    #     },
-    #     {
-    #       name  = "POLL_INTERVAL"
-    #       value = "15"
-    #     },
-    #     {
-    #       name  = "POSTGRES_USER"
-    #       value = "documenso"
-    #     },
-    #     {
-    #       name  = "POSTGRES_DB"
-    #       value = "documenso"
-    #     },
-    #     {
-    #       name  = "POSTGRES_HOST"
-    #       value = "documenso-postgres"
-    #     },
-    #     {
-    #       name  = "POSTGRES_PORT"
-    #       value = "5432"
-    #     },
-    #     {
-    #       name  = "STARTUP_DELAY"
-    #       value = "120"
-    #     },
-    #     {
-    #       name  = "MAX_CONNECTION_RETRIES"
-    #       value = "10"
-    #     },
-    #     {
-    #       name  = "DOCUMENSO_BASE_URL"
-    #       value = "http://documenso:3000"
-    #     },
-    #     {
-    #       name  = "DEBUG"
-    #       value = "true"
-    #     },
-    #     {
-    #       name  = "FORCE_REDEPLOY"
-    #       value = var.deploy_version
-    #     }
-    #   ]
-    #   secrets = [
-    #     { name = "POSTGRES_PASSWORD", valueFrom = "${var.documenso_secret_arn}:POSTGRES_PASSWORD::" },
-    #     { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "${var.backend_secret_arn}:DOCUMENSO_WEBHOOK_SECRET::" }
-    #   ]
-    #   logConfiguration = {
-    #     logDriver = "awslogs",
-    #     options = {
-    #       awslogs-group         = aws_cloudwatch_log_group.documenso_logs.name
-    #       awslogs-region        = var.aws_region
-    #       awslogs-stream-prefix = "worker"
-    #     }
-    #   }
-    #   memoryReservation = 256,
-    #   memory            = 512,
-    #   healthCheck = {
-    #     command     = ["CMD-SHELL", "ps aux | grep documenso-worker | grep -v grep || exit 1"]
-    #     interval    = 60
-    #     timeout     = 10
-    #     retries     = 3
-    #     startPeriod = 120
-    #   }
-    # }
+    # Note: The documenso-worker container definition has been removed
+    # Direct API integration and webhook handling is now done directly through the backend without a worker component
   ])
 
   volume {

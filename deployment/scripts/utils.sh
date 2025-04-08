@@ -146,7 +146,9 @@ load_aws_config() {
   fi
 }
 
-# Function removed as documenso-worker is no longer needed
+# The check_documenso_webhook_status function has been removed
+# The documenso-worker component has been eliminated from the architecture
+# Webhook functionality is now handled directly by the backend
 
 # Get current terraform variables
 get_terraform_var() {
