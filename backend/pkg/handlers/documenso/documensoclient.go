@@ -754,6 +754,15 @@ func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
 	log.Printf("DOCUMENSO DEBUG: "+format, args...)
 }
 
+// MaskSecret redacts most of the secret for logging, keeping only first few chars
+// Exported for use in other packages
+func MaskSecret(secret string) string {
+	if len(secret) <= 4 {
+		return "****"
+	}
+	return secret[:4] + "..."
+}
+
 // DocumensoConfig holds the configuration for Documenso integration
 type DocumensoConfig struct {
 	ApiKey        string `json:"apiKey"`
@@ -792,7 +801,7 @@ func UpdateDocumensoConfig(w http.ResponseWriter, r *http.Request) {
 	os.Setenv("DOCUMENSO_WEBHOOK_SECRET", config.WebhookSecret)
 
 	log.Printf("[DOCUMENSO_CONFIG] Updated API key to %s and webhook secret to %s",
-		config.ApiKey[:4]+"...", config.WebhookSecret[:4]+"...")
+		MaskSecret(config.ApiKey), MaskSecret(config.WebhookSecret))
 
 	// Write the config to a .env file or similar if needed
 	// This is optional and depends on your deployment strategy

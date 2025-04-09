@@ -159,18 +159,18 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 
 	log.Printf("Documenso API URL: %s", baseURL)
 
-	// Log first few characters of API key for security reasons
-	if len(apiKey) > 4 {
-		log.Printf("Documenso API Key: %s...", apiKey[:4])
+	// Use safer masking for API key 
+	if apiKey != "" {
+		log.Printf("Documenso API Key: %s", documenso.MaskSecret(apiKey))
 	} else {
-		log.Printf("Documenso API Key: <not set or invalid>")
+		log.Printf("Documenso API Key: not set")
 	}
 
-	// Log first few characters of webhook secret for security reasons
-	if len(webhookSecret) > 4 {
-		log.Printf("Documenso Webhook Secret: %s...", webhookSecret[:4])
+	// Use safer masking for webhook secret
+	if webhookSecret != "" {
+		log.Printf("Documenso Webhook Secret: %s", documenso.MaskSecret(webhookSecret))
 	} else {
-		log.Printf("Documenso Webhook Secret: <not set or invalid>")
+		log.Printf("Documenso Webhook Secret: not set")
 	}
 
 	// Default fallback values

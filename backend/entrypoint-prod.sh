@@ -6,10 +6,9 @@ echo "[ENTRYPOINT-PROD] Backend starting..."
 # In production, environment variables should be provided by the environment
 # (e.g., container platform, Kubernetes, etc.)
 
-echo "[ENTRYPOINT-PROD] POSTGRES_HOST: $POSTGRES_HOST"
-echo "[ENTRYPOINT-PROD] POSTGRES_USER: $POSTGRES_USER"
-echo "[ENTRYPOINT-PROD] POSTGRES_DB: $POSTGRES_DB"
+# Only log non-sensitive configuration values
 echo "[ENTRYPOINT-PROD] PORT: $PORT"
+echo "[ENTRYPOINT-PROD] Database connection being established... (credentials masked for security)"
 
 # Set up database connection string
 export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
@@ -82,6 +81,7 @@ export POSTGRES_DB="${POSTGRES_DB}"
 # Export the full PG_URL to override any hardcoded values in Taskfile
 export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 
+# Log database connection with masked password
 echo "Using database URL: postgresql://${POSTGRES_USER}:****@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 set +e
 # Run migrations with explicit variables

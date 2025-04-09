@@ -80,6 +80,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Running migrations with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
       - echo "Migrations applied!"
 
@@ -89,6 +91,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Rolling back migration with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
       - echo "Migrating down 1 version.."
 
@@ -98,6 +102,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Checking migration version with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:status:
@@ -106,6 +112,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Checking migration status with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:fix-dirty:
@@ -115,6 +123,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Fixing dirty migration state with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
       - echo "Database migration state reset!"
 
@@ -124,6 +134,8 @@ tasks:
       - |
         # Set password as environment variable without printing to logs
         export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Resetting database with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
         migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
   test:all:
