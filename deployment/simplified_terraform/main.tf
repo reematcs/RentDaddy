@@ -645,7 +645,7 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "FORCE_REDEPLOY", value = var.deploy_version },
         { name = "NEXT_PRIVATE_JOBS_PROVIDER", value = "local" },
         { name = "DEBUG", value = "true" },
-        { name = "NODE_DEBUG", value = "email,net,tls" },
+        { name = "NODE_DEBUG", value = "email,tls" },
         { name = "NEXT_PRIVATE_JOBS_DEBUG", value = "true" }
       ]
       secrets = [
