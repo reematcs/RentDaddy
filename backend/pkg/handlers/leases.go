@@ -395,6 +395,32 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 	// Use the admin user from database as the landlord
 	log.Print("Using admin user from database as landlord...")
 
+	// Get the tenant's actual email from the database to ensure consistency
+	// ALWAYS use DB as source of truth for tenant email - CRITICAL for Documenso integration
+	tenant, err := h.queries.GetUserByID(r.Context(), req.TenantID)
+	if err != nil {
+		log.Printf("[LEASE_UPSERT] Error fetching tenant info from database: %v", err)
+		http.Error(w, "Failed to fetch tenant information", http.StatusInternalServerError)
+		return
+	}
+	
+	// Use the tenant's email from the database for consistency
+	tenantName := fmt.Sprintf("%s %s", tenant.FirstName, tenant.LastName)
+	tenantEmail := tenant.Email
+	
+	// Log for verification
+	log.Printf("[LEASE_UPSERT] Using tenant email from database: %s (Tenant ID: %d)", 
+		tenantEmail, req.TenantID)
+	
+	// If the frontend sent a different email, log it for debugging but don't use it
+	if req.TenantEmail != "" && req.TenantEmail != tenantEmail {
+		log.Printf("[LEASE_UPSERT] ⚠️ WARNING: Frontend provided email %s differs from database email %s",
+			req.TenantEmail, tenantEmail)
+	}
+	
+	// Use the database email regardless of what was provided in the request
+	req.TenantEmail = tenantEmail
+
 	log.Println("[LEASE_UPSERT] Starting lease upsert handler")
 
 	// Parse and validate dates
@@ -456,11 +482,11 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		}
 	}
 
-	// Generate the lease PDF using the landlord info from database
+	// Generate the lease PDF using the landlord and tenant info from database
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
 		landlordName,
-		req.TenantName,
+		tenantName, // Use tenant name from database for consistency
 		req.PropertyAddress,
 		req.RentAmount,
 		startDate,
@@ -472,15 +498,15 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		return
 	}
 
-	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", req.TenantName, req.PropertyAddress)
+	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", tenantName, req.PropertyAddress)
 
 	// Upload to Documenso and populate fields
 	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
 	docID, _, landlordSigningURL, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		LeaseWithSignersRequest{
-			TenantName:      req.TenantName,
-			TenantEmail:     req.TenantEmail,
+			TenantName:      tenantName, // Use tenant name from database
+			TenantEmail:     tenantEmail, // Use tenant email from database
 			PropertyAddress: req.PropertyAddress,
 			RentAmount:      req.RentAmount,
 			StartDate:       startDate.Format("2006-01-02"),
@@ -501,6 +527,10 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 
 	// Create lease record in database
 	log.Println("[LEASE_UPSERT] Inserting lease into database")
+
+	// We already have the tenant email from the database fetch above
+	// No need to check req.TenantEmail as it's already set to the database value
+	log.Printf("[LEASE_UPSERT] Using tenant email for database insertion: %s", tenantEmail)
 
 	leaseParams := db.RenewLeaseParams{
 		LeaseNumber:     req.LeaseNumber,
@@ -1166,12 +1196,34 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 	tenantID := req.TenantID
+	
+	// Get the tenant's actual data from the database to ensure consistency
+	tenant, err := h.queries.GetUserByID(ctx, req.TenantID)
+	if err != nil {
+		log.Printf("[LEASE_RENEWAL] Error fetching tenant info from database: %v", err)
+		http.Error(w, "Failed to fetch tenant information", http.StatusInternalServerError)
+		return
+	}
+	
+	// Use the tenant's name and email from the database for consistency
+	tenantName := fmt.Sprintf("%s %s", tenant.FirstName, tenant.LastName)
+	tenantEmail := tenant.Email
+	
+	// Log for verification
+	log.Printf("[LEASE_RENEWAL] Using tenant email from database: %s (Tenant ID: %d)", 
+		tenantEmail, req.TenantID)
+	
+	// If the frontend sent a different email, log it for debugging but don't use it
+	if req.TenantEmail != "" && req.TenantEmail != tenantEmail {
+		log.Printf("[LEASE_RENEWAL] ⚠️ WARNING: Frontend provided email %s differs from database email %s",
+			req.TenantEmail, tenantEmail)
+	}
 
 	// 4. Generate the full lease PDF
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
 		landlordName,
-		req.TenantName,
+		tenantName, // Use tenant name from database for consistency
 		req.PropertyAddress,
 		req.RentAmount,
 		startDate,
@@ -1184,9 +1236,22 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 
 	// 5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
+	// Create a new LeaseWithSignersRequest with database tenant information
+	signerReq := LeaseWithSignersRequest{
+		TenantName:      tenantName, // Use name from database
+		TenantEmail:     tenantEmail, // Use email from database
+		PropertyAddress: req.PropertyAddress,
+		RentAmount:      req.RentAmount,
+		StartDate:       req.StartDate,
+		EndDate:         req.EndDate,
+		DocumentTitle:   req.DocumentTitle,
+		TenantID:        req.TenantID,
+		ApartmentID:     req.ApartmentID,
+	}
+	
 	docID, _, tenantSigningURL, landlordSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
-		req,
+		signerReq, // Use our modified request with correct tenant info
 		landlordName,
 		landlordEmail,
 	)
@@ -1262,8 +1327,8 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		"lease_id":        leaseID,
 		"external_doc_id": docID,
 		"lease_sign_url":  h.documenso_client.GetSigningURL(docID),
-		"tenant_name":     req.TenantName,
-		"tenant_email":    req.TenantEmail,
+		"tenant_name":     tenantName, // Use tenant name from database
+		"tenant_email":    tenantEmail, // Use tenant email from database
 		"landlord_email":  landlordEmail,
 		"status":          db.LeaseStatusPendingApproval,
 		"message":         "Lease agreement created successfully and sent for signing",
