@@ -25,6 +25,11 @@ SELECT *
 FROM complaints
 WHERE created_by = $1;
 
+-- name: CountComplaintsByUser :one
+SELECT COUNT(*)
+FROM complaints
+WHERE created_by = $1;
+
 -- name: UpdateComplaint :exec
 UPDATE complaints
 SET

@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countComplaintsByUser = `-- name: CountComplaintsByUser :one
+SELECT COUNT(*)
+FROM complaints
+WHERE created_by = $1
+`
+
+func (q *Queries) CountComplaintsByUser(ctx context.Context, createdBy int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countComplaintsByUser, createdBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createComplaint = `-- name: CreateComplaint :one
 INSERT INTO complaints (
     created_by,

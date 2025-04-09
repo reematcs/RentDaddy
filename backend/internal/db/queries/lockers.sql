@@ -65,6 +65,11 @@ SELECT *
 FROM lockers
 WHERE user_id = $1;
 
+-- name: CountLockersByUser :one
+SELECT COUNT(*)
+FROM lockers
+WHERE user_id = $1;
+
 
 -- name: GetNumberOfLockersInUse :one
 SELECT COUNT(*)

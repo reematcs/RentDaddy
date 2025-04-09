@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countLockersByUser = `-- name: CountLockersByUser :one
+SELECT COUNT(*)
+FROM lockers
+WHERE user_id = $1
+`
+
+func (q *Queries) CountLockersByUser(ctx context.Context, userID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, countLockersByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLocker = `-- name: CreateLocker :exec
 INSERT INTO lockers (
     access_code,

@@ -51,11 +51,8 @@ func RandomStatus() db.Status {
 }
 
 func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) error {
-	// Get existing work order count for this tenant
-	var existingCount int
-	err := queries.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM work_orders WHERE created_by = $1
-	`, user.ID).Scan(&existingCount)
+	// Use the CountWorkOrdersByUser function from generated queries
+	existingCount, err := queries.CountWorkOrdersByUser(ctx, user.ID)
 	if err != nil {
 		log.Printf("[SEEDER] Failed to get existing work order count: %v", err)
 		// Continue anyway, assuming no work orders exist
@@ -63,25 +60,25 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 	}
 
 	// Set a reasonable maximum number of work orders per tenant
-	const MAX_WORK_ORDERS_PER_TENANT = 5
+	const MAX_WORK_ORDERS_PER_TENANT int64 = 5
 
 	// If tenant already has maximum work orders, skip
 	if existingCount >= MAX_WORK_ORDERS_PER_TENANT {
-		log.Printf("[SEEDER] Tenant ID %d already has %d work orders (max: %d), skipping", 
+		log.Printf("[SEEDER] Tenant ID %d already has %d work orders (max: %d), skipping",
 			user.ID, existingCount, MAX_WORK_ORDERS_PER_TENANT)
 		return nil
 	}
 
 	// Create random number of work orders (1-3) but don't exceed maximum
-	orderCount := r.Intn(3) + 1
-	if existingCount + orderCount > MAX_WORK_ORDERS_PER_TENANT {
+	orderCount := int64(r.Intn(3) + 1)
+	if existingCount+orderCount > MAX_WORK_ORDERS_PER_TENANT {
 		orderCount = MAX_WORK_ORDERS_PER_TENANT - existingCount
 	}
 
-	log.Printf("[SEEDER] Creating %d work orders for tenant ID %d (currently has %d)", 
+	log.Printf("[SEEDER] Creating %d work orders for tenant ID %d (currently has %d)",
 		orderCount, user.ID, existingCount)
 
-	for i := 0; i < orderCount; i++ {
+	for i := int64(0); i < orderCount; i++ {
 		order, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
 			CreatedBy:   user.ID,
 			Category:    RandomWorkCategory(),
@@ -89,22 +86,19 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %v", err.Error()))
+			return fmt.Errorf("[SEEDER] error creating work order: %v", err.Error())
 		}
 		log.Printf("[SEEDER] Work order created for tenant ID %d: %d", user.ID, order.ID)
 	}
 
-	log.Printf("[SEEDER] Work orders seeded successfully for tenant ID %d (%d total)", 
-		user.ID, existingCount + orderCount)
+	log.Printf("[SEEDER] Work orders seeded successfully for tenant ID %d (%d total)",
+		user.ID, existingCount+orderCount)
 	return nil
 }
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
-	// Get existing complaint count for this tenant
-	var existingCount int
-	err := queries.DB.QueryRow(ctx, `
-		SELECT COUNT(*) FROM complaints WHERE created_by = $1
-	`, user.ID).Scan(&existingCount)
+	// Use the CountComplaintsByUser function from generated queries
+	existingCount, err := queries.CountComplaintsByUser(ctx, user.ID)
 	if err != nil {
 		log.Printf("[SEEDER] Failed to get existing complaint count: %v", err)
 		// Continue anyway, assuming no complaints exist
@@ -112,25 +106,25 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 	}
 
 	// Set a reasonable maximum number of complaints per tenant
-	const MAX_COMPLAINTS_PER_TENANT = 3
+	const MAX_COMPLAINTS_PER_TENANT int64 = 3
 
 	// If tenant already has maximum complaints, skip
 	if existingCount >= MAX_COMPLAINTS_PER_TENANT {
-		log.Printf("[SEEDER] Tenant ID %d already has %d complaints (max: %d), skipping", 
+		log.Printf("[SEEDER] Tenant ID %d already has %d complaints (max: %d), skipping",
 			user.ID, existingCount, MAX_COMPLAINTS_PER_TENANT)
 		return nil
 	}
 
 	// Create random number of complaints (1-2) but don't exceed maximum
-	complaintCount := r.Intn(2) + 1
-	if existingCount + complaintCount > MAX_COMPLAINTS_PER_TENANT {
+	complaintCount := int64(r.Intn(2) + 1)
+	if existingCount+complaintCount > MAX_COMPLAINTS_PER_TENANT {
 		complaintCount = MAX_COMPLAINTS_PER_TENANT - existingCount
 	}
 
-	log.Printf("[SEEDER] Creating %d complaints for tenant ID %d (currently has %d)", 
+	log.Printf("[SEEDER] Creating %d complaints for tenant ID %d (currently has %d)",
 		complaintCount, user.ID, existingCount)
 
-	for i := 0; i < complaintCount; i++ {
+	for i := int64(0); i < complaintCount; i++ {
 		complaint, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
 			CreatedBy:   user.ID,
 			Category:    RandomComplaintCategory(),
@@ -138,49 +132,46 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %v", err.Error()))
+			return fmt.Errorf("[SEEDER] error creating complaint: %v", err.Error())
 		}
 		log.Printf("[SEEDER] Complaint created for tenant ID %d: %d", user.ID, complaint.ID)
 	}
 
-	log.Printf("[SEEDER] Complaints seeded successfully for tenant ID %d (%d total)", 
-		user.ID, existingCount + complaintCount)
+	log.Printf("[SEEDER] Complaints seeded successfully for tenant ID %d (%d total)",
+		user.ID, existingCount+complaintCount)
 	return nil
 }
 
 func createLockers(queries *db.Queries, tenants []db.ListUsersByRoleRow, ctx context.Context) error {
 	log.Printf("[SEEDER] Checking lockers for %d tenants", len(tenants))
-	
+
 	var totalCreated int
-	
+
 	for _, tenant := range tenants {
-		// Check how many lockers the tenant already has
-		var lockerCount int
-		err := queries.DB.QueryRow(ctx, `
-			SELECT COUNT(*) FROM lockers WHERE user_id = $1
-		`, tenant.ID).Scan(&lockerCount)
-		
+		// Use the CountLockersByUser function with proper pgtype.Int8 conversion
+		userIDParam := pgtype.Int8{Int64: tenant.ID, Valid: true}
+		lockerCount, err := queries.CountLockersByUser(ctx, userIDParam)
 		if err != nil {
 			log.Printf("[SEEDER] Warning: Failed to get locker count for tenant %d: %v", tenant.ID, err)
 			// Continue anyway, assuming no lockers exist
 			lockerCount = 0
 		}
-		
+
 		// Maximum 2 lockers per tenant
 		const MAX_LOCKERS_PER_TENANT = 2
-		
+
 		// Skip if tenant already has maximum number of lockers
 		if lockerCount >= MAX_LOCKERS_PER_TENANT {
 			log.Printf("[SEEDER] Tenant %d already has %d lockers, skipping", tenant.ID, lockerCount)
 			continue
 		}
-		
+
 		// Create remaining lockers up to the maximum
-		toCreate := MAX_LOCKERS_PER_TENANT - lockerCount
+		toCreate := int(MAX_LOCKERS_PER_TENANT - lockerCount)
 		for i := 0; i < toCreate; i++ {
 			// Generate a random 4-digit access code
-			accessCode := fmt.Sprintf("%04d", 1000 + r.Intn(9000))
-			
+			accessCode := fmt.Sprintf("%04d", 1000+r.Intn(9000))
+
 			if err := queries.CreateLocker(ctx, db.CreateLockerParams{
 				UserID:     pgtype.Int8{Int64: tenant.ID, Valid: true},
 				AccessCode: pgtype.Text{String: accessCode, Valid: true},
@@ -188,12 +179,12 @@ func createLockers(queries *db.Queries, tenants []db.ListUsersByRoleRow, ctx con
 				log.Printf("[SEEDER] Error creating locker for tenant %d: %v", tenant.ID, err)
 				continue
 			}
-			
+
 			log.Printf("[SEEDER] Created locker with access code %s for tenant %d", accessCode, tenant.ID)
 			totalCreated++
 		}
 	}
-	
+
 	log.Printf("[SEEDER] Created %d new lockers for tenants", totalCreated)
 	return nil
 }
@@ -206,13 +197,13 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 	if err != nil {
 		return errors.New("[SEEDER] error counting users: " + err.Error())
 	}
-	
+
 	tenantCount := len(users)
 	if tenantCount == 0 {
 		log.Println("[SEEDER] No tenant users found, skipping data seeding")
 		return nil
 	}
-	
+
 	log.Printf("[SEEDER] Found %d tenant users for seeding", tenantCount)
 
 	// Create lockers for all tenants
@@ -229,7 +220,7 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 	if seedCount > 8 {
 		seedCount = 8 // Cap at 8 tenants per run to avoid overwhelming the system
 	}
-	
+
 	log.Printf("[SEEDER] Will seed work orders and complaints for %d/%d tenants", seedCount, tenantCount)
 
 	// Get random tenants from the database
@@ -257,9 +248,9 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			continue
 		}
 
-		log.Printf("[SEEDER] Processing tenant: %s %s (%s, ID: %d)", 
+		log.Printf("[SEEDER] Processing tenant: %s %s (%s, ID: %d)",
 			u.FirstName, u.LastName, u.Email, u.ID)
-		
+
 		// Create work orders for this tenant
 		err := createWorkOrders(queries, u, ctx)
 		if err != nil {
