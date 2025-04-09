@@ -574,11 +574,11 @@ resource "aws_ecs_task_definition" "documenso" {
       name      = "documenso"
       image     = "documenso/documenso:latest"
       essential = true
-      # Use a command to preserve Documenso's entrypoint but set our env vars properly
+      # Use a command that properly sets environment variables and runs migrations
       command = [
         "/bin/sh",
         "-c",
-        "export CONTAINER_IP=$(hostname -i) && export NEXT_PRIVATE_INTERNAL_WEBAPP_URL=http://$CONTAINER_IP:3000 && export NEXT_PUBLIC_JOBS_URL=http://$CONTAINER_IP:3000/api/jobs && echo \"Container IP: $CONTAINER_IP\" && echo \"NEXT_PRIVATE_INTERNAL_WEBAPP_URL=$NEXT_PRIVATE_INTERNAL_WEBAPP_URL\" && echo \"NEXT_PUBLIC_JOBS_URL=$NEXT_PUBLIC_JOBS_URL\" && exec node apps/web/server.js"
+        "export CONTAINER_IP=$(hostname -i) && export NEXT_PRIVATE_INTERNAL_WEBAPP_URL=http://$CONTAINER_IP:3000 && export NEXT_PUBLIC_JOBS_URL=http://$CONTAINER_IP:3000/api/jobs && echo \"Container IP: $CONTAINER_IP\" && echo \"NEXT_PRIVATE_INTERNAL_WEBAPP_URL=$NEXT_PRIVATE_INTERNAL_WEBAPP_URL\" && echo \"NEXT_PUBLIC_JOBS_URL=$NEXT_PUBLIC_JOBS_URL\" && cd /app && npx prisma migrate deploy --schema ./packages/prisma/schema.prisma && node apps/web/server.js"
       ]
       portMappings = [
         {
