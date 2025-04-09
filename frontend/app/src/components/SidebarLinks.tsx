@@ -90,14 +90,14 @@ const SidebarLinks = () => {
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 className="lucide lucide-building-icon lucide-building">
-                                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
-                                <path d="M9 22v-4h6v4"/>
-                                <path d="M8 6h.01"/>
-                                <path d="M16 6h.01"/>
-                                <path d="M8 10h.01"/>
-                                <path d="M16 10h.01"/>
-                                <path d="M8 14h.01"/>
-                                <path d="M16 14h.01"/>
+                                <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                                <path d="M9 22v-4h6v4" />
+                                <path d="M8 6h.01" />
+                                <path d="M16 6h.01" />
+                                <path d="M8 10h.01" />
+                                <path d="M16 10h.01" />
+                                <path d="M8 14h.01" />
+                                <path d="M16 14h.01" />
                             </svg>
                             Apartment
                         </Link>
@@ -314,7 +314,7 @@ const SidebarLinks = () => {
                         className={getLinkClass("/tenant/guest-parking") + " hover-lift transition-all"}>
                         Guest Parking
                     </Link> */}
-                        <Link
+                        {/* <Link
                             to="/tenant/leases"
                             className={`d-flex align-items-center gap-2 hover-darken transition-all ${getLinkClass("/tenant/leases")}`}>
                             <svg
@@ -335,7 +335,7 @@ const SidebarLinks = () => {
                                 <path d="M16 17H8" />
                             </svg>
                             Leases
-                        </Link>
+                        </Link> */}
                         <Link
                             to="/tenant/work-orders"
                             className={`d-flex align-items-center gap-2  hover-darken transition-all ${getLinkClass("/tenant/work-orders")}`}>

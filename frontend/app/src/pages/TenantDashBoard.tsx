@@ -1,4 +1,4 @@
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
+import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
 import LeaseCardComponent from "../components/LeaseCardComponent";
@@ -174,14 +174,7 @@ export const TenantDashBoard = () => {
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
             <div className="flex-container my-3">
-                <CardComponent
-                    title="Complaints"
-                    value={complaints.data?.length ?? 0}
-                    description="Something not working right or disturbing you? Let us know."
-                    hoverable={true}
-                    icon={<ToolOutlined className="icon" />}
-                    button={<TenantCreateComplaintsModal />}
-                />
+
                 <CardComponent
                     title="Package info"
                     value={lockers.data?.length ?? 0}
@@ -209,14 +202,16 @@ export const TenantDashBoard = () => {
                     description={"View your work orders here."}
                     hoverable={true}
                     value={workOrders.data?.length}
+                    icon={<PaperClipOutlined className="icon" />}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
                 <CardComponent
                     title="Complaints"
-                    description={"View your complaints here."}
+                    value={complaints.data?.length ?? 0}
+                    description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
-                    value={complaints.data?.length}
-                    button={<TenantViewComplaintsModal data={complaints.data} />}
+                    icon={<ToolOutlined className="icon" />}
+                    button={<TenantCreateComplaintsModal />}
                 />
             </div>
 
