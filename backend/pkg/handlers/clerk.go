@@ -226,7 +226,7 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	primaryUserEmail := userData.EmailAddresses[0].EmailAddress
 
 	// First, check if the user exists in our database
-	_, err := queries.GetUser(r.Context(), userData.ID)
+	existingUser, err := queries.GetUser(r.Context(), userData.ID)
 	if err != nil {
 		// User doesn't exist yet - create the user instead of updating
 		log.Printf("[CLERK_WEBHOOK] User %s not found, creating new user instead of updating", userData.ID)
@@ -236,21 +236,71 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		return
 	}
 
-	// If user exists, proceed with update
-	log.Printf("[CLERK_WEBHOOK] Updating existing user %s (%s)", userData.ID, primaryUserEmail)
+	// Extract role from clerk metadata if present
+	var userRole db.Role = existingUser.Role // Default to existing role in database
+	var userMetadata ClerkUserPublicMetaData
+	
+	if err := json.Unmarshal(userData.PublicMetaData, &userMetadata); err == nil {
+		// Successfully parsed metadata
+		if userMetadata.Role != "" {
+			// If metadata has a role, use it
+			userRole = userMetadata.Role
+			log.Printf("[CLERK_WEBHOOK] Found role in Clerk metadata: %s", userRole)
+		}
+	} else {
+		log.Printf("[CLERK_WEBHOOK] Warning: Failed to parse metadata for user %s: %v", userData.ID, err)
+	}
 
+	// Check if DB ID in Clerk metadata is correct
+	if userMetadata.DbId != int32(existingUser.ID) {
+		log.Printf("[CLERK_WEBHOOK] DB ID mismatch - Clerk: %d, DB: %d. Will update metadata.",
+			userMetadata.DbId, existingUser.ID)
+			
+		// Update Clerk metadata with correct DB ID and role
+		metadataUpdate := ClerkUserPublicMetaData{
+			DbId: int32(existingUser.ID),
+			Role: userRole,
+		}
+		
+		metadataBytes, err := json.Marshal(metadataUpdate)
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Error marshaling metadata: %v", err)
+		} else {
+			metadataRaw := json.RawMessage(metadataBytes)
+			_, updateErr := user.Update(r.Context(), userData.ID, &user.UpdateParams{
+				PublicMetadata: &metadataRaw,
+			})
+			
+			if updateErr != nil {
+				log.Printf("[CLERK_WEBHOOK] Error updating Clerk metadata: %v", updateErr)
+			} else {
+				log.Printf("[CLERK_WEBHOOK] Successfully updated Clerk metadata with DB ID and role")
+			}
+		}
+	}
+
+	// If user exists, proceed with update - including role from metadata
+	log.Printf("[CLERK_WEBHOOK] Updating existing user %s (%s) with role %s", 
+		userData.ID, primaryUserEmail, userRole)
+
+	// We need to maintain the existing phone if it wasn't changed
+	phoneToUse := existingUser.Phone
+	
 	if err := queries.UpdateUser(r.Context(), db.UpdateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
+		Phone:     phoneToUse,
+		Role:      userRole,
 	}); err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed updating user %s: %v", userData.ID, err)
 		http.Error(w, "Error updating user data", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s)", userData.ID, primaryUserEmail)
+	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s) with role %s", 
+		userData.ID, primaryUserEmail, userRole)
 	w.WriteHeader(http.StatusOK)
 }
 

@@ -416,6 +416,7 @@ SET first_name = $2,
     last_name  = $3,
     email      = $4,
     phone      = $5,
+    role       = $6,
     updated_at = now()
 WHERE clerk_id = $1
 `
@@ -426,6 +427,7 @@ type UpdateUserParams struct {
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
+	Role      Role        `json:"role"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -435,6 +437,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
+		arg.Role,
 	)
 	return err
 }

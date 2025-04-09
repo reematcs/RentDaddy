@@ -64,6 +64,7 @@ SET first_name = $2,
     last_name  = $3,
     email      = $4,
     phone      = $5,
+    role       = $6,
     updated_at = now()
 WHERE clerk_id = $1;
 
@@ -93,4 +94,3 @@ RETURNING id, clerk_id, first_name, last_name, email, phone, role, status, updat
 
 -- name: GetUserCount :one
 SELECT COUNT(*) FROM users;
-

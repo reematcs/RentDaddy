@@ -411,9 +411,9 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "DOCUMENSO_API_URL", value = "https://${local.docs_domain}" },
         { name = "DOCUMENSO_PUBLIC_URL", value = "https://${local.docs_domain}" },
         # Admin information
-        { name = "ADMIN_FIRST_NAME", value = "First" },
-        { name = "ADMIN_LAST_NAME", value = "Landlord" },
-        { name = "ADMIN_EMAIL", value = "wrldconnect1@gmail.com" },
+        { name = "ADMIN_FIRST_NAME", value = "Ezra" },
+        { name = "ADMIN_LAST_NAME", value = "Bot" },
+        { name = "ADMIN_EMAIL", value = "ezrabot24@gmail.com" },
         # Application Environment
         { name = "ENV", value = "production" },
         { name = "DEBUG_MODE", value = var.debug_mode },
