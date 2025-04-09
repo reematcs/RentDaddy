@@ -1,5 +1,5 @@
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
-import { Modal, Button, Divider, Form, Input, Select } from "antd";
+import { WarningOutlined, InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
+import { Modal, Button, Divider, Form, Input } from "antd";
 import { useState, useEffect } from "react";
 import LeaseCardComponent from "../components/LeaseCardComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -174,7 +174,14 @@ export const TenantDashBoard = () => {
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
             <div className="flex-container my-3">
-
+                {/* <CardComponent
+                    title="Complaints"
+                    value={complaints.data?.length ?? 0}
+                    description="Something not working right or disturbing you? Let us know."
+                    hoverable={true}
+                    icon={<ToolOutlined className="icon" />}
+                    button={<TenantCreateComplaintsModal />}
+                /> */}
                 <CardComponent
                     title="Package info"
                     value={lockers.data?.length ?? 0}
@@ -189,7 +196,7 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
+                    button={<TenantParkingPermitModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
 
@@ -207,11 +214,10 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={complaints.data?.length ?? 0}
-                    description="Something not working right or disturbing you? Let us know."
+                    description={"View your complaints here."}
                     hoverable={true}
-                    icon={<ToolOutlined className="icon" />}
-                    button={<TenantCreateComplaintsModal />}
+                    value={complaints.data?.length}
+                    button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
             </div>
 
@@ -251,7 +257,7 @@ interface ParkingPermitModalProps {
     userParkingPermitsUsed: number;
 }
 
-function TenantParkingPeritModal(props: ParkingPermitModalProps) {
+function TenantParkingPermitModal(props: ParkingPermitModalProps) {
     const queryClient = useQueryClient();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const { userId, getToken } = useAuth();
@@ -474,112 +480,111 @@ function TenantViewComplaintsModal(props: ComplaintModalProps) {
         </>
     );
 }
-function TenantCreateComplaintsModal() {
-    const queryClient = useQueryClient();
-    const { getToken, userId } = useAuth();
-    const [internalModalOpen, setInternalModalOpen] = useState(false);
-    const [complaintForm] = Form.useForm<ComplaintsData>();
-    const showModal = () => {
-        setInternalModalOpen(true);
-    };
-    const handleCancel = () => {
-        if (internalModalOpen) {
-            setInternalModalOpen(false);
-        }
-        if (internalModalOpen === undefined) {
-            setInternalModalOpen(false);
-        }
-    };
+// function TenantCreateComplaintsModal() {
+//     const queryClient = useQueryClient();
+//     const { getToken, userId } = useAuth();
+//     const [internalModalOpen, setInternalModalOpen] = useState(false);
+//     const [complaintForm] = Form.useForm<ComplaintsData>();
+//     const showModal = () => {
+//         setInternalModalOpen(true);
+//     };
+//     const handleCancel = () => {
+//         if (internalModalOpen) {
+//             setInternalModalOpen(false);
+//         }
+//         if (internalModalOpen === undefined) {
+//             setInternalModalOpen(false);
+//         }//     };
 
-    const { mutate: createComplaint, isPending: isPendingComplaint } = useMutation({
-        mutationKey: [`${userId}-create-complaint`],
-        mutationFn: async () => {
-            const authToken = await getToken();
-            if (!authToken) {
-                throw new Error("[TENANT_DASHBOARD] Error unauthorized");
-            }
+//     const { mutate: createComplaint, isPending: isPendingComplaint } = useMutation({
+//         mutationKey: [`${userId}-create-complaint`],
+//         mutationFn: async () => {
+//             const authToken = await getToken();
+//             if (!authToken) {
+//                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+//             }
 
-            // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
-            const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${authToken}`,
-                },
-                body: JSON.stringify(complaintForm.getFieldsValue()),
-            });
+//             // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
+//             const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
+//                 method: "POST",
+//                 headers: {
+//                     "Content-Type": "application/json",
+//                     Authorization: `Bearer ${authToken}`,
+//                 },
+//                 body: JSON.stringify(complaintForm.getFieldsValue()),
+//             });
 
-            if (!res.ok) {
-                throw new Error("[TENANT_DASHBOARD] Error creating complaint");
-            }
-            return;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [`${userId}-complaints`],
-            });
-            handleCancel();
-            return toast.success("Success", { description: "Created new complaint" });
-        },
+//             if (!res.ok) {
+//                 throw new Error("[TENANT_DASHBOARD] Error creating complaint");
+//             }
+//             return;
+//         },
+//         onSuccess: () => {
+//             queryClient.invalidateQueries({
+//                 queryKey: [`${userId}-complaints`],
+//             });
+//             handleCancel();
+//             return toast.success("Success", { description: "Created new complaint" });
+//         },
 
-        onError: () => {
-            return toast.error("Oops", { description: "Something happned please try again another time." });
-        },
-    });
-    return (
-        <>
-            <ButtonComponent
-                type="primary"
-                title="Create Complaint"
-                onClick={showModal}
-            />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
-                open={internalModalOpen}
-                onOk={() => {
-                    createComplaint();
-                }}
-                okText={"Create"}
-                onCancel={handleCancel}
-                okButtonProps={{ disabled: isPendingComplaint ? true : false }}
-                cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
-                <p>Enter information about a complaint that you're having here.</p>
-                <Divider />
-                <Form form={complaintForm}>
-                    <p className="fs-7">Title</p>
-                    <Form.Item
-                        name="title"
-                        rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
-                        <Input
-                            placeholder="Enter a title"
-                            type="text"
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Description</p>
-                    <Form.Item
-                        name="description"
-                        rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
-                        <Input.TextArea
-                            placeholder="Enter a breif description for complaint"
-                            rows={4}
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Category</p>
-                    <Form.Item
-                        name="category"
-                        rules={[{ required: true, type: "string" }]}>
-                        <Select placeholder={"Select a category"}>
-                            {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
-                                <Select.Option key={c}>{c}</Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                </Form>
-            </Modal>
-        </>
-    );
-}
+//         onError: () => {
+//             return toast.error("Oops", { description: "Something happned please try again another time." });
+//         },
+//     });
+//     return (
+//         <>
+//             <ButtonComponent
+//                 type="primary"
+//                 title="Create Complaint"
+//                 onClick={showModal}
+//             />
+//             <Modal
+//                 className="p-3 flex-wrap-row"
+//                 title={<h3>Complaints</h3>}
+//                 open={internalModalOpen}
+//                 onOk={() => {
+//                     createComplaint();
+//                 }}
+//                 okText={"Create"}
+//                 onCancel={handleCancel}
+//                 okButtonProps={{ disabled: isPendingComplaint ? true : false }}
+//                 cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
+//                 <p>Enter information about a complaint that you're having here.</p>
+//                 <Divider />
+//                 <Form form={complaintForm}>
+//                     <p className="fs-7">Title</p>
+//                     <Form.Item
+//                         name="title"
+//                         rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
+//                         <Input
+//                             placeholder="Enter a title"
+//                             type="text"
+//                         />
+//                     </Form.Item>
+//                     <p className="fs-7">Description</p>
+//                     <Form.Item
+//                         name="description"
+//                         rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
+//                         <Input.TextArea
+//                             placeholder="Enter a breif description for complaint"
+//                             rows={4}
+//                         />
+//                     </Form.Item>
+//                     <p className="fs-7">Category</p>
+//                     <Form.Item
+//                         name="category"
+//                         rules={[{ required: true, type: "string" }]}>
+//                         <Select placeholder={"Select a category"}>
+//                             {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
+//                                 <Select.Option key={c}>{c}</Select.Option>
+//                             ))}
+//                         </Select>
+//                     </Form.Item>
+//                 </Form>
+//             </Modal>
+//         </>
+//     );
+// }
 
 interface LockerModalProps {
     numberOfPackages: number;
