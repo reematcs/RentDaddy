@@ -22,6 +22,9 @@ COPY package.json package-lock.json ./
 RUN NODE_ENV=development npm ci
 
 # Copy all source files after installing dependencies (better Docker caching)
+# But first create our own .env.production.local file to ensure build args are used
+# This step is critical - it ensures our build args take precedence over any file in the repo
+RUN echo "Creating production environment file from build arguments..."
 COPY . .
 
 # Ensure environment variables are correctly set for production
@@ -32,17 +35,18 @@ RUN echo "Building with these environment variables:" && \
     echo "VITE_ENV=${VITE_ENV}" && \
     echo "NODE_ENV=${NODE_ENV}"
 
-# Create a build-time environment file to ensure Vite picks up the variables
-RUN echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > .env.production.local && \
-    echo "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}" >> .env.production.local && \
-    echo "VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}" >> .env.production.local && \
-    echo "VITE_ENV=production" >> .env.production.local
+# Set essential environment variables for the build process
+# But leave VITE_ENV to be determined by the .env files
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+ENV VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}
 
 # Force touch the apiConfig file to ensure it's rebuilt with the latest env vars
 RUN touch src/utils/apiConfig.ts
 
-# Run a clean build with explicit environment variables
-RUN NODE_ENV=production VITE_ENV=production npm run build
+# Run a clean build with explicit NODE_ENV only
+# This will use VITE_ENV from .env file
+RUN NODE_ENV=production npm run build
 
 # Verify build - check for localhost references in built files
 RUN echo "Checking for localhost references in built files..." && \

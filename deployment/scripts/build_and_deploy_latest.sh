@@ -45,38 +45,50 @@ build_component() {
   ensure_ecr_repo "$full_repo"
   ecr_login
 
-  # Create a fresh builder or reuse existing one depending on flag
-  local builder="${name}-builder"
-  if [ "$USE_FRESH_BUILDER" = "true" ]; then
-    log "Using a fresh builder for $name..."
-    docker buildx rm "$builder" >/dev/null 2>&1 || true
-    docker buildx create --name "$builder" --use --bootstrap
-  else
-    log "Checking for existing builder or creating one..."
-    docker buildx inspect "$builder" >/dev/null 2>&1 || docker buildx create --name "$builder" --use --bootstrap
-    docker buildx use "$builder"
-  fi
-
-  # Try to pull the latest image for cache
-  if [ "$USE_REGISTRY_CACHE" = "true" ]; then
-    log "Pulling latest image for cache: $ECR_BASE/$full_repo:$tag"
-    docker pull "$ECR_BASE/$full_repo:$tag" >/dev/null 2>&1 || log "No previous image found for cache, will build from scratch"
-  fi
-
-  # Base build command
-  local build_cmd=(
-    docker buildx build
-    --platform linux/amd64
-    --builder "$builder"
-    --push
-    --build-arg BUILDKIT_INLINE_CACHE=1
-    --progress=plain
-  )
+  # Debug info for build flags
+  log "Build configuration:"
+  log "- USE_FRESH_BUILDER: $USE_FRESH_BUILDER"
+  log "- USE_REGISTRY_CACHE: $USE_REGISTRY_CACHE"
   
-  # Add cache-from if using registry cache
-  if [ "$USE_REGISTRY_CACHE" = "true" ]; then
-    build_cmd+=(--cache-from "$ECR_BASE/$full_repo:$tag")
+  # COMPLETELY DIFFERENT APPROACH: Use legacy Docker build first, then push the image
+  
+  # Create a temporary tag for the local image
+  local temp_tag="${name}-temp-$(date +%s)"
+  
+  # Start with a clean slate if --no-cache is specified
+  if [ "$USE_REGISTRY_CACHE" != "true" ]; then
+    log "⚠️ DISABLING CACHE for $name build - all layers will be rebuilt from scratch"
+    
+    # Aggressively clean the Docker cache
+    log "🧹 Cleaning Docker cache..."
+    docker builder prune -af > /dev/null 2>&1 || true
+    
+    # Remove any locally cached image to ensure a completely fresh start
+    docker rmi "$ECR_BASE/$full_repo:$tag" > /dev/null 2>&1 || true
+    docker rmi "$temp_tag" > /dev/null 2>&1 || true
+    
+    # Use basic docker build with --no-cache
+    log "Using simple docker build with --no-cache for maximum compatibility"
+    build_cmd=(docker build --no-cache)
+  else
+    log "Using Docker build with cache"
+    build_cmd=(docker build)
+    
+    # Try to pull the latest image for cache
+    log "Pulling latest image for cache: $ECR_BASE/$full_repo:$tag"
+    if docker pull "$ECR_BASE/$full_repo:$tag" >/dev/null 2>&1; then
+      # If pull successful, use it as cache source
+      build_cmd+=(--cache-from "$ECR_BASE/$full_repo:$tag")
+    else
+      log "No previous image found for cache, will build from scratch"
+    fi
   fi
+  
+  # Add platform and tag
+  build_cmd+=(
+    --platform linux/amd64
+    -t "$temp_tag"
+  )
 
   # Add component-specific build args
   if [ "$name" = "frontend" ]; then
@@ -87,10 +99,10 @@ build_component() {
     : "${VITE_BACKEND_URL:?Missing VITE_BACKEND_URL}"
     
     # Standard frontend-specific build args
+    # Note: Not setting VITE_ENV here to respect the value in .env.production.local
     build_cmd+=(
       --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY"
       --build-arg VITE_BACKEND_URL="$VITE_BACKEND_URL"
-      --build-arg VITE_ENV="production"
       --build-arg NODE_ENV="production"
     )
     
@@ -118,15 +130,14 @@ build_component() {
       log "- VITE_SERVER_URL: $VITE_SERVER_URL"
     fi
     
-    # Set no-cache for frontend builds to ensure clean builds each time
-    log "Ensuring a clean frontend build without caching issues"
-    build_cmd+=(--no-cache)
+    # We're now using the global no-cache setting based on USE_REGISTRY_CACHE flag
+    log "Using cache settings from command line flags for frontend build"
     
     log "Frontend build env vars:"
     log "- VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:0:5}..."
     log "- VITE_BACKEND_URL: $VITE_BACKEND_URL"
     log "- VITE_DOCUMENSO_PUBLIC_URL: ${VITE_DOCUMENSO_PUBLIC_URL:-https://docs.curiousdev.net}"
-    log "- VITE_ENV: production"
+    log "- VITE_ENV: (using value from .env.production.local: ${VITE_ENV:-<not set in environment>})"
     log "- NODE_ENV: production"
   fi
 
@@ -137,15 +148,62 @@ build_component() {
     "$path"
   )
 
-  # Run the build command
-  "${build_cmd[@]}" | tee "$PROJECT_ROOT/deployment/${name}-build.log"
+  # Print the full build command for debugging
+  log "Full build command for ${name}:"
+  log "----------------------------------------"
+  for part in "${build_cmd[@]}"; do
+    log "  $part"
+  done
+  log "----------------------------------------"
+  
+  # Add the dockerfile path and context
+  build_cmd+=(
+    -f "$dockerfile"
+    "$path"
+  )
 
-  # Only remove the builder if we're using fresh builders
-  if [ "$USE_FRESH_BUILDER" = "true" ]; then
-    log "Removing temporary builder: $builder"
-    docker buildx rm "$builder" >/dev/null 2>&1 || true
+  # Print the full build command for debugging
+  log "Full build command for ${name}:"
+  log "----------------------------------------"
+  for part in "${build_cmd[@]}"; do
+    log "  $part"
+  done
+  log "----------------------------------------"
+
+  # Run the local build command and capture both stdout and stderr
+  log "Running build command for ${name}..."
+  "${build_cmd[@]}" 2>&1 | tee "$PROJECT_ROOT/deployment/${name}-build.log"
+  
+  # Check build result
+  build_status=${PIPESTATUS[0]}
+  if [ $build_status -ne 0 ]; then
+    log "⛔ Build command failed with status $build_status"
+    return $build_status
   fi
-
+  
+  log "✅ Local build completed successfully"
+  
+  # Now tag and push to ECR
+  log "Tagging image for ECR: $temp_tag -> $ECR_BASE/$full_repo:$tag"
+  docker tag "$temp_tag" "$ECR_BASE/$full_repo:$tag"
+  
+  log "Pushing image to ECR: $ECR_BASE/$full_repo:$tag"
+  docker push "$ECR_BASE/$full_repo:$tag"
+  push_status=$?
+  
+  if [ $push_status -ne 0 ]; then
+    log "⛔ Push to ECR failed with status $push_status"
+    return $push_status
+  fi
+  
+  # Add debug output for the image
+  log "Inspecting image environment variables:"
+  docker inspect "$temp_tag" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i "VITE_" || echo "No VITE_ variables found in image"
+  
+  # Clean up temporary image
+  log "Cleaning up temporary image"
+  docker rmi "$temp_tag" >/dev/null 2>&1 || true
+  
   log "✅ $name pushed to: $ECR_BASE/$full_repo:$tag"
 }
 
@@ -191,8 +249,16 @@ else
         shift 2 ;;
       --reuse-builder) USE_FRESH_BUILDER=false; shift ;;
       --fresh-builder) USE_FRESH_BUILDER=true; shift ;;
-      --no-cache) USE_REGISTRY_CACHE=false; shift ;;
-      --use-cache) USE_REGISTRY_CACHE=true; shift ;;
+      --no-cache)
+        USE_REGISTRY_CACHE=false;
+        log "🚫 No-cache flag detected: Forcing a clean build with no caching"
+        shift
+        ;;
+      --use-cache)
+        USE_REGISTRY_CACHE=true;
+        log "✅ Use-cache flag detected: Using build cache"
+        shift
+        ;;
       -h|--help)
         echo "Usage: $0 [-b|-f|-a] [-t TAG] [--deploy] [--reuse-builder|--fresh-builder] [--use-cache|--no-cache]"
         echo ""
