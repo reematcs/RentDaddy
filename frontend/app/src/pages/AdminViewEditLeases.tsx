@@ -469,11 +469,13 @@ export default function AdminViewEditLeases() {
                 else if (status === "terminated" || status === "expired") alertType = "error";
 
                 return (
-                    <AlertComponent
-                        title={formattedStatus}
-                        message=""
+                    <Alert
+                        className="flex text-left"
+                        message={formattedStatus}
                         type={alertType}
-                        description=""
+                        showIcon
+                        style={{ padding: '4px 8px' }}
+                        closable={false}
                     />
                 );
             },
