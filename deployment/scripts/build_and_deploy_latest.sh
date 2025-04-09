@@ -155,20 +155,6 @@ build_component() {
     log "  $part"
   done
   log "----------------------------------------"
-  
-  # Add the dockerfile path and context
-  build_cmd+=(
-    -f "$dockerfile"
-    "$path"
-  )
-
-  # Print the full build command for debugging
-  log "Full build command for ${name}:"
-  log "----------------------------------------"
-  for part in "${build_cmd[@]}"; do
-    log "  $part"
-  done
-  log "----------------------------------------"
 
   # Run the local build command and capture both stdout and stderr
   log "Running build command for ${name}..."

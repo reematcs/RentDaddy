@@ -14,6 +14,9 @@ echo "[ENTRYPOINT-PROD] PORT: $PORT"
 # Set up database connection string
 export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 
+# Set password as environment variable once to avoid multiple command-line appearances
+export PGPASSWORD="$POSTGRES_PASSWORD"
+
 # The postgres service in docker-compose already has a healthcheck,
 # but we'll add a quick check to make sure our connection works
 echo "Verifying PostgreSQL connection..."
@@ -21,7 +24,7 @@ attempt=0
 max_attempts=30
 
 # First try connecting to postgres default database to ensure the server is up
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "postgres" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+until psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "postgres" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
   attempt=$((attempt+1))
   echo "PostgreSQL connection attempt $attempt/$max_attempts"
   sleep 2
@@ -34,12 +37,12 @@ fi
 
 # Create the database if it doesn't exist
 echo "Ensuring database ${POSTGRES_DB} exists..."
-PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_DB}'" | grep -q 1 || \
-  PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE ${POSTGRES_DB}"
+psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '${POSTGRES_DB}'" | grep -q 1 || \
+  psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE ${POSTGRES_DB}"
 
 # Now connect to the application database to verify it
 attempt=0
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+until psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
   attempt=$((attempt+1))
   echo "Application database connection attempt $attempt/$max_attempts"
   sleep 2
@@ -79,7 +82,7 @@ export POSTGRES_DB="${POSTGRES_DB}"
 # Export the full PG_URL to override any hardcoded values in Taskfile
 export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 
-echo "Using database URL: ${PG_URL}"
+echo "Using database URL: postgresql://${POSTGRES_USER}:****@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 set +e
 # Run migrations with explicit variables
 task migrate:up

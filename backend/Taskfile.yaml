@@ -77,37 +77,55 @@ tasks:
   migrate:up:
     desc: "Apply migrations to the database"
     cmds:
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
       - echo "Migrations applied!"
 
   migrate:down:
     desc: "Roll back one migration version"
     cmds:
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
       - echo "Migrating down 1 version.."
 
   migrate:version:
     desc: "Show current migration version"
     cmds:
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:status:
     desc: "Check migration version and if database is dirty"
     cmds:
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:fix-dirty:
     desc: "Fix a dirty database state by forcing last successful version"
     cmds:
       - echo "Checking migration status..."
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
       - echo "Database migration state reset!"
 
   migrate:reset:
     desc: "Reset database (wipe all data and re-run migrations)"
     cmds:
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
-      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
   test:all:
     desc: "Test all in backend in container"
     cmds:
@@ -123,23 +141,35 @@ tasks:
     cmds:
       # Check if container is running
       - |
-        CONTAINER_NAME="rentdaddy-backend"
-          if ! docker ps | grep -q "$CONTAINER_NAME"; then 
+        CONTAINER_NAME="{{.CONTAINER_NAME | default "rentdaddy-backend"}}"
+        if ! docker ps | grep -q "$CONTAINER_NAME"; then 
           echo "Error: Container $CONTAINER_NAME is not running!"
-        exit 1
+          exit 1
         fi
         echo "Connecting to database: $POSTGRES_DB as user $POSTGRES_USER..."
-        # Set PGPASSWORD as env var to avoid exposing it in command line
-        PGPASSWORD="${POSTGRES_PASSWORD}" psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
+        # Set PGPASSWORD as env var to avoid exposing it in logs
+        export PGPASSWORD="${POSTGRES_PASSWORD}"
+        # Use the exported env var
+        psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
   cron:expire-leases:
     desc: "Run lease expiration job manually in backend container"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "rentdaddy-backend"}}'
     cmds:
-      - docker exec rentdaddy-backend /app/bin/expire-leases
+      - docker exec {{.CONTAINER_NAME}} /app/bin/expire-leases
   cron:test-expired-leases:
     desc: "Seed db with leases to expire"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "rentdaddy-backend"}}'
     cmds:
-      # Using double quotes for variables to ensure they're expanded locally before being sent to docker exec
-      - docker exec rentdaddy-backend sh -c "PGPASSWORD=\"$POSTGRES_PASSWORD\" psql -h \"$POSTGRES_HOST\" -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /app/internal/db/migrations/cron_test_seeder.sql"
+      # Using environment variable setting to avoid exposing password in logs
+      - |
+        docker exec {{.CONTAINER_NAME}} sh -c '
+          # Set password as environment variable
+          export PGPASSWORD="${POSTGRES_PASSWORD}"
+          # Execute psql with the environment variable set
+          psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f /app/internal/db/migrations/cron_test_seeder.sql
+        '
 
   cron:test-status-update:
     desc: "Test the lease status update endpoint"
@@ -178,11 +208,5 @@ tasks:
       - task: sqlc:generate
       - task: migrate:up
 
-  worker:run:
-    desc: "Build and run the Documenso worker for local development"
-    cmds:
-      - >
-        cd worker/documenso-worker && 
-        go build -o documenso-worker main.go && 
-        ./documenso-worker
-    silent: false
+  # worker:run task removed - documenso-worker has been deprecated
+  # All email functionality is now handled directly in the main backend service

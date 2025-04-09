@@ -10,7 +10,7 @@ import { Link } from "react-router";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
-import { generateAccessCode } from "../lib/utils";
+import { generateAccessCode, logger } from "../lib/utils";
 import { toast } from "sonner";
 import { Parking } from "../types/types";
 import { SERVER_API_URL } from "../utils/apiConfig";
@@ -91,7 +91,7 @@ const AdminDashboard = () => {
             throw new Error(`Failed to fetch tenants: ${res.status}`);
         }
 
-        // console.log("Response data for tenants query:", data);
+        // logger.debug("Response data for tenants query:", data);
         return (await res.json()) as Tenant[];
     }
 
@@ -101,8 +101,8 @@ const AdminDashboard = () => {
         if (!token) {
             throw new Error("No authentication token available");
         }
-        // console.log("Fetching work orders...");
-        // console.log("API URL:", `${absoluteServerUrl}/admin/work_orders`);
+        // logger.debug("Fetching work orders...");
+        // logger.debug("API URL:", `${absoluteServerUrl}/admin/work_orders`);
 
         const res = await fetch(`${absoluteServerUrl}/admin/work_orders`, {
             method: "GET",
@@ -112,17 +112,17 @@ const AdminDashboard = () => {
             },
         });
 
-        // console.log("Response status:", res.status);
+        // logger.debug("Response status:", res.status);
 
         if (!res.ok) {
             throw new Error(`Failed to fetch work orders: ${res.status}`);
         }
 
-        // console.log("Response data:", data);
+        // logger.debug("Response data:", data);
         return (await res.json()) as WorkOrder[];
     }
 
-    // console.log("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
+    // logger.debug("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
 
     // Query for fetching complaints
     async function getComplaints() {
@@ -130,8 +130,8 @@ const AdminDashboard = () => {
         if (!token) {
             throw new Error("No authentication token available");
         }
-        // console.log("Fetching complaints...");
-        // console.log("API URL:", `${absoluteServerUrl}/admin/complaints`);
+        // logger.debug("Fetching complaints...");
+        // logger.debug("API URL:", `${absoluteServerUrl}/admin/complaints`);
         const res = await fetch(`${absoluteServerUrl}/admin/complaints`, {
             method: "GET",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -144,8 +144,8 @@ const AdminDashboard = () => {
         return (await res.json()) as Complaint[];
     }
 
-    // console.log("complaints:", complaints);
-    // console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
+    // logger.debug("complaints:", complaints);
+    // logger.debug("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
 
     async function getLockersInUse() {
         const token = await getToken();
@@ -204,12 +204,12 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
             if (!selectedUserId) {
-                console.error("Please select a tenant");
+                logger.error("Please select a tenant");
                 return;
             }
 
             if (!accessCode) {
-                console.error("Please enter an access code");
+                logger.error("Please enter an access code");
                 return;
             }
 
@@ -359,8 +359,8 @@ const AdminDashboard = () => {
 
     const WORK_ORDERS_COUNT = workOrders.data?.length ?? 0;
     const COMPLAINTS_COUNT = complaints.data?.length ?? 0;
-    console.log("Work orders count:", workOrdersWithKeys.length);
-    console.log("Complaints count:", COMPLAINTS_COUNT);
+    logger.log("Work orders count:", workOrdersWithKeys.length);
+    logger.log("Complaints count:", COMPLAINTS_COUNT);
 
     return (
         <div className="container">

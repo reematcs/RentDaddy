@@ -14,7 +14,10 @@ echo "Verifying PostgreSQL connection..."
 attempt=0
 max_attempts=10
 
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+# Export password as environment variable to avoid exposing it in logs
+export PGPASSWORD="$POSTGRES_PASSWORD"
+
+until psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
   attempt=$((attempt+1))
   echo "PostgreSQL connection attempt $attempt/$max_attempts"
   sleep 1
