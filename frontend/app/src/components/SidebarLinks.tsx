@@ -89,61 +89,15 @@ const SidebarLinks = () => {
                                 stroke-width="2"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                className="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
-                                <line
-                                    x1="21"
-                                    x2="14"
-                                    y1="4"
-                                    y2="4"
-                                />
-                                <line
-                                    x1="10"
-                                    x2="3"
-                                    y1="4"
-                                    y2="4"
-                                />
-                                <line
-                                    x1="21"
-                                    x2="12"
-                                    y1="12"
-                                    y2="12"
-                                />
-                                <line
-                                    x1="8"
-                                    x2="3"
-                                    y1="12"
-                                    y2="12"
-                                />
-                                <line
-                                    x1="21"
-                                    x2="16"
-                                    y1="20"
-                                    y2="20"
-                                />
-                                <line
-                                    x1="12"
-                                    x2="3"
-                                    y1="20"
-                                    y2="20"
-                                />
-                                <line
-                                    x1="14"
-                                    x2="14"
-                                    y1="2"
-                                    y2="6"
-                                />
-                                <line
-                                    x1="8"
-                                    x2="8"
-                                    y1="10"
-                                    y2="14"
-                                />
-                                <line
-                                    x1="16"
-                                    x2="16"
-                                    y1="20"
-                                    y2="22"
-                                />
+                                className="lucide lucide-building-icon lucide-building">
+                                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+                                <path d="M9 22v-4h6v4"/>
+                                <path d="M8 6h.01"/>
+                                <path d="M16 6h.01"/>
+                                <path d="M8 10h.01"/>
+                                <path d="M16 10h.01"/>
+                                <path d="M8 14h.01"/>
+                                <path d="M16 14h.01"/>
                             </svg>
                             Apartment
                         </Link>
@@ -279,7 +233,28 @@ const SidebarLinks = () => {
                         </Link>
                         <Link
                             to="/admin/settings"
-                            className={getLinkClass("/admin/settings") + " hover-lift transition-all"}>
+                            className={`d-flex align-items-center gap-2 hover-darken transition-all ${getLinkClass("/admin/settings")}`}>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                className="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+                                <line x1="21" x2="14" y1="4" y2="4" />
+                                <line x1="10" x2="3" y1="4" y2="4" />
+                                <line x1="21" x2="12" y1="12" y2="12" />
+                                <line x1="8" x2="3" y1="12" y2="12" />
+                                <line x1="21" x2="16" y1="20" y2="20" />
+                                <line x1="12" x2="3" y1="20" y2="20" />
+                                <line x1="14" x2="14" y1="2" y2="6" />
+                                <line x1="8" x2="8" y1="10" y2="14" />
+                                <line x1="16" x2="16" y1="20" y2="22" />
+                            </svg>
                             Settings
                         </Link>
                     </div>
