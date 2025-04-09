@@ -218,6 +218,7 @@ TAG_BACKEND="latest"
 TAG_FRONTEND="prod"
 USE_FRESH_BUILDER=true     # Default to using a fresh builder each time
 USE_REGISTRY_CACHE=true    # Default to using registry cache
+SPECIFIED_BUILD_COMPONENT=false  # Track if user specified a build component
 
 if [ $# -eq 0 ]; then
   BUILD_BACKEND=true
@@ -225,9 +226,9 @@ if [ $# -eq 0 ]; then
 else
   while [[ $# -gt 0 ]]; do
     case $1 in
-      -b|--backend) BUILD_BACKEND=true; shift ;;
-      -f|--frontend) BUILD_FRONTEND=true; shift ;;
-      -a|--all) BUILD_BACKEND=true; BUILD_FRONTEND=true; shift ;;
+      -b|--backend) BUILD_BACKEND=true; SPECIFIED_BUILD_COMPONENT=true; shift ;;
+      -f|--frontend) BUILD_FRONTEND=true; SPECIFIED_BUILD_COMPONENT=true; shift ;;
+      -a|--all) BUILD_BACKEND=true; BUILD_FRONTEND=true; SPECIFIED_BUILD_COMPONENT=true; shift ;;
       -d|--deploy) DEPLOY=true; shift ;;
       -t|--tag)
         TAG_BACKEND="$2"
@@ -268,6 +269,13 @@ else
       *) echo "Unknown option: $1"; exit 1 ;;
     esac
   done
+  
+  # If only cache or builder flags were specified but no build components, default to building all
+  if [ "$SPECIFIED_BUILD_COMPONENT" = "false" ]; then
+    log "No specific components selected for build, defaulting to building all components"
+    BUILD_BACKEND=true
+    BUILD_FRONTEND=true
+  fi
 fi
 
 # === Builds ===
