@@ -39,6 +39,7 @@ services:
         - app-network
         - documenso-rentdaddy
     #command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
     
 
   frontend:
