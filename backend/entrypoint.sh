@@ -34,6 +34,11 @@ echo "Database migrations complete."
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "Debug mode enabled. Container will stay alive."
   tail -f /dev/null
+elif [ "$USE_AIR" = "false" ]; then
+  # Run the server directly without Air
+  echo "Starting server directly (Air disabled)..."
+  cd /app
+  exec go run server.go
 else
   # Run Air with config file for hot reloading
   echo "Starting Air for hot reloading..."

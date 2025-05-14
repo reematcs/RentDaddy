@@ -1,4 +1,4 @@
-import { WarningOutlined, InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
+import { InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input } from "antd";
 import { useState, useEffect } from "react";
 import LeaseCardComponent from "../components/LeaseCardComponent";
@@ -18,7 +18,6 @@ import { SERVER_API_URL } from "../utils/apiConfig";
 const absoluteServerUrl = SERVER_API_URL;
 
 export const TenantDashBoard = () => {
-    const [isSigningModalVisible, setSigningModalVisible] = useState(false);
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
@@ -110,66 +109,53 @@ export const TenantDashBoard = () => {
     });
 
     // Fetch lease status using TanStack Query
-    const { data: leaseData, isLoading } = useQuery({
+    const { data: leaseData, isLoading: isLeaseLoading } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             if (!userId) {
                 console.log("`userId` variable is not populated");
                 return null;
             }
-            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
+            const token = await getToken();
+            const response = await fetch(`${absoluteServerUrl}/tenant/leases/${userId}/signing-url`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
             if (!response.ok) {
+                console.error("Error fetching lease data:", response.statusText);
                 return null;
             }
 
-            // If empty, return null so tenant dashboard can still load
             const contentType = response.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
                 return null;
             }
 
-            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
-            return leaseData;
+            const data: TenantLeaseStatusAndURL = await response.json();
+            return data;
         },
         enabled: !!userId,
     });
 
-    // This is the recommended approach in newer versions of TanStack Query. `onSuccess` is deprecated
-    useEffect(() => {
-        if (leaseData && leaseData.status) {
-            console.log("Lease status updated:", leaseData.status);
-            if (["pending_approval", "terminated", "expired"].includes(leaseData.status)) {
-                console.log("Setting modal visible based on lease status");
-                setSigningModalVisible(true);
-            }
-        }
-    }, [leaseData]);
+    // No need for modal state or effects here - LeaseCardComponent handles all lease status UI
 
-    // This is used to redirect to signing URL when button is clicked
-    const handleOk = () => {
-        if (leaseData && leaseData.url) {
-            window.location.href = leaseData.url;
-        } else {
-            console.error("No signing URL available");
-        }
-    };
-
-    if (isLoading) {
-        return <div>Loading...</div>;
+    // Loading indicator for all data sources
+    if (isLeaseLoading || complaints.isLoading || workOrders.isLoading || lockers.isLoading || parking.isLoading) {
+        return <div>Loading dashboard data...</div>;
     }
 
     return (
         <div className="container">
             {/* <h1 className="my-4">Tenant Dashboard</h1> */}
             <PageTitleComponent title="Tenant Dashboard" />
-            {/* <div className="alert-container"> */}
+            
             <AlertComponent
                 title=""
                 message="Welcome to the Tenant Dashboard"
-                description="Sign Yo Lease. Pay Daddy Rent"
-                type="warning"
+                description="Manage your apartment and services"
+                type="info"
             />
-            {/* </div> */}
 
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
@@ -203,7 +189,8 @@ export const TenantDashBoard = () => {
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <LeaseCardComponent />
+                {/* LeaseCardComponent handles all lease status logic including blocking modals */}
+                <LeaseCardComponent externalLeaseData={leaseData} />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}
@@ -221,33 +208,6 @@ export const TenantDashBoard = () => {
                 />
             </div>
 
-            {/* Inescapable Modal for lease signing */}
-            <Modal
-                title="Action Required: Lease Signing"
-                open={isSigningModalVisible}
-                onOk={handleOk}
-                onCancel={() => { }} // Empty function prevents closing
-                maskClosable={false} // Prevents closing when clicking outside
-                keyboard={false} // Prevents closing with ESC key
-                closable={false} // Removes the X button
-                footer={[
-                    <Button
-                        key="submit"
-                        type="primary"
-                        onClick={handleOk}>
-                        Sign Lease Now
-                    </Button>,
-                ]}>
-                <div style={{ textAlign: "center" }}>
-                    <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
-                    <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
-                    <p>
-                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
-                    </p>
-                    <p>You must sign your lease to continue using the tenant portal.</p>
-                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
-                </div>
-            </Modal>
             <MyChatBot />
         </div>
     );

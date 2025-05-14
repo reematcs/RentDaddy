@@ -69,3 +69,4 @@ log/
 logs/
 logging/
 *.log.*
+docker/documenso/cert.p12
