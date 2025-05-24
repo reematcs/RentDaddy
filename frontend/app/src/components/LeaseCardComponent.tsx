@@ -41,7 +41,7 @@ interface EnhancedLeaseData {
 // Props for the LeaseCard component
 interface LeaseCardProps {
     // Optional external lease data - if provided, we won't run our own query
-    externalLeaseData?: LeaseData;
+    externalLeaseData?: EnhancedLeaseData;
 }
 
 const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
