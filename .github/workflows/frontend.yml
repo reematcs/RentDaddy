@@ -38,5 +38,5 @@ jobs:
       
       - name: Docker build test
         run: |
-          docker build -t frontend-test .
+          docker build -f Dockerfile.dev -t frontend-test .
           docker image inspect frontend-test

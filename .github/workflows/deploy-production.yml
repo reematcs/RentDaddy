@@ -13,13 +13,11 @@ on:
 
 env:
   AWS_REGION: us-east-2
-  ECR_REPOSITORY_BACKEND: rentdaddy-backend
-  ECR_REPOSITORY_FRONTEND: rentdaddy-frontend
-  ECS_SERVICE_BACKEND: rentdaddy-backend-service
-  ECS_SERVICE_FRONTEND: rentdaddy-frontend-service
+  ECR_REPOSITORY_BACKEND: rentdaddy/backend
+  ECR_REPOSITORY_FRONTEND: rentdaddy/frontend
+  ECS_SERVICE: rentdaddy-app-service
   ECS_CLUSTER: rentdaddy-cluster
-  ECS_TASK_DEFINITION_BACKEND: rentdaddy-backend-task
-  ECS_TASK_DEFINITION_FRONTEND: rentdaddy-frontend-task
+  ECS_TASK_DEFINITION: rentdaddy-app
 
 jobs:
   test:
@@ -36,9 +34,7 @@ jobs:
       always() && 
       (needs.test.result == 'success' || github.event.inputs.skip_tests == 'true')
     environment: production
-    strategy:
-      matrix:
-        service: [backend, frontend]
+    # Single service deployment (backend and frontend in one task)
     
     steps:
       - name: Checkout code
@@ -58,10 +54,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create production env file for ${{ matrix.service }}
+      - name: Create production env files
         run: |
-          if [ "${{ matrix.service }}" = "backend" ]; then
-            cat > ./backend/backend.env.production.local << EOF
+          # Backend env file
+          cat > ./backend/backend.env.production.local << EOF
           POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
           POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
@@ -84,57 +80,73 @@ jobs:
           DOMAIN_URL=${{ secrets.DOMAIN_URL }}
           PORT=8080
           EOF
-          else
-            cat > ./frontend/app/frontend.env.production.local << EOF
+          
+          # Frontend env file
+          cat > ./frontend/app/frontend.env.production.local << EOF
           VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
           VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
           VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
           VITE_DOCUMENSO_PUBLIC_URL=${{ secrets.VITE_DOCUMENSO_PUBLIC_URL }}
           VITE_ENV=production
           EOF
-          fi
 
-      - name: Build, tag, and push ${{ matrix.service }} image to Amazon ECR
+      - name: Build, tag, and push images to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build arguments
-          BUILD_CONTEXT="./${{ matrix.service }}"
-          if [ "${{ matrix.service }}" = "frontend" ]; then
-            BUILD_CONTEXT="./frontend/app"
-          fi
-          
-          # Build and push
+          # Build and push backend
           docker buildx build \
             --platform linux/amd64 \
             --push \
-            -t $ECR_REGISTRY/${{ matrix.service == 'backend' && env.ECR_REPOSITORY_BACKEND || env.ECR_REPOSITORY_FRONTEND }}:$IMAGE_TAG \
-            -t $ECR_REGISTRY/${{ matrix.service == 'backend' && env.ECR_REPOSITORY_BACKEND || env.ECR_REPOSITORY_FRONTEND }}:latest \
-            -f $BUILD_CONTEXT/Dockerfile.prod \
-            $BUILD_CONTEXT
+            -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_BACKEND }}:$IMAGE_TAG \
+            -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_BACKEND }}:latest \
+            -f ./backend/Dockerfile.prod \
+            ./backend
+          
+          # Build and push frontend
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_FRONTEND }}:$IMAGE_TAG \
+            -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY_FRONTEND }}:latest \
+            -f ./frontend/app/Dockerfile.prod \
+            ./frontend/app
 
-      - name: Download current task definition for ${{ matrix.service }}
+      - name: Download current task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ${{ matrix.service == 'backend' && env.ECS_TASK_DEFINITION_BACKEND || env.ECS_TASK_DEFINITION_FRONTEND }} \
-            --query taskDefinition > task-definition-${{ matrix.service }}.json
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query taskDefinition > task-definition.json
 
-      - name: Fill in the new image ID in the Amazon ECS task definition
+      - name: Update task definition with new images
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition-${{ matrix.service }}.json
-          container-name: ${{ matrix.service == 'backend' && 'rentdaddy-backend' || 'rentdaddy-frontend' }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service == 'backend' && env.ECR_REPOSITORY_BACKEND || env.ECR_REPOSITORY_FRONTEND }}:${{ github.sha }}
+        run: |
+          # Update both container images in the task definition
+          jq '.containerDefinitions[0].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_BACKEND':'$IMAGE_TAG'" | 
+              .containerDefinitions[1].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_FRONTEND':'$IMAGE_TAG'"' \
+              task-definition.json > new-task-definition.json
+          echo "task-definition=new-task-definition.json" >> $GITHUB_OUTPUT
 
       - name: Deploy Amazon ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ matrix.service == 'backend' && env.ECS_SERVICE_BACKEND || env.ECS_SERVICE_FRONTEND }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+        run: |
+          # Register new task definition
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          
+          # Update service
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --task-definition $NEW_TASK_DEF_ARN \
+            --force-new-deployment
+          
+          # Wait for service stability
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
 
   update-documenso-cert:
     name: Update Documenso Certificate
@@ -191,23 +203,23 @@ jobs:
 
       - name: Run database migrations
         run: |
-          # Get backend task ARN
+          # Get task ARN
           TASK_ARN=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} \
-            --service-name ${{ env.ECS_SERVICE_BACKEND }} \
+            --service-name ${{ env.ECS_SERVICE }} \
             --query 'taskArns[0]' --output text)
           
           # Run migrations
           aws ecs execute-command \
             --cluster ${{ env.ECS_CLUSTER }} \
             --task $TASK_ARN \
-            --container rentdaddy-backend \
+            --container backend \
             --interactive \
             --command "migrate -path ./internal/db/migrations -database \$PG_URL up"
 
       - name: Verify deployment health
         run: |
           # Check backend health
-          BACKEND_URL="${{ secrets.DOMAIN_URL }}:8080/healthz"
+          BACKEND_URL="https://${{ secrets.DOMAIN_URL }}/api/healthz"
           for i in {1..30}; do
             if curl -f $BACKEND_URL; then
               echo "Backend is healthy"
@@ -218,7 +230,7 @@ jobs:
           done
           
           # Check frontend health
-          FRONTEND_URL="https://${{ secrets.APP_DOMAIN }}"
+          FRONTEND_URL="https://${{ secrets.DOMAIN_URL }}"
           for i in {1..30}; do
             if curl -f $FRONTEND_URL; then
               echo "Frontend is healthy"
@@ -238,6 +250,5 @@ jobs:
             Commit: ${{ github.sha }}
             Author: ${{ github.actor }}
             Branch: ${{ github.ref }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
