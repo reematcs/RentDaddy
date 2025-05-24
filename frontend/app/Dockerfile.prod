@@ -17,9 +17,9 @@ ENV VITE_ENV=$VITE_ENV
 ENV NODE_ENV=production
 
 # Pre-install only what's needed for dependency resolution
-COPY package.json package-lock.json ./
+COPY package.json ./
 # We need to include dev dependencies for the build process
-RUN NODE_ENV=development npm ci
+RUN npm install
 
 # Copy all source files after installing dependencies (better Docker caching)
 # But first create our own .env.production.local file to ensure build args are used
