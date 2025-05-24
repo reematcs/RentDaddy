@@ -34,9 +34,8 @@ jobs:
       - name: Run golangci-lint
         working-directory: ./backend
         run: |
-          # Skip linting for now due to import issues in generated code
-          echo "Skipping golangci-lint due to generated code issues"
-          # golangci-lint run --timeout=5m --skip-dirs=internal/db/generated
+          # Run linting but continue on error for now
+          golangci-lint run --timeout=5m --skip-dirs=internal/db/generated || echo "Linting completed with warnings"
 
   backend-test:
     name: Backend Tests
@@ -153,8 +152,8 @@ jobs:
           VITE_BACKEND_URL: https://api.example.com
           VITE_ENV: test
         run: |
-          # Skip TypeScript checking for CI and just build with Vite
-          npx vite build || echo "Build completed with warnings"
+          # Run full build with TypeScript checking
+          npm run build
         
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
