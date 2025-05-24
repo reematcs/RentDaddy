@@ -51,9 +51,9 @@ RUN NODE_ENV=production npm run build
 # Verify build - check for localhost references in built files
 RUN echo "Checking for localhost references in built files..." && \
     if grep -r "localhost" /app/dist/assets/*.js; then \
-        echo "WARNING: Found localhost references in built files"; \
+    echo "WARNING: Found localhost references in built files"; \
     else \
-        echo "No localhost references found - build is clean"; \
+    echo "No localhost references found - build is clean"; \
     fi
 
 # Serve stage
