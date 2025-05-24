@@ -1,5 +1,5 @@
 import { InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
-import { Modal, Button, Divider, Form, Input } from "antd";
+import { Modal, Divider, Form, Input } from "antd";
 import { useState, useEffect } from "react";
 import LeaseCardComponent from "../components/LeaseCardComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -190,7 +190,7 @@ export const TenantDashBoard = () => {
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
                 {/* LeaseCardComponent handles all lease status logic including blocking modals */}
-                <LeaseCardComponent externalLeaseData={leaseData} />
+                <LeaseCardComponent externalLeaseData={leaseData || undefined} />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}

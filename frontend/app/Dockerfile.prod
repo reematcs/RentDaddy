@@ -45,8 +45,8 @@ ENV VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}
 RUN touch src/utils/apiConfig.ts
 
 # Run a clean build with explicit NODE_ENV only
-# Skip TypeScript checking due to type errors, just run Vite build
-RUN NODE_ENV=production npx vite build
+# This will use VITE_ENV from .env file
+RUN NODE_ENV=production npm run build
 
 # Verify build - check for localhost references in built files
 RUN echo "Checking for localhost references in built files..." && \

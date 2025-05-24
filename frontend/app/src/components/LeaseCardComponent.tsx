@@ -1,5 +1,5 @@
 import { JSX, useState, useEffect } from 'react';
-import { Modal, Button, Spin, Tag, Alert, Space, Typography, Row, Col } from 'antd';
+import { Modal, Button, Spin, Tag, Space, Typography, Row, Col } from 'antd';
 import { 
     FileTextOutlined, 
     WarningOutlined, 
@@ -41,10 +41,7 @@ interface EnhancedLeaseData {
 // Props for the LeaseCard component
 interface LeaseCardProps {
     // Optional external lease data - if provided, we won't run our own query
-    externalLeaseData?: {
-        status: string;
-        url: string;
-    };
+    externalLeaseData?: LeaseData;
 }
 
 const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
@@ -367,7 +364,7 @@ const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
                 <AlertComponent
                     title=""
                     message={uiState.alertMessage}
-                    description={uiState.alertDescription}
+                    description={uiState.alertDescription || ''}
                     type={uiState.alertType}
                 />
             )}
