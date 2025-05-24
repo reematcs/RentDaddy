@@ -122,8 +122,12 @@ jobs:
       - name: Update task definition with new images
         id: task-def
         run: |
-          # Update both container images in the task definition
-          jq '.containerDefinitions[0].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_BACKEND':'$IMAGE_TAG'" | .containerDefinitions[1].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_FRONTEND':'$IMAGE_TAG'"' task-definition.json > new-task-definition.json
+          # Remove fields that are not valid for register-task-definition
+          # and update both container images in the task definition
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy) | 
+              .containerDefinitions[0].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_BACKEND':'$IMAGE_TAG'" | 
+              .containerDefinitions[1].image = "'$ECR_REGISTRY'/'$ECR_REPOSITORY_FRONTEND':'$IMAGE_TAG'"' \
+              task-definition.json > new-task-definition.json
           echo "task-definition=new-task-definition.json" >> $GITHUB_OUTPUT
 
       - name: Deploy Amazon ECS task definition
