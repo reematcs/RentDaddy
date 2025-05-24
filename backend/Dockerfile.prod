@@ -8,7 +8,6 @@ WORKDIR /app
 
 # Copy go module files first for better layer caching
 COPY go.mod go.sum ./
-COPY vendor/ ./vendor/
 RUN go mod download
 
 # Download specific dependencies needed for scripts
