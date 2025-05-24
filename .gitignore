@@ -70,3 +70,21 @@ logs/
 logging/
 *.log.*
 docker/documenso/cert.p12
+
+# Security - NEVER commit certificates, keys, or credentials
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+*.cer
+*.cert
+*.csr
+.ssl/
+certs/
+certificates/
+
+# But allow example/template files
+!*.example.key
+!*.example.crt
+!*.template.*

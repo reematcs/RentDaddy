@@ -1,0 +1,181 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      service:
+        description: 'Service to rollback'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - backend
+          - frontend
+          - both
+      image_tag:
+        description: 'Image tag to rollback to (leave empty for previous version)'
+        required: false
+        type: string
+
+env:
+  AWS_REGION: us-east-2
+
+jobs:
+  rollback:
+    name: Rollback ${{ github.event.inputs.service }} in ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ github.event.inputs.environment == 'production' && secrets.AWS_ACCESS_KEY_ID || secrets.AWS_ACCESS_KEY_ID_STAGING }}
+          aws-secret-access-key: ${{ github.event.inputs.environment == 'production' && secrets.AWS_SECRET_ACCESS_KEY || secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "ECS_CLUSTER=rentdaddy-cluster" >> $GITHUB_ENV
+            echo "ECS_SERVICE_BACKEND=rentdaddy-backend-service" >> $GITHUB_ENV
+            echo "ECS_SERVICE_FRONTEND=rentdaddy-frontend-service" >> $GITHUB_ENV
+            echo "ECR_REPO_BACKEND=rentdaddy-backend" >> $GITHUB_ENV
+            echo "ECR_REPO_FRONTEND=rentdaddy-frontend" >> $GITHUB_ENV
+          else
+            echo "ECS_CLUSTER=rentdaddy-staging-cluster" >> $GITHUB_ENV
+            echo "ECS_SERVICE_BACKEND=rentdaddy-backend-staging-service" >> $GITHUB_ENV
+            echo "ECS_SERVICE_FRONTEND=rentdaddy-frontend-staging-service" >> $GITHUB_ENV
+            echo "ECR_REPO_BACKEND=rentdaddy-backend-staging" >> $GITHUB_ENV
+            echo "ECR_REPO_FRONTEND=rentdaddy-frontend-staging" >> $GITHUB_ENV
+          fi
+
+      - name: Get rollback image tag
+        id: get-image
+        run: |
+          ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            # Use specified image tag
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Get previous image tag from ECS service
+            if [ "${{ github.event.inputs.service }}" = "backend" ] || [ "${{ github.event.inputs.service }}" = "both" ]; then
+              BACKEND_IMAGE=$(aws ecs describe-services \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --services ${{ env.ECS_SERVICE_BACKEND }} \
+                --query 'services[0].deployments[1].taskDefinition' \
+                --output text | xargs -I {} aws ecs describe-task-definition \
+                --task-definition {} \
+                --query 'taskDefinition.containerDefinitions[0].image' \
+                --output text | cut -d: -f2)
+              echo "BACKEND_IMAGE_TAG=$BACKEND_IMAGE" >> $GITHUB_ENV
+            fi
+            
+            if [ "${{ github.event.inputs.service }}" = "frontend" ] || [ "${{ github.event.inputs.service }}" = "both" ]; then
+              FRONTEND_IMAGE=$(aws ecs describe-services \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --services ${{ env.ECS_SERVICE_FRONTEND }} \
+                --query 'services[0].deployments[1].taskDefinition' \
+                --output text | xargs -I {} aws ecs describe-task-definition \
+                --task-definition {} \
+                --query 'taskDefinition.containerDefinitions[0].image' \
+                --output text | cut -d: -f2)
+              echo "FRONTEND_IMAGE_TAG=$FRONTEND_IMAGE" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Rollback Backend
+        if: ${{ github.event.inputs.service == 'backend' || github.event.inputs.service == 'both' }}
+        run: |
+          IMAGE_TAG="${{ github.event.inputs.image_tag || env.BACKEND_IMAGE_TAG }}"
+          echo "Rolling back backend to image tag: $IMAGE_TAG"
+          
+          # Update ECS service to use previous image
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_BACKEND }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          # Create new task definition revision with old image
+          aws ecs describe-task-definition --task-definition $TASK_DEF \
+            --query 'taskDefinition' | \
+            jq --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_BACKEND }}:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' > new-task-def.json
+          
+          NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          # Update service
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE_BACKEND }} \
+            --task-definition $NEW_TASK_DEF
+
+      - name: Rollback Frontend
+        if: ${{ github.event.inputs.service == 'frontend' || github.event.inputs.service == 'both' }}
+        run: |
+          IMAGE_TAG="${{ github.event.inputs.image_tag || env.FRONTEND_IMAGE_TAG }}"
+          echo "Rolling back frontend to image tag: $IMAGE_TAG"
+          
+          # Update ECS service to use previous image
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE_FRONTEND }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          # Create new task definition revision with old image
+          aws ecs describe-task-definition --task-definition $TASK_DEF \
+            --query 'taskDefinition' | \
+            jq --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_FRONTEND }}:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' > new-task-def.json
+          
+          NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          
+          # Update service
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE_FRONTEND }} \
+            --task-definition $NEW_TASK_DEF
+
+      - name: Wait for rollback to complete
+        run: |
+          echo "Waiting for services to stabilize..."
+          
+          if [ "${{ github.event.inputs.service }}" = "backend" ] || [ "${{ github.event.inputs.service }}" = "both" ]; then
+            aws ecs wait services-stable \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SERVICE_BACKEND }}
+          fi
+          
+          if [ "${{ github.event.inputs.service }}" = "frontend" ] || [ "${{ github.event.inputs.service }}" = "both" ]; then
+            aws ecs wait services-stable \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SERVICE_FRONTEND }}
+          fi
+
+      - name: Notify rollback status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Rollback ${{ job.status }}
+            Environment: ${{ github.event.inputs.environment }}
+            Service: ${{ github.event.inputs.service }}
+            Initiated by: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

@@ -1,0 +1,124 @@
+name: Deploy to Staging
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY_BACKEND: rentdaddy-backend-staging
+  ECR_REPOSITORY_FRONTEND: rentdaddy-frontend-staging
+  ECS_SERVICE_BACKEND: rentdaddy-backend-staging-service
+  ECS_SERVICE_FRONTEND: rentdaddy-frontend-staging-service
+  ECS_CLUSTER: rentdaddy-staging-cluster
+  ECS_TASK_DEFINITION_BACKEND: rentdaddy-backend-staging-task
+  ECS_TASK_DEFINITION_FRONTEND: rentdaddy-frontend-staging-task
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    strategy:
+      matrix:
+        service: [backend, frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create staging env file for ${{ matrix.service }}
+        run: |
+          if [ "${{ matrix.service }}" = "backend" ]; then
+            cat > ./backend/backend.env.staging.local << EOF
+          POSTGRES_HOST=${{ secrets.POSTGRES_HOST_STAGING }}
+          POSTGRES_PORT=${{ secrets.POSTGRES_PORT_STAGING }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER_STAGING }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_STAGING }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB_STAGING }}
+          PG_URL=${{ secrets.PG_URL_STAGING }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY_STAGING }}
+          CLERK_WEBHOOK=${{ secrets.CLERK_WEBHOOK_STAGING }}
+          SMTP_HOST=${{ secrets.SMTP_HOST_STAGING }}
+          SMTP_PORT=${{ secrets.SMTP_PORT_STAGING }}
+          SMTP_USER=${{ secrets.SMTP_USER_STAGING }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD_STAGING }}
+          SMTP_FROM=${{ secrets.SMTP_FROM_STAGING }}
+          SMTP_USE_TLS=${{ secrets.SMTP_USE_TLS_STAGING }}
+          DOCUMENSO_API_KEY=${{ secrets.DOCUMENSO_API_KEY_STAGING }}
+          DOCUMENSO_WEBHOOK_SECRET=${{ secrets.DOCUMENSO_WEBHOOK_SECRET_STAGING }}
+          DOCUMENSO_API_URL=${{ secrets.DOCUMENSO_API_URL_STAGING }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY_STAGING }}
+          CRON_SECRET_TOKEN=${{ secrets.CRON_SECRET_TOKEN_STAGING }}
+          DOMAIN_URL=${{ secrets.DOMAIN_URL_STAGING }}
+          PORT=8080
+          EOF
+          else
+            cat > ./frontend/app/frontend.env.staging.local << EOF
+          VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY_STAGING }}
+          VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL_STAGING }}
+          VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL_STAGING }}
+          VITE_DOCUMENSO_PUBLIC_URL=${{ secrets.VITE_DOCUMENSO_PUBLIC_URL_STAGING }}
+          VITE_ENV=staging
+          EOF
+          fi
+
+      - name: Build, tag, and push ${{ matrix.service }} image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: staging-${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # Build arguments
+          BUILD_CONTEXT="./${{ matrix.service }}"
+          if [ "${{ matrix.service }}" = "frontend" ]; then
+            BUILD_CONTEXT="./frontend/app"
+          fi
+          
+          # Build and push with staging env file
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            --build-arg ENV_FILE=${{ matrix.service }}.env.staging.local \
+            -t $ECR_REGISTRY/${{ matrix.service == 'backend' && env.ECR_REPOSITORY_BACKEND || env.ECR_REPOSITORY_FRONTEND }}:$IMAGE_TAG \
+            -t $ECR_REGISTRY/${{ matrix.service == 'backend' && env.ECR_REPOSITORY_BACKEND || env.ECR_REPOSITORY_FRONTEND }}:latest \
+            -f $BUILD_CONTEXT/Dockerfile.prod \
+            $BUILD_CONTEXT
+
+      - name: Deploy to ECS Staging
+        run: |
+          # Update service with new image
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ matrix.service == 'backend' && env.ECS_SERVICE_BACKEND || env.ECS_SERVICE_FRONTEND }} \
+            --force-new-deployment
+
+      - name: Comment PR with staging URL
+        if: github.event_name == 'pull_request' && matrix.service == 'frontend'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const stagingUrl = '${{ secrets.STAGING_APP_URL }}';
+            const comment = `🚀 Staging deployment complete!\n\nView staging environment: ${stagingUrl}\n\nCommit: \`${{ github.event.pull_request.head.sha }}\``;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

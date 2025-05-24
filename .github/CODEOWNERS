@@ -1,0 +1,31 @@
+# Code Owners for RentDaddy
+# These owners will be the default owners for everything in the repo
+
+# Global owners
+* @reematcs
+
+# Backend specific
+/backend/ @reematcs
+/backend/internal/db/ @reematcs
+/backend/pkg/handlers/ @reematcs
+
+# Frontend specific
+/frontend/ @reematcs
+/frontend/app/src/components/ @reematcs
+/frontend/app/src/pages/ @reematcs
+
+# Infrastructure and deployment
+/deployment/ @reematcs
+/.github/ @reematcs
+/docker-compose.yml @reematcs
+Dockerfile* @reematcs
+
+# Documentation
+*.md @reematcs
+/docs/ @reematcs
+
+# Security sensitive files
+/backend/middleware/ @reematcs
+/backend/pkg/handlers/clerk.go @reematcs
+/backend/pkg/handlers/documenso/ @reematcs
+.env* @reematcs
