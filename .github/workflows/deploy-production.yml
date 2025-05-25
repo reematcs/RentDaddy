@@ -127,13 +127,38 @@ jobs:
           check_and_import "aws_s3_bucket" "certificates" "rentdaddy-certificates" "aws s3 ls s3://rentdaddy-certificates"
           
           echo "Import check complete"
-      
+
       # --- Targeted apply for ACM certificate only ---
       - name: Terraform Apply ACM Certificate
         working-directory: ./deployment/simplified_terraform
         run: |
           terraform apply -target=aws_acm_certificate.main -auto-approve \
             -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}"
+
+      # --- Wait for ACM certificate to be issued before proceeding ---
+      - name: Wait for ACM Certificate Validation
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          CERT_ARN=$(terraform output -raw acm_certificate_arn || echo "")
+          if [ -z "$CERT_ARN" ]; then
+            echo "ACM certificate ARN not found in outputs. Skipping wait."
+            exit 1
+          fi
+          echo "Waiting for ACM certificate to be issued..."
+          for i in {1..30}; do
+            STATUS=$(aws acm describe-certificate --certificate-arn "$CERT_ARN" --region ${{ env.AWS_REGION }} --query 'Certificate.Status' --output text)
+            echo "Current status: $STATUS"
+            if [ "$STATUS" = "ISSUED" ]; then
+              echo "ACM certificate is issued."
+              break
+            fi
+            if [ "$STATUS" = "FAILED" ]; then
+              echo "ACM certificate validation failed."
+              exit 1
+            fi
+            sleep 10
+          done
+
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
         run: |
