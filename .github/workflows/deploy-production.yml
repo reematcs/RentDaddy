@@ -10,9 +10,15 @@ on:
         required: false
         default: false
         type: boolean
+      skip_terraform:
+        description: 'Skip Terraform (app-only deployment)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   AWS_REGION: us-east-2
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   ECR_REPOSITORY_BACKEND: rentdaddy/backend
   ECR_REPOSITORY_FRONTEND: rentdaddy/frontend
   ECS_SERVICE: rentdaddy-app-service
@@ -26,15 +32,115 @@ jobs:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
-  build-and-deploy:
-    name: Build and Deploy
+  terraform:
+    name: Deploy Infrastructure
     runs-on: ubuntu-latest
     needs: [test]
     if: |
       always() && 
-      (needs.test.result == 'success' || github.event.inputs.skip_tests == 'true')
+      (needs.test.result == 'success' || github.event.inputs.skip_tests == 'true') &&
+      github.event.inputs.skip_terraform != 'true'
     environment: production
-    # Single service deployment (backend and frontend in one task)
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+      
+      - name: Terraform Init
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          # Use the GitHub Actions specific Terraform file
+          mv main.tf main-local.tf.backup || true
+          mv main-github-actions.tf main.tf
+          terraform init
+      
+      - name: Import Existing Resources
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          echo "Checking for existing resources that need to be imported..."
+          
+          # Function to check and import resource
+          check_and_import() {
+            local resource_type=$1
+            local resource_name=$2
+            local resource_id=$3
+            local check_command=$4
+            
+            # Check if resource exists in state
+            if ! terraform state show "${resource_type}.${resource_name}" &>/dev/null; then
+              # Check if resource exists in AWS
+              if eval "$check_command" &>/dev/null; then
+                echo "Importing ${resource_type}.${resource_name}..."
+                terraform import -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" "${resource_type}.${resource_name}" "$resource_id" || true
+              fi
+            fi
+          }
+          
+          # Import ALB if it exists
+          ALB_ARN=$(aws elbv2 describe-load-balancers --names rentdaddy-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
+          if [ "$ALB_ARN" != "" ] && [ "$ALB_ARN" != "None" ]; then
+            check_and_import "aws_lb" "main" "$ALB_ARN" "aws elbv2 describe-load-balancers --names rentdaddy-alb"
+          fi
+          
+          # Import Target Groups
+          BACKEND_TG_ARN=$(aws elbv2 describe-target-groups --names backend-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+          if [ "$BACKEND_TG_ARN" != "" ] && [ "$BACKEND_TG_ARN" != "None" ]; then
+            check_and_import "aws_lb_target_group" "backend" "$BACKEND_TG_ARN" "aws elbv2 describe-target-groups --names backend-tg"
+          fi
+          
+          DOCUMENSO_TG_ARN=$(aws elbv2 describe-target-groups --names documenso-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+          if [ "$DOCUMENSO_TG_ARN" != "" ] && [ "$DOCUMENSO_TG_ARN" != "None" ]; then
+            check_and_import "aws_lb_target_group" "documenso" "$DOCUMENSO_TG_ARN" "aws elbv2 describe-target-groups --names documenso-tg"
+          fi
+          
+          # Import ECS Cluster
+          check_and_import "aws_ecs_cluster" "main" "rentdaddy-cluster" "aws ecs describe-clusters --clusters rentdaddy-cluster --query 'clusters[0]'"
+          
+          # Import IAM Roles
+          check_and_import "aws_iam_role" "ecs_task_execution" "rentdaddy-ecs-task-execution-role" "aws iam get-role --role-name rentdaddy-ecs-task-execution-role"
+          check_and_import "aws_iam_role" "ecs_task" "rentdaddy-ecs-task-role" "aws iam get-role --role-name rentdaddy-ecs-task-role"
+          check_and_import "aws_iam_role" "ecs_instance" "rentdaddy-ecs-instance-role" "aws iam get-role --role-name rentdaddy-ecs-instance-role"
+          
+          # Import CloudWatch Log Groups
+          check_and_import "aws_cloudwatch_log_group" "backend_logs" "/ecs/rentdaddy-backend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-backend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-backend']\""
+          check_and_import "aws_cloudwatch_log_group" "frontend_logs" "/ecs/rentdaddy-frontend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-frontend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-frontend']\""
+          check_and_import "aws_cloudwatch_log_group" "documenso_logs" "/ecs/rentdaddy-documenso" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-documenso --query \"logGroups[?logGroupName=='/ecs/rentdaddy-documenso']\""
+          
+          echo "Import check complete"
+      
+      - name: Terraform Plan
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          terraform plan \
+            -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" \
+            -out=tfplan
+      
+      - name: Terraform Apply
+        working-directory: ./deployment/simplified_terraform
+        if: github.event_name == 'push' || github.event.inputs.deploy == 'true'
+        run: |
+          terraform apply -auto-approve tfplan
+
+  build-and-deploy:
+    name: Build and Deploy Applications
+    runs-on: ubuntu-latest
+    needs: [test, terraform]
+    if: |
+      always() && 
+      (needs.test.result == 'success' || github.event.inputs.skip_tests == 'true') &&
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
+    environment: production
     
     steps:
       - name: Checkout code
@@ -175,6 +281,7 @@ jobs:
           echo "✓ All ECS agents are connected"
 
       - name: Deploy Amazon ECS task definition
+        timeout-minutes: 15
         run: |
           # Register new task definition
           NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
@@ -250,6 +357,34 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Deployment
+        run: |
+          echo "Checking service health..."
+          
+          # Check frontend
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://app.curiousdev.net -m 10)
+          if [ "$response" != "200" ]; then
+            echo "Frontend health check failed with status $response"
+            exit 1
+          fi
+          echo "✅ Frontend is healthy"
+          
+          # Check API
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api.curiousdev.net/healthz -m 10)
+          if [ "$response" != "200" ]; then
+            echo "API health check failed with status $response"
+            exit 1
+          fi
+          echo "✅ API is healthy"
+          
+          # Check Documenso (expecting 307 redirect)
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://docs.curiousdev.net -m 10)
+          if [[ "$response" != "3"* ]]; then
+            echo "Documenso health check failed with status $response"
+            exit 1
+          fi
+          echo "✅ Documenso is healthy"
+
   update-documenso-cert:
     name: Update Documenso Certificate
     runs-on: ubuntu-latest
@@ -286,59 +421,3 @@ jobs:
           echo "Certificate update process would run here"
           # This would typically involve updating the task definition
           # to mount the certificate from S3 or EFS
-
-  post-deployment:
-    name: Post Deployment Tasks
-    runs-on: ubuntu-latest
-    needs: [build-and-deploy]
-    environment: production
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Run database migrations
-        run: |
-          # Get task ARN
-          TASK_ARN=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} \
-            --service-name ${{ env.ECS_SERVICE }} \
-            --query 'taskArns[0]' --output text)
-          
-          # Run migrations
-          aws ecs execute-command \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --task $TASK_ARN \
-            --container backend \
-            --interactive \
-            --command "migrate -path ./internal/db/migrations -database \$PG_URL up"
-
-      - name: Verify deployment health
-        run: |
-          # Check backend health
-          BACKEND_URL="https://${{ secrets.DOMAIN_URL }}/api/healthz"
-          for i in {1..30}; do
-            if curl -f $BACKEND_URL; then
-              echo "Backend is healthy"
-              break
-            fi
-            echo "Waiting for backend to be healthy... (attempt $i/30)"
-            sleep 10
-          done
-          
-          # Check frontend health
-          FRONTEND_URL="https://${{ secrets.DOMAIN_URL }}"
-          for i in {1..30}; do
-            if curl -f $FRONTEND_URL; then
-              echo "Frontend is healthy"
-              break
-            fi
-            echo "Waiting for frontend to be healthy... (attempt $i/30)"
-            sleep 10
-          done
-

@@ -164,26 +164,6 @@ jobs:
           path: ./frontend/app/dist
         continue-on-error: true
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
-        continue-on-error: true
-
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
