@@ -128,18 +128,25 @@ jobs:
           
           echo "Import check complete"
       
+      # --- Targeted apply for ACM certificate only ---
+      - name: Terraform Apply ACM Certificate
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          terraform apply -target=aws_acm_certificate.main -auto-approve \
+            -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}"
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
         run: |
           terraform plan \
             -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" \
             -out=tfplan
-      
+
       - name: Terraform Apply
         working-directory: ./deployment/simplified_terraform
         if: github.event_name == 'push' || github.event.inputs.deploy == 'true'
         run: |
           terraform apply -auto-approve tfplan
+
 
   build-and-deploy:
     name: Build and Deploy Applications
