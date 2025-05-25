@@ -9,6 +9,8 @@ on:
 env:
   AWS_REGION: us-east-2
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  BACKEND_SECRET_ARN: ${{ secrets.BACKEND_SECRET_ARN }}
+  DOCUMENSO_SECRET_ARN: ${{ secrets.DOCUMENSO_SECRET_ARN }}
 
 jobs:
   terraform:
@@ -37,12 +39,18 @@ jobs:
       
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan \
+            -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" \
+            -var="backend_secret_arn=${{ env.BACKEND_SECRET_ARN }}" \
+            -var="documenso_secret_arn=${{ env.DOCUMENSO_SECRET_ARN }}" \
+            -out=tfplan
       
       - name: Terraform Apply
         working-directory: ./deployment/simplified_terraform
         if: github.event_name == 'push' || github.event.inputs.deploy == 'true'
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve tfplan
 
   build-and-deploy:
     name: Build and Deploy Applications
