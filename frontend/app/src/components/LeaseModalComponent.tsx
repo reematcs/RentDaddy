@@ -54,7 +54,7 @@ export const LeaseModalComponent = ({
     const queryClient = useQueryClient();
 
     // Function to validate end date is after start date
-    const validateEndDate = (_: any, value: any) => {
+    const validateEndDate = (_: unknown, value: dayjs.Dayjs | null) => {
         const startDate = form.getFieldValue('start_date');
         if (!value || !startDate) {
             return Promise.resolve();
@@ -123,7 +123,13 @@ export const LeaseModalComponent = ({
                     console.log(`[TENANT_QUERY] Fetched ${data?.length || 0} tenants without lease`);
 
                     // Transform the data to match our interface
-                    return data.map((tenant: any) => ({
+                    return data.map((tenant: {
+                        id: number;
+                        first_name: string;
+                        last_name: string;
+                        email: string;
+                        unit_number?: { value: number };
+                    }) => ({
                         id: tenant.id,
                         firstName: tenant.first_name,
                         lastName: tenant.last_name,
@@ -306,7 +312,14 @@ export const LeaseModalComponent = ({
 
     // Add Lease Mutation
     const addLeaseMutation = useMutation({
-        mutationFn: async (values: any) => {
+        mutationFn: async (values: {
+            tenant_id: number;
+            apartment_id: number;
+            start_date: dayjs.Dayjs;
+            end_date: dayjs.Dayjs;
+            monthly_rent: number;
+            security_deposit: number;
+        }) => {
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
 
@@ -430,7 +443,13 @@ export const LeaseModalComponent = ({
 
     // Renew Lease Mutation
     const renewLeaseMutation = useMutation({
-        mutationFn: async (values: any) => {
+        mutationFn: async (values: {
+            lease_id: number;
+            start_date: dayjs.Dayjs;
+            end_date: dayjs.Dayjs;
+            monthly_rent: number;
+            security_deposit: number;
+        }) => {
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
 
@@ -491,7 +510,15 @@ export const LeaseModalComponent = ({
     });
 
     const amendLeaseMutation = useMutation({
-        mutationFn: async (values: any) => {
+        mutationFn: async (values: {
+            lease_id: number;
+            start_date: dayjs.Dayjs;
+            end_date: dayjs.Dayjs;
+            monthly_rent: number;
+            security_deposit: number;
+            apartment_id?: number;
+            property_address?: string;
+        }) => {
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
 
@@ -1028,7 +1055,7 @@ export const LeaseModalComponent = ({
                     amendLeaseMutation.mutate(values);
                     break;
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error(`Form validation error:`, error);
             message.error("Please check the form fields and try again.");
         }

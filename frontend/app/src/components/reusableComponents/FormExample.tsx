@@ -70,10 +70,27 @@ const tailFormItemLayout = {
     },
 };
 
+interface FormValues {
+    email: string;
+    password: string;
+    confirm: string;
+    nickname: string;
+    residence: string[];
+    phone: string;
+    donation: number;
+    website: string;
+    intro: string;
+    gender: string;
+    captcha: string;
+    agreement: boolean;
+    prefix: string;
+    suffix: string;
+}
+
 const RegistrationFormExample: React.FC = () => {
     const [form] = Form.useForm();
 
-    const onFinish = (values: any) => {
+    const onFinish = (values: FormValues) => {
         console.log("Received values of form: ", values);
     };
 

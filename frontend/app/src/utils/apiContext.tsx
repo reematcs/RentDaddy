@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useEffect, useState, ReactNode } from 'react';
 import { ApiClient, apiClient, AuthStatus } from './apiConfig';
 import { useAuth } from '@clerk/react-router';
 
@@ -128,24 +128,5 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom hook to use the API client
-export function useApi() {
-  const context = useContext(ApiContext);
-
-  if (!context) {
-    throw new Error('useApi must be used within an ApiProvider');
-  }
-
-  return context;
-}
-
-// Convenience hook that provides the raw client
-export function useApiClient() {
-  return useApi().apiClient;
-}
-
-// Convenience hook for accessing auth-related states
-export function useApiAuth() {
-  const { isAuthReady, isAuthenticated, authError } = useApi();
-  return { isAuthReady, isAuthenticated, authError };
-}
+// Export the context for use in apiHooks.ts
+export { ApiContext };

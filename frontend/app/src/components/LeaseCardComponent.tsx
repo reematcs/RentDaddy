@@ -286,7 +286,7 @@ const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
                     });
             }
         }
-    }, [effectiveLeaseData, isLoading, isLoadingSignedLease, isError]);
+    }, [effectiveLeaseData, isLoading, isLoadingSignedLease, isError, isLeaseExpiringSoon]);
 
     const handleViewLease = () => {
         // If active lease and we have the Documenso view URL, use that

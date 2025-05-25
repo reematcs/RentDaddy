@@ -5,7 +5,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useAuth } from "@clerk/clerk-react";
 import { useMutation } from "@tanstack/react-query";
-import { useApiAuth } from "../utils/apiContext";
+import { useApiAuth } from "../utils/apiHooks";
 import { Form, Input } from "antd";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -165,7 +165,7 @@ const AdminSettings = () => {
             sessionStorage.setItem('tenants_checked_time', Date.now().toString());
             setTenantsExist(true);
         }
-    }, [API_URL, getToken]);
+    }, [getToken]);
 
     // Poll seeding status when needed
     useEffect(() => {
@@ -221,7 +221,7 @@ const AdminSettings = () => {
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [seedStatus, seedingStatus, API_URL, checkTenants, seedUsersMutation]);
+    }, [seedStatus, seedingStatus, checkTenants, seedUsersMutation]);
 
     // Check for tenants on initial load and when authenticated
     const { isAuthenticated } = useApiAuth();
@@ -268,7 +268,7 @@ const AdminSettings = () => {
         };
 
         checkSeedingStatus();
-    }, [API_URL, isAuthenticated]);
+    }, [isAuthenticated]);
 
     useEffect(() => {
         // Only run the check when authentication is ready, which 

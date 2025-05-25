@@ -19,7 +19,7 @@ interface TableComponentProps<T> {
 }
 
 const useStyle = createStyles(({ css, token }) => {
-    const prefixCls = (token as any).prefixCls || 'ant';
+    const prefixCls = (token as unknown as { prefixCls?: string }).prefixCls || 'ant';
 
     return {
         customTable: css`
@@ -72,7 +72,7 @@ const TableComponent = <T,>({
                 loading={loading}
                 style={inlineStyle} // Use the inlineStyle prop for React.CSSProperties
                 scroll={scrollProp ?? { x: "max-content" }}
-                rowKey={(record) => (record as any).key || JSON.stringify(record)}
+                rowKey={(record) => (record as { key?: string | number }).key || JSON.stringify(record)}
             />
         </>
     );

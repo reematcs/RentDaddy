@@ -596,7 +596,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
         if (internalModalOpen) {
             openLocker();
         }
-    }, [internalModalOpen, setInternalModalOpen]);
+    }, [internalModalOpen, setInternalModalOpen, openLocker]);
 
     return (
         <>

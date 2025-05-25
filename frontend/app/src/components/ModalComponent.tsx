@@ -48,7 +48,7 @@ interface ModalComponentProps {
     | "Admin Unlock Locker"
     | "Update Password Locker"
     | "Unlock Locker";
-    handleOkay: (data?: any) => Promise<void>;
+    handleOkay: (data?: unknown) => Promise<void>;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
     apartmentBuildingSetEditBuildingState?: React.Dispatch<React.SetStateAction<Building>>;
