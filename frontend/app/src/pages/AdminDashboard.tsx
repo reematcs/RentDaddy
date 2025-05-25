@@ -422,7 +422,8 @@ const AdminDashboard = () => {
                                 setAccessCode={setAccessCode}
                                 selectedUserId={selectedUserId ?? ""}
                                 accessCode={accessCode ?? ""}
-                                handleOkay={async (formData?: { userId: string; accessCode: string }) => {
+                                handleOkay={async (data?: unknown) => {
+                                    const formData = data as { userId: string; accessCode: string } | undefined;
                                     if (formData) {
                                         setSelectedUserId(formData.userId);
                                         setAccessCode(formData.accessCode);

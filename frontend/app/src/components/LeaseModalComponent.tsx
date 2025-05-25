@@ -329,7 +329,7 @@ export const LeaseModalComponent = ({
 
             // Find selected apartment
             const selectedApartment = apartments.find(a => a.id === values.apartment_id);
-            let propertyAddress = values.property_address;
+            let propertyAddress = selectedApartment ? String(selectedApartment.unit_number) : '';
 
             // If an apartment is selected, use its unit number as the property address
             if (selectedApartment) {
@@ -347,7 +347,7 @@ export const LeaseModalComponent = ({
                 tenant_name: `${selectedTenant.firstName} ${selectedTenant.lastName}`, // Just for display, backend will use from DB
                 // tenant_email removed - backend will get it from database
                 property_address: String(propertyAddress),
-                rent_amount: values.rent_amount || (selectedApartment ? selectedApartment.price : 0),
+                rent_amount: values.monthly_rent || (selectedApartment ? selectedApartment.price : 0),
                 start_date: startDateStr,
                 end_date: endDateStr,
                 document_title: `Lease Agreement for ${propertyAddress}`,
@@ -460,13 +460,13 @@ export const LeaseModalComponent = ({
             const renewPayload = {
                 tenant_id: selectedLease?.tenantId || selectedLease?.id,
                 apartment_id: selectedLease?.apartmentId || selectedLease?.id,
-                tenant_name: values.tenant_name,
+                tenant_name: selectedLease?.tenantName || '',
                 // tenant_email removed - backend will get it from database
-                property_address: String(values.property_address),
-                rent_amount: parseFloat(values.rent_amount),
+                property_address: selectedLease?.apartment || '',
+                rent_amount: values.monthly_rent,
                 start_date: renewStartDateStr,
                 end_date: renewEndDateStr,
-                document_title: `Lease Agreement Renewal for ${values.property_address}`,
+                document_title: `Lease Agreement Renewal for ${selectedLease?.apartment || 'property'}`,
                 previous_lease_id: selectedLease?.id,
                 status: "pending_approval",
                 check_existing: true
@@ -518,6 +518,9 @@ export const LeaseModalComponent = ({
             security_deposit: number;
             apartment_id?: number;
             property_address?: string;
+            new_apartment_id?: number;
+            new_property_address?: string;
+            amendment_reason?: string;
         }) => {
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
@@ -542,10 +545,10 @@ export const LeaseModalComponent = ({
             const amendPayload = {
                 tenant_id: selectedLease?.tenantId || selectedLease?.id,
                 apartment_id: apartmentId,
-                tenant_name: values.tenant_name,
+                tenant_name: selectedLease?.tenantName || '',
                 // tenant_email removed - backend will get it from database
                 property_address: String(propertyAddress),
-                rent_amount: parseFloat(values.rent_amount),
+                rent_amount: values.monthly_rent,
                 start_date: amendStartDateStr,
                 end_date: amendEndDateStr,
                 document_title: `Lease Agreement Amendment for ${propertyAddress}`,
