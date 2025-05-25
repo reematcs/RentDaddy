@@ -637,7 +637,7 @@ resource "aws_ecs_service" "rentdaddy_app" {
     expression = "attribute:ecs.availability-zone == ${var.aws_region}a"
   }
 
-  placement_strategy {
+  ordered_placement_strategy {
     type  = "binpack"
     field = "memory"
   }
