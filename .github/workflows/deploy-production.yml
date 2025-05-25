@@ -107,6 +107,12 @@ jobs:
           # Import ECS Cluster
           check_and_import "aws_ecs_cluster" "main" "rentdaddy-cluster" "aws ecs describe-clusters --clusters rentdaddy-cluster --query 'clusters[0]'"
           
+          # Import VPC (check for existing VPC first)
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=rentdaddy-vpc" --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
+          if [ "$VPC_ID" != "" ] && [ "$VPC_ID" != "None" ]; then
+            check_and_import "aws_vpc" "main" "$VPC_ID" "aws ec2 describe-vpcs --vpc-ids $VPC_ID"
+          fi
+          
           # Import IAM Roles
           check_and_import "aws_iam_role" "ecs_task_execution" "rentdaddy-ecs-task-execution-role" "aws iam get-role --role-name rentdaddy-ecs-task-execution-role"
           check_and_import "aws_iam_role" "ecs_task" "rentdaddy-ecs-task-role" "aws iam get-role --role-name rentdaddy-ecs-task-role"
@@ -116,6 +122,9 @@ jobs:
           check_and_import "aws_cloudwatch_log_group" "backend_logs" "/ecs/rentdaddy-backend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-backend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-backend']\""
           check_and_import "aws_cloudwatch_log_group" "frontend_logs" "/ecs/rentdaddy-frontend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-frontend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-frontend']\""
           check_and_import "aws_cloudwatch_log_group" "documenso_logs" "/ecs/rentdaddy-documenso" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-documenso --query \"logGroups[?logGroupName=='/ecs/rentdaddy-documenso']\""
+          
+          # Import S3 Bucket
+          check_and_import "aws_s3_bucket" "certificates" "rentdaddy-certificates" "aws s3 ls s3://rentdaddy-certificates"
           
           echo "Import check complete"
       
