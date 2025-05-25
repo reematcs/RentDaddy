@@ -65,6 +65,16 @@ jobs:
           mv main-github-actions.tf main.tf
           terraform init
       
+      - name: Temporarily move cert validation resource
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          # Move the problematic resource out of the way before import/refresh
+          if grep -q 'resource "aws_route53_record" "cert_validation"' main.tf; then
+            awk '/resource "aws_route53_record" "cert_validation"/{flag=1} /^{/{c++} /}/{if(flag){c--}; if(flag && c==0){flag=0; next}} !flag' main.tf > main.tf.nocert
+            mv main.tf main.tf.withcert
+            mv main.tf.nocert main.tf
+          fi
+
       - name: Import Existing Resources
         working-directory: ./deployment/simplified_terraform
         run: |
@@ -158,6 +168,14 @@ jobs:
             fi
             sleep 10
           done
+
+      - name: Restore cert validation resource
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          # Restore the cert validation resource after ACM cert is issued
+          if [ -f main.tf.withcert ]; then
+            mv main.tf.withcert main.tf
+          fi
 
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
