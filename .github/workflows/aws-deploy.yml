@@ -9,8 +9,6 @@ on:
 env:
   AWS_REGION: us-east-2
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  BACKEND_SECRET_ARN: ${{ secrets.BACKEND_SECRET_ARN }}
-  DOCUMENSO_SECRET_ARN: ${{ secrets.DOCUMENSO_SECRET_ARN }}
 
 jobs:
   terraform:
@@ -35,15 +33,17 @@ jobs:
       
       - name: Terraform Init
         working-directory: ./deployment/simplified_terraform
-        run: terraform init
+        run: |
+          # Use the GitHub Actions specific Terraform file
+          mv main.tf main-local.tf.backup || true
+          mv main-github-actions.tf main.tf
+          terraform init
       
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
         run: |
           terraform plan \
             -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" \
-            -var="backend_secret_arn=${{ env.BACKEND_SECRET_ARN }}" \
-            -var="documenso_secret_arn=${{ env.DOCUMENSO_SECRET_ARN }}" \
             -out=tfplan
       
       - name: Terraform Apply
