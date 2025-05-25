@@ -88,3 +88,6 @@ certificates/
 !*.example.key
 !*.example.crt
 !*.template.*
+
+# Claude Code files - local development only
+CLAUDE.md

@@ -213,7 +213,7 @@ const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
                     // Show the blocking modal for pending approval status
                     setIsBlockingModalVisible(true);
                     break;
-                case 'active':
+                case 'active': {
                     const expiringSoon = isLeaseExpiringSoon();
                     setUiState({
                         buttonTitle: "View Lease",
@@ -232,6 +232,7 @@ const LeaseCard = ({ externalLeaseData }: LeaseCardProps = {}) => {
                             : undefined
                     });
                     break;
+                }
                 case 'terminated':
                     setUiState({
                         buttonTitle: "Terminated",

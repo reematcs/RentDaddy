@@ -130,6 +130,50 @@ jobs:
               task-definition.json > new-task-definition.json
           echo "task-definition=new-task-definition.json" >> $GITHUB_OUTPUT
 
+      - name: Check ECS Agent Connectivity
+        run: |
+          # Check if all ECS agents are connected
+          echo "Checking ECS container instance health..."
+          
+          # Get all container instances
+          CONTAINER_INSTANCES=$(aws ecs list-container-instances \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --query 'containerInstanceArns[]' \
+            --output text)
+          
+          if [ -z "$CONTAINER_INSTANCES" ]; then
+            echo "Error: No container instances found in cluster"
+            exit 1
+          fi
+          
+          # Check each instance for agent connectivity
+          DISCONNECTED_COUNT=0
+          for INSTANCE_ARN in $CONTAINER_INSTANCES; do
+            AGENT_CONNECTED=$(aws ecs describe-container-instances \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --container-instances $INSTANCE_ARN \
+              --query 'containerInstances[0].agentConnected' \
+              --output text)
+            
+            if [ "$AGENT_CONNECTED" != "true" ]; then
+              EC2_INSTANCE_ID=$(aws ecs describe-container-instances \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --container-instances $INSTANCE_ARN \
+                --query 'containerInstances[0].ec2InstanceId' \
+                --output text)
+              echo "Warning: ECS agent disconnected on instance $EC2_INSTANCE_ID"
+              ((DISCONNECTED_COUNT++))
+            fi
+          done
+          
+          if [ $DISCONNECTED_COUNT -gt 0 ]; then
+            echo "Error: $DISCONNECTED_COUNT ECS agent(s) are disconnected"
+            echo "Please run the following script to fix: deployment/scripts/check_and_fix_ecs_agent.sh"
+            exit 1
+          fi
+          
+          echo "✓ All ECS agents are connected"
+
       - name: Deploy Amazon ECS task definition
         run: |
           # Register new task definition
@@ -138,6 +182,8 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
           
+          echo "New task definition registered: $NEW_TASK_DEF_ARN"
+          
           # Update service
           aws ecs update-service \
             --cluster ${{ env.ECS_CLUSTER }} \
@@ -145,18 +191,64 @@ jobs:
             --task-definition $NEW_TASK_DEF_ARN \
             --force-new-deployment
           
-          # Wait for service stability (timeout after 10 minutes)
-          timeout 600 aws ecs wait services-stable \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --services ${{ env.ECS_SERVICE }} || {
-            echo "Service update timed out after 10 minutes. Checking deployment status..."
+          echo "Service update initiated. Waiting for deployment..."
+          
+          # Wait for service stability with better error handling
+          DEPLOYMENT_TIMEOUT=900  # 15 minutes
+          DEPLOYMENT_CHECK_INTERVAL=30  # Check every 30 seconds
+          ELAPSED_TIME=0
+          
+          while [ $ELAPSED_TIME -lt $DEPLOYMENT_TIMEOUT ]; do
+            # Get deployment status
+            DEPLOYMENT_STATUS=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services ${{ env.ECS_SERVICE }} \
+              --query 'services[0].deployments[?status==`PRIMARY`].rolloutState' \
+              --output text)
+            
+            if [ "$DEPLOYMENT_STATUS" == "COMPLETED" ]; then
+              echo "✓ Deployment completed successfully!"
+              break
+            elif [ "$DEPLOYMENT_STATUS" == "FAILED" ]; then
+              echo "✗ Deployment failed!"
+              aws ecs describe-services \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --services ${{ env.ECS_SERVICE }} \
+                --query 'services[0].events[:5]'
+              exit 1
+            else
+              echo "Deployment status: $DEPLOYMENT_STATUS (elapsed: ${ELAPSED_TIME}s)"
+              
+              # Check for placement failures
+              FAILED_TASKS=$(aws ecs describe-services \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --services ${{ env.ECS_SERVICE }} \
+                --query 'services[0].deployments[?status==`PRIMARY`].failedTasks' \
+                --output text)
+              
+              if [ "$FAILED_TASKS" -gt 5 ]; then
+                echo "Warning: $FAILED_TASKS failed task attempts"
+                echo "Recent events:"
+                aws ecs describe-services \
+                  --cluster ${{ env.ECS_CLUSTER }} \
+                  --services ${{ env.ECS_SERVICE }} \
+                  --query 'services[0].events[:3]'
+              fi
+              
+              sleep $DEPLOYMENT_CHECK_INTERVAL
+              ((ELAPSED_TIME+=DEPLOYMENT_CHECK_INTERVAL))
+            fi
+          done
+          
+          if [ $ELAPSED_TIME -ge $DEPLOYMENT_TIMEOUT ]; then
+            echo "Deployment timed out after ${DEPLOYMENT_TIMEOUT} seconds"
+            echo "Final deployment status:"
             aws ecs describe-services \
               --cluster ${{ env.ECS_CLUSTER }} \
               --services ${{ env.ECS_SERVICE }} \
-              --query 'services[0].deployments' \
-              --output json
+              --query 'services[0].deployments'
             exit 1
-          }
+          fi
 
   update-documenso-cert:
     name: Update Documenso Certificate
