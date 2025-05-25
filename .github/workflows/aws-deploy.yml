@@ -39,6 +39,60 @@ jobs:
           mv main-github-actions.tf main.tf
           terraform init
       
+      - name: Import Existing Resources
+        working-directory: ./deployment/simplified_terraform
+        run: |
+          echo "Checking for existing resources that need to be imported..."
+          
+          # Function to check and import resource
+          check_and_import() {
+            local resource_type=$1
+            local resource_name=$2
+            local resource_id=$3
+            local check_command=$4
+            
+            # Check if resource exists in state
+            if ! terraform state show "${resource_type}.${resource_name}" &>/dev/null; then
+              # Check if resource exists in AWS
+              if eval "$check_command" &>/dev/null; then
+                echo "Importing ${resource_type}.${resource_name}..."
+                terraform import -var="aws_account_id=${{ env.AWS_ACCOUNT_ID }}" "${resource_type}.${resource_name}" "$resource_id" || true
+              fi
+            fi
+          }
+          
+          # Import ALB if it exists
+          ALB_ARN=$(aws elbv2 describe-load-balancers --names rentdaddy-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
+          if [ "$ALB_ARN" != "" ] && [ "$ALB_ARN" != "None" ]; then
+            check_and_import "aws_lb" "main" "$ALB_ARN" "aws elbv2 describe-load-balancers --names rentdaddy-alb"
+          fi
+          
+          # Import Target Groups
+          BACKEND_TG_ARN=$(aws elbv2 describe-target-groups --names backend-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+          if [ "$BACKEND_TG_ARN" != "" ] && [ "$BACKEND_TG_ARN" != "None" ]; then
+            check_and_import "aws_lb_target_group" "backend" "$BACKEND_TG_ARN" "aws elbv2 describe-target-groups --names backend-tg"
+          fi
+          
+          DOCUMENSO_TG_ARN=$(aws elbv2 describe-target-groups --names documenso-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+          if [ "$DOCUMENSO_TG_ARN" != "" ] && [ "$DOCUMENSO_TG_ARN" != "None" ]; then
+            check_and_import "aws_lb_target_group" "documenso" "$DOCUMENSO_TG_ARN" "aws elbv2 describe-target-groups --names documenso-tg"
+          fi
+          
+          # Import ECS Cluster
+          check_and_import "aws_ecs_cluster" "main" "rentdaddy-cluster" "aws ecs describe-clusters --clusters rentdaddy-cluster --query 'clusters[0]'"
+          
+          # Import IAM Roles
+          check_and_import "aws_iam_role" "ecs_task_execution" "rentdaddy-ecs-task-execution-role" "aws iam get-role --role-name rentdaddy-ecs-task-execution-role"
+          check_and_import "aws_iam_role" "ecs_task" "rentdaddy-ecs-task-role" "aws iam get-role --role-name rentdaddy-ecs-task-role"
+          check_and_import "aws_iam_role" "ecs_instance" "rentdaddy-ecs-instance-role" "aws iam get-role --role-name rentdaddy-ecs-instance-role"
+          
+          # Import CloudWatch Log Groups
+          check_and_import "aws_cloudwatch_log_group" "backend_logs" "/ecs/rentdaddy-backend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-backend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-backend']\""
+          check_and_import "aws_cloudwatch_log_group" "frontend_logs" "/ecs/rentdaddy-frontend" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-frontend --query \"logGroups[?logGroupName=='/ecs/rentdaddy-frontend']\""
+          check_and_import "aws_cloudwatch_log_group" "documenso_logs" "/ecs/rentdaddy-documenso" "aws logs describe-log-groups --log-group-name-prefix /ecs/rentdaddy-documenso --query \"logGroups[?logGroupName=='/ecs/rentdaddy-documenso']\""
+          
+          echo "Import check complete"
+      
       - name: Terraform Plan
         working-directory: ./deployment/simplified_terraform
         run: |
